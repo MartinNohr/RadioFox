@@ -12,19 +12,13 @@ RTC_DATA_ATTR int nBootCount = 0;
 
 // some forward references that Arduino IDE needs
 int readByte(bool clear);
-void ReadAndDisplayFile(bool doingFirstHalf);
 uint16_t readInt();
 uint32_t readLong();
 void FileSeekBuf(uint32_t place);
 int FileCountOnly(int start = 0);
 
-//static const char* TAG = "lightwand";
-//esp_timer_cb_t oneshot_timer_callback(void* arg)
 void oneshot_LED_timer_callback(void* arg)
 {
-	//int64_t time_since_boot = esp_timer_get_time();
-	//Serial.println("in isr");
-	//ESP_LOGI(TAG, "One-shot timer called, time since boot: %lld us", time_since_boot);
 }
 
 // timer called every second
@@ -70,11 +64,7 @@ void setup()
 	ledcSetup(ledChannel, freq, resolution);
 	// attach the channel to the GPIO to be controlled
 	ledcAttachPin(TFT_ENABLE, ledChannel);
-#if TTGO_T == 1
 	CRotaryDialButton::begin((gpio_num_t)DIAL_A, (gpio_num_t)DIAL_B, (gpio_num_t)DIAL_BTN, (gpio_num_t)0, (gpio_num_t)35, (gpio_num_t)-1, (gpio_num_t)-1, &SystemInfo.DialSettings);
-#elif TTGO_T == 4
-	CRotaryDialButton::begin((gpio_num_t)DIAL_A, (gpio_num_t)DIAL_B, (gpio_num_t)DIAL_BTN, (gpio_num_t)0, (gpio_num_t)-1, (gpio_num_t)38, (gpio_num_t)39, &SystemInfo.DialSettings);
-#endif
 	setupSDcard();
 	//gpio_set_direction((gpio_num_t)LED, GPIO_MODE_OUTPUT);
 	//digitalWrite(LED, HIGH);
@@ -202,16 +192,14 @@ void setup()
 	MenuStack.top()->index = 0;
 	MenuStack.top()->offset = 0;
 	if (nBootCount == 0) {
-		// this must run on same task as main or only the first few LEDs light using FastLED 3.5, don't know why, 3.3 worked
-		xTaskCreatePinnedToCore(TaskInitTestLed, "LEDTEST", 10000, NULL, 1, &TaskLEDTest, xPortGetCoreID());
 		tft.setTextColor(SystemInfo.menuTextColor);
 		tft.setTextColor(TFT_BLACK);
 		tft.setFreeFont(&Irish_Grover_Regular_24);
 		tft.drawRect(0, 0, tft.width() - 1, tft.height() - 1, SystemInfo.menuTextColor);
 		tft.drawRect(1, 1, tft.width() - 2, tft.height() - 2, SystemInfo.menuTextColor);
-		tft.drawString("Magic Image Wand", 5, 10);
+		tft.drawString("Radio Fox", 5, 10);
 		tft.setFreeFont(&Dialog_bold_16);
-		tft.drawString(String("Version ") + MIW_Version, 20, 70);
+		tft.drawString(String("Version ") + FOX_Version, 20, 70);
 		tft.setTextSize(1);
 		tft.drawString(__DATE__, 20, 90);
 		if (msg.length()) {
@@ -234,7 +222,8 @@ void setup()
 		vTaskDelay(10 / portTICK_PERIOD_MS);
 	}
 	ClearScreen();
-	DisplayCurrentFile();
+	// display the main screen here
+	DisplayMainScreen();
 }
 
 // check and handle the rotary dial type
@@ -274,113 +263,6 @@ void CheckRotaryDialType()
 		SystemInfo.DialSettings.m_nDialPulseCount = 2;
 	WriteMessage(String("Dial Type: ") + (SystemInfo.DialSettings.m_bToggleDial ? "Toggle" : "Pulse"), false, 1000);
 }
-
-// read the macro info from the files if we didn't find the json file first
-void ReadMacroInfo()
-{
-	if (SD.exists(MACRO_JSON_FILE)) {
-		// read the file
-#if USE_STANDARD_SD
-		SDFile file;
-		file = SD.open(MACRO_JSON_FILE);
-		if (file) {
-#else
-		FsFile file;
-		file = SD.open(MACRO_JSON_FILE);
-		if (file.getError() == 0) {
-#endif
-			//WriteMessage("Reading: " + String(MACRO_JSON_FILE), false, 1000);
-				//StaticJsonDocument<JSON_DOC_SIZE> doc;
-			DynamicJsonDocument doc(JSON_DOC_SIZE);
-			String input = file.readString();
-			//Serial.println("json size: " + String(input.length()));
-			DeserializationError err = deserializeJson(doc, input);
-			if (err) {
-				WriteMessage(String("failed to parse: ") + MACRO_JSON_FILE, true);
-				//Serial.print(F("deserializeJson() failed with code "));
-				//Serial.println(err.f_str());
-			}
-			else {
-				// read the json into the macroinfo
-				for (int ix = 0; ix < 10; ++ix) {
-					MacroInfo[ix].description = String(doc[ix]["description"].as<const char*>());
-					MacroInfo[ix].mSeconds = doc[ix]["mSeconds"];
-					MacroInfo[ix].length = doc[ix]["length"].as<int>();
-					MacroInfo[ix].pixels = doc[ix]["pixels"].as<int>();
-					JsonArray ja = doc[ix]["images"];
-					for (String str : ja) {
-						MacroInfo[ix].fileNames.push_back(str);
-					}
-				}
-			}
-			file.close();
-		}
-		else {
-#if USE_STANDARD_SD
-			WriteMessage(String("failed to open: ") + MACRO_JSON_FILE, true);
-#else
-			WriteMessage(String("failed to open: ") + MACRO_JSON_FILE + " error: " + String(file.getError()), true);
-#endif
-		}
-		}
-	else {
-		int fileCount, pixelWidth;
-		WriteMessage(String("Creating: ") + MACRO_JSON_FILE, false, 1000);
-		for (int ix = 0; ix < 10; ++ix) {
-			String fn = MakeMIWFilename(String(ix), true);
-			MacroInfo[ix].fileNames.clear();
-			MacroInfo[ix].mSeconds = MacroTime("/" + fn, &fileCount, &pixelWidth, &MacroInfo[ix].fileNames);
-			MacroInfo[ix].description = SD.exists("/" + fn) ? "Used" : "Empty";
-			MacroInfo[ix].length = (float)pixelWidth / (float)LedInfo.nTotalLeds;
-			MacroInfo[ix].pixels = pixelWidth;
-		}
-		// save the info since we just created it
-		SaveMacroInfo();
-	}
-	}
-// save the macro info in json to a file called macro.json
-void SaveMacroInfo()
-{
-#if USE_STANDARD_SD
-	SDFile file;
-	file = SD.open(MACRO_JSON_FILE, FILE_WRITE);
-	if (file) {
-#else
-	FsFile file;
-	file = SD.open(MACRO_JSON_FILE, O_WRITE | O_CREAT | O_TRUNC);
-	if (file.getError() == 0) {
-#endif
-		DynamicJsonDocument doc(JSON_DOC_SIZE);
-		//StaticJsonDocument<JSON_DOC_SIZE> doc;
-		for (int ix = 0; ix < 10; ++ix) {
-			doc[ix]["ID"] = ix;
-			doc[ix]["description"] = MacroInfo[ix].description;
-			doc[ix]["length"] = MacroInfo[ix].length;
-			doc[ix]["mSeconds"] = MacroInfo[ix].mSeconds;
-			doc[ix]["pixels"] = MacroInfo[ix].pixels;
-			//doc[ix]["filecount"] = MacroInfo[ix].fileNames.size();
-			JsonArray ja = doc[ix]["images"].to<JsonArray>();
-			int fix = 0;
-			// add the filenames in an array
-			for (String fname : MacroInfo[ix].fileNames) {
-				ja[fix] = fname;
-				++fix;
-			}
-		}
-		char output[JSON_DOC_SIZE];
-		serializeJsonPretty(doc, output);
-		file.write((uint8_t*)output, strlen(output));
-		file.close();
-	}
-	else {
-		// something went wrong
-#if USE_STANDARD_SD
-		WriteMessage(String("failed to open: ") + MACRO_JSON_FILE, true);
-#else
-		WriteMessage(String("failed to open: ") + MACRO_JSON_FILE + " error: " + String(file.getError()), true);
-#endif
-	}
-	}
 
 void ResetSleepAndDimTimers() {
 	sleepTimer = SystemInfo.nSleepTime * 60;
@@ -439,25 +321,9 @@ void MenuTextScrollSideways()
 	}
 }
 
-// call the current setting for btn0 long press
-void CallBtnLongFunction(int which)
-{
-	switch (which) {
-	case BTN_LONG_ROTATION:
-		SetScreenRotation(-1);
-		// make the LED's upside down for mode 1.
-		ImgInfo.bUpsideDown = SystemInfo.nDisplayRotation == 1;
-		break;
-	case BTN_LONG_LIGHTBAR:
-		LightBar(NULL);
-		break;
-	}
-}
-
 void loop()
 {
 	static SYSTEM_INFO SystemInfoSaved;
-	static BUILTIN_INFO BuiltinInfoSaved;
 	static bool didsomething = false;
 	static bool bLastSettingsMode = false;
 
@@ -468,8 +334,6 @@ void loop()
 	}
 	if (bSettingsMode && !bLastSettingsMode) {
 		memcpy(&SystemInfoSaved, &SystemInfo, sizeof(SystemInfo));
-		memcpy(&LedInfoSaved, &LedInfo, sizeof(LedInfo));
-		memcpy(&BuiltinInfoSaved, &BuiltinInfo, sizeof(BuiltinInfo));
 	}
 	if (!bSettingsMode && bLastSettingsMode) {
 		if (memcmp(&SystemInfoSaved, &SystemInfo, sizeof(SystemInfo))) {
@@ -478,21 +342,8 @@ void loop()
 				SystemInfo.nDisplayDimValue = SystemInfo.nDisplayBrightness;
 			SaveLoadSettings(true, false, true, true);
 		}
-		if (memcmp(&BuiltinInfoSaved, &BuiltinInfo, sizeof(BuiltinInfo))) {
-			SaveLoadSettings(true, false, true, true);
-		}
 	}
 	bLastSettingsMode = bSettingsMode;
-	if (!bSettingsMode && bControllerReboot) {
-		if (memcmp(&LedInfo, &LedInfoSaved, sizeof(LedInfo)) || memcmp(&SystemInfoSaved, &SystemInfo, sizeof(SystemInfo))) {
-			WriteMessage("Rebooting due to\nsystem change", false, 2000);
-			SaveLoadSettings(true, false, true, true);
-			ESP.restart();
-		}
-		else {
-			bControllerReboot = false;
-		}
-	}
 	if (SystemInfo.bRunWebServer) {
 		server.handleClient();
 	}
@@ -1083,7 +934,6 @@ bool HandleMenus()
 	int lastOffset = MenuStack.top()->offset;
 	int lastMenu = MenuStack.top()->index;
 	int lastMenuCount = MenuStack.top()->menucount;
-	bool lastRecording = bRecordingMacro;
 	//MenuItem* pCurrentMenu = &MenuStack.top()->menu[MenuStack.top()->index];
 	int btnRepeatCount = 1;
 	switch (button) {
@@ -1147,7 +997,7 @@ bool HandleMenus()
 	case BTN_LONG:
 		ClearScreen();
 		bSettingsMode = false;
-		DisplayCurrentFile();
+		DisplayMainScreen();
 		bMenuChanged = true;
 		break;
 	default:
@@ -1158,27 +1008,6 @@ bool HandleMenus()
 	if (lastMenu != MenuStack.top()->index || lastOffset != MenuStack.top()->offset) {
 		bMenuChanged = true;
 		//Serial.println("menu changed");
-	}
-	// see if the recording status changed
-	if (lastRecording != bRecordingMacro) {
-		// if recording off, save the new macro info
-		if (bRecordingMacro) {
-			// clear the new entry
-			MacroInfo[ImgInfo.nCurrentMacro].description = "Used";
-		}
-		else {
-			ClearScreen();
-			WriteMessage("Saving macro #" + String(ImgInfo.nCurrentMacro), false, 0);
-			// save timing and sizes
-			int fileCount, pixelWidth;
-			MacroInfo[ImgInfo.nCurrentMacro].mSeconds = MacroTime("/" + MakeMIWFilename(String(ImgInfo.nCurrentMacro), true), &fileCount, &pixelWidth, &MacroInfo[ImgInfo.nCurrentMacro].fileNames);
-			MacroInfo[ImgInfo.nCurrentMacro].length = (float)pixelWidth / (float)LedInfo.nTotalLeds;
-			MacroInfo[ImgInfo.nCurrentMacro].pixels = pixelWidth;
-			SaveMacroInfo();
-		}
-		MenuStack.top()->index = 0;
-		MenuStack.top()->offset = 0;
-		bMenuChanged = true;
 	}
 	return didsomething;
 }
@@ -1199,9 +1028,7 @@ bool HandleRunMode()
 	}
 	switch (button) {
 	case BTN_SELECT:
-		bCancelRun = bCancelMacro = false;
-		ProcessFileOrBuiltin();
-		DisplayCurrentFile();
+		DisplayMainScreen();
 		break;
 	case BTN_RIGHT_LONG:
 	case BTN_RIGHT:
@@ -1218,7 +1045,7 @@ bool HandleRunMode()
 				currentFileIndex.nFileIndex = 0;
 		}
 		//if (oldFileIndex != CurrentFileIndex)
-		DisplayCurrentFile();
+		DisplayMainScreen();
 		break;
 	case BTN_LEFT_LONG:
 	case BTN_LEFT:
@@ -1233,7 +1060,7 @@ bool HandleRunMode()
 				currentFileIndex.nFileIndex = FileNames.size() - 1;
 		}
 		//if (oldFileIndex != CurrentFileIndex)
-		DisplayCurrentFile();
+		DisplayMainScreen();
 		break;
 		//case btnShowFiles:
 		//	bShowBuiltInTests = !bShowBuiltInTests;
@@ -1270,7 +1097,7 @@ bool HandleRunMode()
 	}
 	if (bRedraw) {
 		ClearScreen();
-		DisplayCurrentFile(SystemInfo.bShowFolder);
+		DisplayMainScreen(SystemInfo.bShowFolder);
 	}
 	return didsomething;
 }
@@ -1311,25 +1138,8 @@ enum CRotaryDialButton::Button ReadButton()
 		int amt = 0, newval = 0;
 		switch (retValue) {
 		case BTN_LEFT:
-			amt = -ImgInfo.nDialDuringImgInc;
 			break;
 		case BTN_RIGHT:
-			amt = ImgInfo.nDialDuringImgInc;
-			break;
-		}
-		switch (ImgInfo.nDialDuringImgAction) {
-		case DIAL_IMG_NONE:
-			break;
-		case DIAL_IMG_BRIGHTNESS:
-			LedInfo.nLEDBrightness += amt;
-			LedInfo.nLEDBrightness = constrain(LedInfo.nLEDBrightness, 1, 255);
-			FastLED.setBrightness(LedInfo.nLEDBrightness);
-			DisplayLine(nMenuLineCount - 1, "Brightness: " + String(LedInfo.nLEDBrightness), SystemInfo.menuTextColor);
-			break;
-		case DIAL_IMB_SPEED:
-			ImgInfo.nFrameHold += amt;
-			ImgInfo.nFrameHold = constrain(ImgInfo.nFrameHold, 0, 500);
-			DisplayLine(nMenuLineCount - 1, "Frame Time: " + String(ImgInfo.nFrameHold) + " mS", SystemInfo.menuTextColor);
 			break;
 		}
 	}
@@ -1341,12 +1151,9 @@ bool CheckCancel(bool bLeaveButton)
 {
 	ResetSleepAndDimTimers();
 	// if it has been set, just return true
-	if (bCancelRun || bCancelMacro)
-		return true;
 	CRotaryDialButton::Button button = ReadButton();
 	if (button) {
 		if (button == BTN_LONG) {
-			bCancelMacro = bCancelRun = true;
 			return true;
 		}
 		else if (bLeaveButton) {
@@ -1423,44 +1230,12 @@ void PopFileIndex()
 	}
 }
 
-void SendFile(String Filename) {
-	// see if there is an associated config file
-	String cfFile = MakeMIWFilename(Filename, true);
-	SettingsSaveRestore(true, 0);
-	ProcessConfigFile(cfFile);
-	String fn = currentFolder + Filename;
-	dataFile = SD.open(fn);
-	// if the file is available send it to the LED's
-	if (dataFile.available()) {
-		for (int cnt = 0; cnt < (ImgInfo.bMirrorPlayImage ? 2 : 1); ++cnt) {
-			ReadAndDisplayFile(cnt == 0);
-			ImgInfo.bReverseImage = !ImgInfo.bReverseImage; // note this will be restored by SettingsSaveRestore
-			dataFile.seek(0);
-			FastLED.clear(true);
-			int wait = ImgInfo.nMirrorDelay;
-			while (wait-- > 0) {
-				delay(100);
-			}
-			if (CheckCancel())
-				break;
-		}
-		dataFile.close();
-	}
-	else {
-		WriteMessage("open fail: " + fn, true, 5000);
-		return;
-	}
-	if (!bRunningMacro)
-		ShowProgressBar(100);
-	SettingsSaveRestore(false, 0);
-}
-
 // display a line in selected colors and clear to the end of the line
 void DisplayLine(int line, String text, int16_t color, int16_t backColor)
 {
 	if (line >= 0 && line < nMenuLineCount) {
 		// don't show if running and displaying file on LCD
-		if (!(bIsRunning && SystemInfo.bShowDuringBmpFile)) {
+		if (!(bIsRunning)) {
 			if (TextLines[line].Line != text || TextLines[line].backColor != backColor || TextLines[line].foreColor != color) {
 				int pixels = tft.textWidth(text);
 				if (pixels > tft.width()) {
@@ -1617,24 +1392,6 @@ bool IsFolder(int index)
 		|| FileNames[index][0] == PREVIOUS_FOLDER_CHAR;
 }
 
-void ShowProgressBar(int percent)
-{
-	//if (SystemInfo.bShowProgress && !(bIsRunning && SystemInfo.bShowDuringBmpFile)) {
-	if (SystemInfo.bShowProgress) {
-		static int lastpercent = 0;
-		if (lastpercent && (lastpercent == percent))
-			return;
-		int x = tft.width() - 1;
-		int y = SystemInfo.bShowDuringBmpFile ? 0 : (tft.fontHeight() + 4);
-		int h = SystemInfo.bShowDuringBmpFile ? 4 : 8;
-		if (percent == 0) {
-			tft.fillRect(0, y, x, h, TFT_BLACK);
-		}
-		DrawProgressBar(0, y, x, h, percent, !SystemInfo.bShowDuringBmpFile);
-		lastpercent = percent;
-	}
-}
-
 // insert newlines into a string so it doesn't wrap in the middle of words when displayed
 // existing newlines are honored
 String FormatMultiLine(String & input)
@@ -1704,238 +1461,6 @@ void WriteMessage(String txt, bool error, int wait, bool process)
 	tft.setTextColor(TFT_WHITE);
 }
 
-// look for the file in the list
-// return -1 if not found
-int LookUpFile(String name)
-{
-	int ix = 0;
-	for (auto& nm : FileNames) {
-		if (name.equalsIgnoreCase(nm)) {
-			return ix;
-		}
-		++ix;
-	}
-	return -1;
-}
-
-// process the lines in the config file
-bool ProcessConfigFile(String filename)
-{
-	bool retval = true;
-	String filepath = ((bRunningMacro || bRecordingMacro) ? String("/") : currentFolder) + filename;
-#if USE_STANDARD_SD
-	SDFile rdfile;
-#else
-	FsFile rdfile;
-#endif
-	rdfile = SD.open(filepath);
-	if (rdfile.available()) {
-		String line, command, args;
-		while (line = rdfile.readStringUntil('\n'), line.length()) {
-			if (CheckCancel())
-				break;
-			// read the lines and do what they say
-			int ix = line.indexOf('=', 0);
-			if (ix > 0) {
-				command = line.substring(0, ix);
-				command.trim();
-				command.toUpperCase();
-				args = line.substring(ix + 1);
-				args.trim();
-				// loop through the var list looking for a match
-				for (int which = 0; which < sizeof(SettingsVarList) / sizeof(*SettingsVarList); ++which) {
-					if (command.compareTo(SettingsVarList[which].name) == 0) {
-						// see if we want to ignore the settings
-						if (!SystemInfo.bMacroUseCurrentSettings || SettingsVarList[which].type == vtShowFile) {
-							switch (SettingsVarList[which].type) {
-							case vtInt:
-							{
-								int val = args.toInt();
-								int min = SettingsVarList[which].min;
-								int max = SettingsVarList[which].max;
-								if (min != max) {
-									val = constrain(val, min, max);
-								}
-								*(int*)(SettingsVarList[which].address) = val;
-							}
-							break;
-							case vtBool:
-								args.toUpperCase();
-								*(bool*)(SettingsVarList[which].address) = args[0] == 'T';
-								break;
-							case vtBuiltIn:
-							{
-								bool bLastBuiltIn = ImgInfo.bShowBuiltInTests;
-								args.toUpperCase();
-								bool value = args[0] == 'T';
-								if (value != bLastBuiltIn) {
-									ToggleFilesBuiltin(NULL);
-								}
-							}
-							break;
-							case vtShowFile:
-							{
-								// get the folder and set it first
-								String folder;
-								String name;
-								int ix = args.lastIndexOf('/');
-								folder = args.substring(0, ix + 1);
-								name = args.substring(ix + 1);
-								int oldFileIndex = currentFileIndex.nFileIndex;
-								// save the old folder if necessary
-								String oldFolder;
-								if (!ImgInfo.bShowBuiltInTests && !currentFolder.equalsIgnoreCase(folder)) {
-									oldFolder = currentFolder;
-									currentFolder = folder;
-									GetFileNamesFromSDorBuiltins(folder);
-								}
-								// search for the file in the list
-								int which = LookUpFile(name);
-								if (which >= 0) {
-									currentFileIndex.nFileIndex = which;
-									// call the process routine
-									strcpy(FileToShow, name.c_str());
-									if (!bRunningMacro)
-										ClearScreen();
-									ProcessFileOrBuiltin();
-								}
-								if (oldFolder.length()) {
-									currentFolder = oldFolder;
-									GetFileNamesFromSDorBuiltins(currentFolder);
-								}
-								currentFileIndex.nFileIndex = oldFileIndex;
-							}
-							break;
-							case vtRGB:
-							{
-								// handle the RBG colors
-								CRGB* cp = (CRGB*)(SettingsVarList[which].address);
-								cp->r = args.toInt();
-								args = args.substring(args.indexOf(',') + 1);
-								cp->g = args.toInt();
-								args = args.substring(args.indexOf(',') + 1);
-								cp->b = args.toInt();
-							}
-							break;
-							case vtMacroTime:
-								*(unsigned long*)(SettingsVarList[which].address) = args.toInt();
-								break;
-							default:
-								break;
-							}
-						}
-						// we found it, so carry on
-						break;
-					}
-				}
-			}
-		}
-		rdfile.close();
-	}
-	else
-		retval = false;
-	return retval;
-}
-
-// read the files from the card or list the built-ins
-// look for start.MIW, and process it, but don't add it to the list
-// the valid card flag is set here
-void GetFileNamesFromSDorBuiltins(String dir) {
-	bool worked = true;
-	// start over
-	// first empty the current file names
-	FileNames.clear();
-	if (nBootCount == 0)
-		currentFileIndex.nFileIndex = 0;
-	if (!ImgInfo.bShowBuiltInTests) {
-		String startfile;
-		if (dir.length() > 1)
-			dir = dir.substring(0, dir.length() - 1);
-#if USE_STANDARD_SD
-		File root = SD.open(dir);
-		File file;
-#else
-		FsFile root = SD.open(dir, O_RDONLY);
-		FsFile file;
-#endif
-		String CurrentFilename = "";
-		if (!root) {
-			//Serial.println("Failed to open directory: " + dir);
-			//Serial.println("error: " + String(root.getError()));
-			//SD.errorPrint("fail");
-			worked = false;
-		}
-		if (!root.isDirectory()) {
-			//Serial.println("Not a directory: " + dir);
-			worked = false;
-		}
-		if (worked) {
-			file = root.openNextFile();
-			if (dir != "/") {
-				// add an arrow to go back
-				String sdir = currentFolder.substring(0, currentFolder.length() - 1);
-				sdir = sdir.substring(0, sdir.lastIndexOf("/"));
-				if (sdir.length() == 0)
-					sdir = "/";
-				FileNames.push_back(String(PREVIOUS_FOLDER_CHAR));
-			}
-			while (file) {
-#if USE_STANDARD_SD
-				CurrentFilename = file.name();
-#else
-				char fname[100];
-				file.getName(fname, sizeof(fname));
-				CurrentFilename = fname;
-#endif
-				// strip path
-				CurrentFilename = CurrentFilename.substring(CurrentFilename.lastIndexOf('/') + 1);
-				//Serial.println("name: " + CurrentFilename);
-				if (CurrentFilename != "System Volume Information") {
-					if (file.isDirectory()) {
-						FileNames.push_back(String(NEXT_FOLDER_CHAR) + CurrentFilename);
-					}
-					else {
-						String uppername = CurrentFilename;
-						uppername.toUpperCase();
-						//find files with our extension only
-						if (uppername.endsWith(".BMP") && (!bnameFilter || MatchNameFilter(uppername, nameFilter))) {
-							//Serial.println("name: " + CurrentFilename);
-							FileNames.push_back(CurrentFilename);
-						}
-						else if (uppername == StartFileName) {
-							startfile = CurrentFilename;
-						}
-					}
-				}
-				file.close();
-				file = root.openNextFile();
-			}
-			root.close();
-			std::sort(FileNames.begin(), FileNames.end(), CompareNames);
-			// see if we need to process the auto start file
-			if (startfile.length())
-				ProcessConfigFile(startfile);
-			bSdCardValid = true;
-		}
-		else {
-			ImgInfo.bShowBuiltInTests = true;
-			bSdCardValid = false;
-		}
-	}
-	// if nothing read, switch to built-in
-	if (FileNames.size() == 0) {
-		ImgInfo.bShowBuiltInTests = true;
-		bSdCardValid = false;
-	}
-	if (ImgInfo.bShowBuiltInTests) {
-		for (int ix = 0; ix < (sizeof(BuiltInFiles) / sizeof(*BuiltInFiles)); ++ix) {
-			FileNames.push_back(String(BuiltInFiles[ix].text));
-		}
-		currentFolder = "";
-	}
-	return;
-}
-
 // compare strings for sort ignoring case
 bool CompareNames(const String & a, const String & b)
 {
@@ -1954,149 +1479,6 @@ bool CompareNames(const String & a, const String & b)
 		b1[0] = '0' - 1;
 	return a1.compareTo(b1) < 0;
 }
-
-// save and restore important settings, two sets are available
-// 0 is used by file display, and 1 is used when running macros
-bool SettingsSaveRestore(bool save, int set)
-{
-	static void* memptr[2] = { NULL, NULL };
-	if (save) {
-		// get some memory and save the values
-		if (memptr[set])
-			free(memptr[set]);
-		// calculate how many bytes we need
-		size_t neededBytes = 0;
-		for (int ix = 0; ix < (sizeof(saveValueList) / sizeof(*saveValueList)); ++ix) {
-			neededBytes += saveValueList[ix].size;
-		}
-		memptr[set] = malloc(neededBytes);
-		if (!memptr[set]) {
-			return false;
-		}
-	}
-	void* blockptr = memptr[set];
-	if (memptr[set] == NULL) {
-		return false;
-	}
-	for (int ix = 0; ix < (sizeof(saveValueList) / sizeof(*saveValueList)); ++ix) {
-		if (save) {
-			memcpy(blockptr, saveValueList[ix].val, saveValueList[ix].size);
-		}
-		else {
-			memcpy(saveValueList[ix].val, blockptr, saveValueList[ix].size);
-		}
-		blockptr = (void*)((byte*)blockptr + saveValueList[ix].size);
-	}
-	if (!save) {
-		// if it was saved, restore it and free the memory
-		if (memptr[set]) {
-			free(memptr[set]);
-			memptr[set] = NULL;
-		}
-	}
-	return true;
-}
-
-void EraseStartFile(MenuItem * menu)
-{
-	if (GetYesNo("Erase START.MIW?"))
-		WriteOrDeleteConfigFile("", true, true, false);
-}
-
-void SaveStartFile(MenuItem * menu)
-{
-	WriteOrDeleteConfigFile("", false, true, false);
-}
-
-void LoadStartFile(MenuItem * menu)
-{
-	String name = StartFileName;
-	if (ProcessConfigFile(name)) {
-		WriteMessage(String("Processed:\n") + name);
-	}
-	else {
-		WriteMessage("Failed reading:\n" + name, true);
-	}
-}
-
-// create the config file, or remove it
-// startfile true makes it use the start.MIW file, else it handles the associated name file
-bool WriteOrDeleteConfigFile(String filename, bool remove, bool startfile, bool bMacro)
-{
-	bool retval = true;
-	String filepath;
-	if (startfile) {
-		filepath = currentFolder + String(StartFileName);
-	}
-	else {
-		filepath = (bMacro ? String("/") : currentFolder) + MakeMIWFilename(filename, true);
-	}
-	//bool fileExists = SD.exists(filepath.c_str());
-	if (remove) {
-		if (!SD.exists(filepath.c_str()))
-			WriteMessage(String("Not Found:\n") + filepath, true);
-		else if (SD.remove(filepath.c_str())) {
-			WriteMessage(String("Erased:\n") + filepath);
-		}
-		else {
-			WriteMessage(String("Failed to erase:\n") + filepath, true);
-		}
-	}
-	else {
-		String line;
-#if USE_STANDARD_SD
-		SDFile file = SD.open(filepath.c_str(), bRecordingMacro ? FILE_APPEND : FILE_WRITE);
-		if (file) {
-#else
-		FsFile file = SD.open(filepath.c_str(), bRecordingMacro ? (O_APPEND | O_WRITE | O_CREAT) : (O_WRITE | O_TRUNC | O_CREAT));
-		if (file.getError() == 0) {
-#endif
-			//Serial.println("file: " + filepath + " " + String(remove) + " " + String(startfile) + " recording " + String(bRecordingMacro));
-			// loop through the var list
-			for (int ix = 0; ix < sizeof(SettingsVarList) / sizeof(*SettingsVarList); ++ix) {
-				switch (SettingsVarList[ix].type) {
-				case vtBuiltIn:
-					line = String(SettingsVarList[ix].name) + "=" + String(*(bool*)(SettingsVarList[ix].address) ? "TRUE" : "FALSE");
-					break;
-				case vtShowFile:
-					if (*(char*)(SettingsVarList[ix].address)) {
-						line = String(SettingsVarList[ix].name) + "=" + (ImgInfo.bShowBuiltInTests ? "" : currentFolder) + String((char*)(SettingsVarList[ix].address));
-					}
-					break;
-				case vtInt:
-					line = String(SettingsVarList[ix].name) + "=" + String(*(int*)(SettingsVarList[ix].address));
-					break;
-				case vtBool:
-					line = String(SettingsVarList[ix].name) + "=" + String(*(bool*)(SettingsVarList[ix].address) ? "TRUE" : "FALSE");
-					break;
-				case vtRGB:
-				{
-					// handle the RBG colors
-					CRGB* cp = (CRGB*)(SettingsVarList[ix].address);
-					line = String(SettingsVarList[ix].name) + "=" + String(cp->r) + "," + String(cp->g) + "," + String(cp->b);
-				}
-				break;
-				case vtMacroTime:
-					line = String(SettingsVarList[ix].name) + "=" + String(*(int*)(SettingsVarList[ix].address));
-					break;
-				default:
-					line = "";
-					break;
-				}
-				if (line.length())
-					file.println(line);
-			}
-			file.close();
-			WriteMessage(String("Saved:\n") + filepath, false, 700);
-		}
-		else {
-			retval = false;
-			//Serial.println("error: " + String(file.getError()));
-			WriteMessage(String("Failed to write:\n") + filepath, true);
-		}
-		}
-	return retval;
-	}
 
 // save the eeprom settings
 void SaveEepromSettings(MenuItem * menu)
@@ -2176,13 +1558,10 @@ bool SaveLoadSettings(bool save, bool autoloadonly, bool ledonly, bool nodisplay
 		prefs.putBool(prefsAutoload, bAutoLoadSettings);
 		// save things
 		if (!ledonly) {
-			prefs.putBytes(prefsImgInfo, &ImgInfo, sizeof(ImgInfo));
-			prefs.putBytes(prefsBuiltInInfo, &BuiltinInfo, sizeof(BuiltinInfo));
 			if (!nodisplay)
 				WriteMessage("Settings Saved", false, 500);
 		}
 		// we always do these since they are hardware related
-		prefs.putBytes(prefsLedInfo, &LedInfo, sizeof(LedInfo));
 		prefs.putBytes(prefsSystemInfo, &SystemInfo, sizeof(SystemInfo));
 		prefs.putBytes(prefsBuiltinInfo, &BuiltinInfo, sizeof(BuiltinInfo));
 	}
@@ -2195,13 +1574,10 @@ bool SaveLoadSettings(bool save, bool autoloadonly, bool ledonly, bool nodisplay
 				//Serial.println("getting autoload: " + String(bAutoLoadSettings));
 			}
 			else if (!ledonly) {
-				prefs.getBytes(prefsImgInfo, &ImgInfo, sizeof(ImgInfo));
-				prefs.getBytes(prefsBuiltInInfo, &BuiltinInfo, sizeof(BuiltinInfo));
 				int savedFileIndex = currentFileIndex.nFileIndex;
 				// we don't know the folder path, so just reset the folder level
 				currentFolder = "/";
 				setupSDcard();
-				GetFileNamesFromSDorBuiltins(currentFolder);
 				currentFileIndex.nFileIndex = savedFileIndex;
 				// make sure file index isn't too big
 				if (currentFileIndex.nFileIndex >= FileNames.size()) {
@@ -2213,9 +1589,7 @@ bool SaveLoadSettings(bool save, bool autoloadonly, bool ledonly, bool nodisplay
 					WriteMessage("Settings Loaded", false, 500);
 			}
 			// these are always done
-			prefs.getBytes(prefsLedInfo, &LedInfo, sizeof(LedInfo));
 			prefs.getBytes(prefsSystemInfo, &SystemInfo, sizeof(SystemInfo));
-			prefs.getBytes(prefsBuiltinInfo, &BuiltinInfo, sizeof(BuiltinInfo));
 		}
 		else {
 			retvalue = false;
@@ -2245,70 +1619,6 @@ void EraseFlash(MenuItem * menu)
 		nvs_flash_erase(); // erase the NVS partition and...
 		nvs_flash_init(); // initialize the NVS partition.
 		//SaveLoadSettings(true);
-	}
-}
-
-void ReportCouldNotCreateFile(String target) {
-	SendHTML_Header();
-	webpage += F("<h3>Could Not Create Uploaded File (write-protected?)</h3>");
-	webpage += F("<a href='/"); webpage += target + "'>[Back]</a><br><br>";
-	append_page_footer();
-	SendHTML_Content();
-	SendHTML_Stop();
-}
-
-#if USE_STANDARD_SD
-SDFile UploadFile;
-#else
-FsFile UploadFile;
-#endif
-
-// upload a new file to the Filing system
-void handleFileUpload()
-{
-	HTTPUpload& uploadfile = server.upload(); // See https://github.com/esp8266/Arduino/tree/master/libraries/ESP8266WebServer/srcv
-	// For further information on 'status' structure, there are other reasons such as a failed transfer that could be used
-	if (uploadfile.status == UPLOAD_FILE_START) {
-		String filename = uploadfile.filename;
-		String filepath = String("/");
-		if (!filename.startsWith("/"))
-			filename = "/" + filename;
-		Serial.print("Upload File Name: " + filename);
-		SD.remove(filename);   // Remove a previous version just to start clean
-#if USE_STANDARD_SD
-		UploadFile = SD.open(filename, FILE_WRITE);  // Open the file for writing in SPIFFS (create it, if doesn't exist)
-#else
-		UploadFile = SD.open(filename, O_WRITE | O_CREAT);
-#endif
-		filename = String();
-	}
-	else if (uploadfile.status == UPLOAD_FILE_WRITE)
-	{
-		if (UploadFile)
-			UploadFile.write(uploadfile.buf, uploadfile.currentSize); // Write the received bytes to the file
-	}
-	else if (uploadfile.status == UPLOAD_FILE_END)
-	{
-		if (UploadFile)          // If the file was successfully created
-		{
-			UploadFile.close();   // Close the file again
-			Serial.print("Upload Size: "); Serial.println(uploadfile.totalSize);
-			webpage = "";
-			load_page_header(false);
-			webpage += F("<h3>File was successfully uploaded</h3>");
-			webpage += F("<h2>Uploaded File Name: "); webpage += uploadfile.filename + "</h2>";
-			webpage += F("<h2>File Size: "); webpage += file_size(uploadfile.totalSize) + "</h2><br>";
-			append_page_footer();
-			server.send(200, "text/html", webpage);
-			// reload the file list, if not showing built-ins
-			if (!ImgInfo.bShowBuiltInTests) {
-				GetFileNamesFromSDorBuiltins(currentFolder);
-			}
-		}
-		else
-		{
-			ReportCouldNotCreateFile("upload");
-		}
 	}
 }
 
@@ -2385,55 +1695,6 @@ void SendHTML_Content() {
 void SendHTML_Stop() {
 	server.sendContent("");
 	server.client().stop(); // Stop is needed because no content length was sent
-}
-
-// set the current macro from its name
-void SetMacroIndexFromName(String lookfor)
-{
-	// strip the "#n " from the start
-	if (lookfor[0] == '#')
-		lookfor = lookfor.substring(lookfor.indexOf(' ') + 1);
-	for (int ix = 0; ix < (sizeof(MacroInfo) / sizeof(*MacroInfo)); ++ix) {
-		if (lookfor == MacroInfo[ix].description) {
-			ImgInfo.nCurrentMacro = ix;
-			break;
-		}
-	}
-}
-
-// set the current file index from the name
-void SetFileIndexFromName(String lookfor)
-{
-	int ix = LookUpFile(lookfor);
-	currentFileIndex.nFileCursor = 0;
-	currentFileIndex.nFileIndex = ix;
-	if (IsFolder(ix)) {
-		// change folders
-		ProcessFileOrBuiltin();
-	}
-	else {
-		DisplayCurrentFile();
-	}
-}
-
-// change the current file from the webpage
-void WebChangeFile()
-{
-	if (server.args()) {
-		//Serial.println("arg: " + server.arg(0));
-		// set the file and reload all the names
-		SetFileIndexFromName(server.arg(0));
-	}
-	HomePage();
-}
-
-// change the current macro from the webpage
-void WebChangeMacro()
-{
-	if (server.args()) {
-		SetMacroIndexFromName(server.arg(0));
-	}
-	HomePage();
 }
 
 // display the homepage on the web browser
@@ -2536,155 +1797,6 @@ void WebBuiltinSettings()
 	webpage += "<a href='/' style='font-size:125%;color:#f0f0f0'>[Back]</a><br><br>";
 	append_page_footer();
 	server.send(200, "text/html", webpage);
-}
-
-// toggle files or builtins flag
-void WebToggleFilesBuiltins()
-{
-	ToggleFilesBuiltin(NULL);
-	DisplayCurrentFile();
-	HomePage();
-}
-
-// create an html form to select a file
-void MakeFileForm(String action, String name, const char* text, WebPageDropDowns dataType)
-{
-	webpage += "<form id='" + String(name) + "' action = '" + action + "' method = 'post'>";
-	webpage += "<select onchange='document.forms[\"" + String(name) + "\"].submit()' name='" + name + "'>";
-	int ix = 0;
-	String macroName;
-	switch (dataType) {
-	case WPDD_FILES:	// fill with bmp filenames
-		for (String nm : FileNames) {
-			webpage += "<option ";
-			if (currentFileIndex.nFileIndex == ix) {
-				webpage += "selected='" + String(ix) + "' ";
-			}
-			webpage += "<value='" + String(ix) + "'>" + nm + "</option>";
-			++ix;
-		}
-		webpage += "</select>";
-		if (text)
-			webpage += " <input type='submit' value='" + String(text) + "'>";
-		webpage += "</form>";
-		break;
-	case WPDD_MACROS:	// handle macro filenames/descriptions
-		for (int ix = 0; ix < (sizeof(MacroInfo) / sizeof(*MacroInfo)); ++ix) {
-			webpage += "<option ";
-			if (ImgInfo.nCurrentMacro == ix) {
-				webpage += "selected='" + String(ix) + "' ";
-			}
-			// use the description if it is there, else the number
-			macroName = MacroInfo[ix].description;
-			if (MacroInfo[ix].mSeconds == 0)
-				macroName = "Empty";
-			macroName = "#" + String(ix) + " " + macroName;
-			webpage += "<value='" + String(ix) + "'>" + macroName + "</option>";
-		}
-		webpage += "</select>";
-		if (text)
-			webpage += " <input type='submit' value='" + String(text) + "'>";
-		webpage += "</form>";
-		break;
-	}
-}
-
-void SelectInput(String heading1, String command, String arg_calling_name)
-{
-	SendHTML_Header();
-	webpage += "<h2>" + heading1 + "</h2>";
-	MakeFileForm("/" + command, arg_calling_name, "Download File/Open Folder", WPDD_FILES);
-	webpage += "<br><a href='/' style='font-size:125%'>[Back]</a><br><br>";
-	append_page_footer();
-	SendHTML_Content();
-	SendHTML_Stop();
-}
-
-// This gets called twice, the first pass selects the input, the second pass then processes the command line arguments
-void File_Download()
-{
-	if (server.args() > 0) { // Arguments were received
-		if (server.hasArg("download")) {
-			String name = server.arg("download");
-			// if this is a folder, we kind of start over by setting the current folder and calling SelectInput again
-			// we have the name, but we need the index
-			if (IsFolder(name)) {
-				SetFileIndexFromName(name);
-				SelectInput("Select file to download", "download", "download");
-			}
-			else {
-				SD_file_download(currentFolder + name);
-			}
-		}
-	}
-	else
-		SelectInput("Select filename to download", "download", "download");
-}
-
-void ReportFileNotPresent(String target)
-{
-	SendHTML_Header();
-	webpage += "<h3>File does not exist</h3>";
-	webpage += "<a href='/" + target + "'>[Back]</a><br><br>";
-	append_page_footer();
-	SendHTML_Content();
-	SendHTML_Stop();
-}
-
-void ReportSDNotPresent() {
-	SendHTML_Header();
-	webpage += "<h3>No SD Card present</h3>";
-	webpage += "<a href='/'>[Back]</a><br><br>";
-	append_page_footer();
-	SendHTML_Content();
-	SendHTML_Stop();
-}
-
-void SD_file_download(String filename)
-{
-	if (bSdCardValid) {
-#if USE_STANDARD_SD
-		SDFile download = SD.open(filename);
-#else
-		FsFile download = SD.open(filename);
-#endif
-		if (filename[0] != '/')
-			filename = '/' + filename;
-		if (download) {
-			server.sendHeader("Content-Type", "text/text");
-			server.sendHeader("Content-Disposition", "attachment; filename="
-				+ filename.substring(filename.lastIndexOf('/') + 1));
-			server.sendHeader("Connection", "close");
-			//server.streamFile(download, "application/octet-stream");
-#if USE_STANDARD_SD
-			server.streamFile(download, "image/bmp");
-#else
-			server.streamFileX(download, "image/bmp");
-#endif
-			download.close();
-		}
-		else ReportFileNotPresent("download");
-	}
-	else ReportSDNotPresent();
-}
-
-void IncreaseRepeatButton()
-{
-	// This can be for sure made into a universal function like IncreaseButton(Setting, Value)
-	  //webpage += String("&nbsp;<a href='/settings/increpeat?var=5'><strong>&#8679;</strong></a>");
-	webpage += String("&nbsp;<a href='/settings/increpeat?var=5'><strong>+;</strong></a>");
-}
-
-void DecreaseRepeatButton()
-{
-	// This can be for sure made into a universal function like DecreaseButton(Setting, Value)
-	webpage += String("&nbsp;<a href='/settings/decrepeat'><strong>&#8681;</strong></a>");
-}
-
-void IncRepeat()
-{
-	String str = server.uri();
-	Serial.println("uri: " + str);
 }
 
 // these are used for the list of things that can be set on the settings web page
@@ -2900,49 +2012,8 @@ void VerifyFileDelete()
 void DoFileDelete()
 {
 	SD.remove(currentFolder + FileNames[currentFileIndex.nFileIndex]);
-	GetFileNamesFromSDorBuiltins(currentFolder);
+	//GetFileNamesFromSDorBuiltins(currentFolder);
 	UtilitiesPage();
-}
-
-// run the current selected image from the web button
-void WebRunMacro()
-{
-	if (!bRunningMacro && g_nPercentDone > 0) {
-		HomePage();
-		g_nPercentDone = 0;
-		bWebRunning = false;
-		return;
-	}
-	webpage = "";
-	load_page_header(true);
-	webpage += "<h2>Running: ";
-	webpage += MacroInfo[ImgInfo.nCurrentMacro].description;
-	webpage += " " + String(g_nPercentDone) + "%<br>";
-	if (!bRunningMacro)
-		webpage += MacroInfo[ImgInfo.nCurrentMacro].fileNames[0];
-	else
-		webpage += currentFolder + FileNames[currentFileIndex.nFileIndex];
-	webpage += "</h2>";
-	webpage += "<a href='/cancel'><button style='width:50%;font-size:200%;color:#ff0000'>";
-	webpage += "Cancel</button></a>";
-	webpage += "<br><br>";
-	append_page_footer();
-	server.send(200, "text/html", webpage);
-	// run the file
-	if (!bWebRunning) {
-		bWebRunning = true;
-		g_nPercentDone = 0;
-		bCancelRun = bCancelMacro = false;
-		MacroLoadRun(NULL, true);
-		DisplayCurrentFile();
-	}
-}
-
-void WebCancel()
-{
-	bWebRunning = false;
-	bCancelRun = bCancelMacro = true;
-	HomePage();
 }
 
 // map a menuitem list to html
@@ -3052,53 +2123,6 @@ String MenuToHtml(MenuItem * pMenu, bool bActive, int nLevel)
 	return str;
 }
 
-// run the current selected image from the web button
-void WebRunImage()
-{
-	if (bWebRunning && !bIsRunning) {
-		HomePage();
-		g_nPercentDone = 0;
-		bWebRunning = false;
-		return;
-	}
-	webpage = "";
-	load_page_header(true);
-	webpage += "<h2>Running: ";
-	webpage += FileNames[currentFileIndex.nFileIndex];
-	webpage += " " + String(g_nPercentDone) + "%";
-	webpage += "</h2>";
-	webpage += "<a href='/cancel'><button style='width:50%;font-size:200%;color:#ff0000'>";
-	webpage += "Cancel</button></a>";
-	webpage += "<br><br>";
-	// now lets see if we need to add settings for a builtin
-	// this is done by checking for a menu entry for the current
-	if (ImgInfo.bShowBuiltInTests && BuiltInFiles[currentFileIndex.nFileIndex].menu == LedLightBarMenu) {
-		webpage += MenuToHtml(BuiltInFiles[currentFileIndex.nFileIndex].menu);
-	}
-	append_page_footer();
-	server.send(200, "text/html", webpage);
-	// run the file
-	if (!bWebRunning) {
-		bWebRunning = true;
-		g_nPercentDone = 0;
-		bCancelRun = bCancelMacro = false;
-		ProcessFileOrBuiltin();
-		DisplayCurrentFile();
-	}
-}
-
-void File_Upload()
-{
-	load_page_header(false);
-	webpage += "<h2>Select File to Upload</h2>";
-	webpage += "<FORM action='/fupload' method='post' enctype='multipart/form-data'>";
-	webpage += "<input class='buttons' style='width:75%' type='file' name='fupload' id = 'fupload' value=''><br>";
-	webpage += "<br><button class='buttons' style='width:75%' type='submit'>Upload File</button><br>";
-	webpage += "<br><a href='/' style='font-size:125%'>[Back]</a><br><br>";
-	append_page_footer();
-	server.send(200, "text/html", webpage);
-}
-
 // read the battery level, LiIon cells are 4.2 fully charged and should not be discharged below 2.75
 // smoothing of the reading is done using an exponential moving average
 int ReadBattery(int* raw)
@@ -3187,51 +2211,6 @@ void SetScreenRotation(int rot)
 	tft.setRotation(SystemInfo.nDisplayRotation);
 	nMenuLineCount = tft.height() / tft.fontHeight();
 	TextLines.resize(nMenuLineCount);
-}
-
-// read the light sensor
-// smoothing of the reading is done using an exponential moving average
-int ReadLightSensor()
-{
-	const float alpha = 0.9;
-	static float eSmooth = 0.0;
-	float nextLevel;
-	for (int tries = 0; tries < 5; ++tries) {
-		nextLevel = (float)analogRead(LIGHT_SENSOR_GPIO);
-		// calculate the next value
-		eSmooth = (alpha * eSmooth) + ((1 - alpha) * nextLevel);
-		delay(2);
-	}
-	return (int)eSmooth;
-}
-
-// this code shows the light sensor value on the display
-void ShowLightSensor(MenuItem * menu)
-{
-	static int nLightValue = 0;
-	ClearScreen();
-	DisplayLine(2, "Long Press to Cancel", SystemInfo.menuTextColor);
-	while (!menu || ReadButton() != BTN_LONG) {
-		nLightValue = ReadLightSensor();
-		DisplayLine(0, "Light Sensor: " + String(nLightValue), SystemInfo.menuTextColor);
-		delay(100);
-	}
-}
-
-// calculate the LED brightness from the ambient light
-void LightSensorLedBrightness()
-{
-	int sensor = ReadLightSensor();
-	int percent = map(sensor, SystemInfo.nLightSensorDim, SystemInfo.nLightSensorBright, 0, 100);
-	percent = constrain(percent, SystemInfo.nDisplayDimValue, SystemInfo.nDisplayBrightness);
-	SetDisplayBrightness(percent);
-	//Serial.println("led: " + String(percent));
-}
-
-// show the update bin file progress
-void ShowUpdateProgress(size_t x, size_t total)
-{
-	ShowProgressBar(x * 100 / total);
 }
 
 // see if there is an update bin file in the SD slot
@@ -3358,13 +2337,4 @@ void GetNetworkName(MenuItem * menu)
 		}
 	}
 	delay(10);
-}
-
-// toggle ArtNet running, reboot if needed
-void ToggleWebServer(MenuItem * menu)
-{
-	// save existing value
-	bool bWas = *(bool*)menu->value;
-	ToggleBool(menu);
-	bControllerReboot = (bWas != *(bool*)menu->value);
 }

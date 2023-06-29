@@ -111,6 +111,8 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="RadioFox.h" />
+    <ClInclude Include="RFconfig.h" />
+    <ClInclude Include="RotaryDialButton.h" />
     <ClInclude Include="__vm\.RadioFox.vsarduino.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
