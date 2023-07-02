@@ -30,5 +30,13 @@
     <ClInclude Include="RFconfig.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="WebServerX.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="WebServerX.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
 </Project>

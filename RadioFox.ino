@@ -4,10 +4,6 @@
  Author:	Martin Nohr
 */
 
-#include "RadioFox.h"
-#include "fonts.h"
-#include <nvs_flash.h>
-
 RTC_DATA_ATTR int nBootCount = 0;
 
 // some forward references that Arduino IDE needs
