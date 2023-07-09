@@ -285,15 +285,6 @@ typedef struct MenuItem {
     const char* cHelpText;              // a place to put some menu help
 };
 
-// builtins
-// built-in "files"
-typedef struct BuiltInItem {
-    const char* text;
-    void(*function)();
-    MenuItem* menu;
-};
-extern BuiltInItem BuiltInFiles[];
-
 // some menu functions using menus
 void CheckUpdateBin(MenuItem* menu);
 void FactorySettings(MenuItem* menu);
@@ -460,7 +451,6 @@ MenuItem EepromMenu[] = {
     {eTerminate}
 };
 MenuItem MainMenu[] = {
-    {eBool,"Main Menu: %s",ToggleFilesBuiltin,&SystemInfo.bSimpleMenu,0,0,0,"Simple","Full",NULL,NULL,HelpMainMain},
     {eIfEqual,"",NULL,&SystemInfo.bSimpleMenu,true},
         {eText,"Sleep",Sleep},
     {eElse},
@@ -516,7 +506,6 @@ void VerifyRebootSystem();
 void DoFileDelete();
 void VerifyFileDelete();
 void UtilitiesPage();
-void WebToggleFileBuiltins();
 void WebCancel();
 void WebRunMacro();
 void WebRunImage();
@@ -524,7 +513,6 @@ void WebChangeMacro();
 void WebChangeBuiltinSettings();
 void WebBuiltinSettings();
 void WebChangeFile();
-void WebToggleFilesBuiltins();
 void WebChangeSettings();
 void WebShowSettings();
 

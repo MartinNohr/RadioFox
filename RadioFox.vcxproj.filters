@@ -33,6 +33,15 @@
     <ClInclude Include="WebServerX.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="..\libraries\TFT_eSPI\TFT_eSPI.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\AppData\Local\Arduino15\packages\esp32\hardware\esp32\1.0.6\libraries\Preferences\src\Preferences.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\libraries\TFT_eSPI\Extensions\Sprite.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="WebServerX.cpp">

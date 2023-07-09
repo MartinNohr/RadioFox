@@ -3,6 +3,7 @@
  Created:	3/25/2023 8:37:33 AM
  Author:	Martin Nohr
 */
+#include "RadioFox.h"
 
 RTC_DATA_ATTR int nBootCount = 0;
 
@@ -1710,12 +1711,7 @@ void HomePage() {
 	webpage += "<br>";
 	// now lets see if we need to add settings for a builtin
 	// this is done by checking for a menu entry for the current
-	if (ImgInfo.bShowBuiltInTests && BuiltInFiles[currentFileIndex.nFileIndex].menu) {
-		webpage += "<a href='/builtinsettings'><button style='width:50%;font-size:200%;color:#00ff00'>";
-		webpage += "Settings:<br>" + FileNames[currentFileIndex.nFileIndex] + "</button></a><br>";
-	}
 	webpage += "<br>";
-	webpage += "<a href='/togglefilesbuiltins'><button style='font-size:150%'>";
 	webpage += "Switch to: " + String(ImgInfo.bShowBuiltInTests ? "SD Files" : "Built-Ins") + "</button></a>";
 	webpage += "<br><br><br>";
 	webpage += "<a href='/runmacro'><button style='width:90%;font-size:200%;color:#00ff00'>";
@@ -2274,16 +2270,6 @@ int ScanForNetworks()
 		}
 	}
 	return retval;
-}
-
-// get a string
-void GetStringName(MenuItem * menu)
-{
-	String savedNameFilter = nameFilter;
-	nameFilter = (char*)menu->value;
-	SetFilter(menu);
-	strncpy((char*)menu->value, nameFilter.c_str(), menu->max - 1);
-	nameFilter = savedNameFilter;
 }
 
 // choose a network name from the first 5 found
