@@ -44,7 +44,7 @@ const char* StartFileName = "START.FOX";
     #define DIAL_B 12
 #endif
 
-#include "RadioFox.h"
+#include <Update.h>
 
 #include <time.h>
 #if USE_STANDARD_SD
@@ -83,6 +83,7 @@ String file_size(int bytes) {
     return fsize;
 }
 
+#include "fonts.h"
 #include <Preferences.h>
 #include "RotaryDialButton.h"
 #include <TFT_eSPI.h>
@@ -163,6 +164,7 @@ RTC_DATA_ATTR FILEINDEXINFO currentFileIndex = { 0,0 };
 // display dim modes, make sure sensor mode is last
 enum DISPLAY_DIM_MODES { DISPLAY_DIM_MODE_NONE, DISPLAY_DIM_MODE_TIME, DISPLAY_DIM_MODE_SENSOR };
 const char* DisplayDimModeText[] = { "None","Timer","Sensor" };
+const char* DisplayRotationText[] = { "90","180","270","0" };
 
 typedef struct SYSTEM_INFO {
     uint16_t menuTextColor = TFT_BLUE;
@@ -194,8 +196,6 @@ typedef struct SYSTEM_INFO {
     int nDisplayDimTime = 0;                    // seconds before lcd is dimmed
     int nDisplayDimValue = 10;                  // the value to dim to
     int nDisplayRotation = 1;                   // rotates display 0, 180, 90, 270
-    int nBtn0LongFunction = BTN_LONG_ROTATION;  // function that long btn0 performs
-    int nBtn1LongFunction = BTN_LONG_LIGHTBAR;  // function that long btn1 performs
     bool bSimpleMenu = false;                   // full or simple menu
     int nLightSensorDim = 4000;                 // value for the dimmest setting
     int nLightSensorBright = 100;               // value for the brightest setting
@@ -349,8 +349,6 @@ MenuItem DialMenu[] = {
     {eTextInt,"Pulse Count: %d",GetIntegerValue,&SystemInfo.DialSettings.m_nDialPulseCount,1,5},
     {eTextInt,"Pulse Timer: %d mS",GetIntegerValue,&SystemInfo.DialSettings.m_nDialPulseTimer,100,1000},
     {eTextInt,"Long Press count: %d",GetIntegerValue,&SystemInfo.DialSettings.m_nLongPressTimerValue,2,200},
-    {eList,"Btn0 Long: %s",GetSelectChoice,&SystemInfo.nBtn0LongFunction,0,sizeof(BtnLongText) / sizeof(*BtnLongText) - 1,0,NULL,NULL,NULL,BtnLongText},
-    {eList,"Btn1 Long: %s",GetSelectChoice,&SystemInfo.nBtn1LongFunction,0,sizeof(BtnLongText) / sizeof(*BtnLongText) - 1,0,NULL,NULL,NULL,BtnLongText},
     {eBool,"Rotate Dial Type: %s",ToggleBool,&SystemInfo.DialSettings.m_bToggleDial,0,0,0,"Toggle","Pulse"},
     {eExit,PreviousMenu},
     // make sure this one is last

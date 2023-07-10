@@ -52,8 +52,6 @@ void setup()
 	//Serial.println("flash:" + String(ESP.getFlashChipSize()));
 	//Serial.print("setup() is running on core ");
 	//Serial.println(xPortGetCoreID());
-	// create a mutex
-	macroMutex = xSemaphoreCreateMutex();
 
 	// configure LCD PWM functionalitites
 	pinMode(TFT_ENABLE, OUTPUT);
@@ -65,8 +63,6 @@ void setup()
 	setupSDcard();
 	//gpio_set_direction((gpio_num_t)LED, GPIO_MODE_OUTPUT);
 	//digitalWrite(LED, HIGH);
-	gpio_set_direction((gpio_num_t)FRAMEBUTTON_GPIO, GPIO_MODE_INPUT);
-	gpio_set_pull_mode((gpio_num_t)FRAMEBUTTON_GPIO, GPIO_PULLUP_ONLY);
 	// init the onboard buttons
 	gpio_set_direction(GPIO_NUM_0, GPIO_MODE_INPUT);
 	gpio_set_pull_mode(GPIO_NUM_0, GPIO_PULLUP_ONLY);
@@ -89,7 +85,7 @@ void setup()
 				"second timer"
 	};
 	esp_timer_create(&periodic_Second_timer_args, &periodic_Second_timer);
-	esp_timer_start_periodic(periodic_Second_timer, 1000 * 1000);
+	esp_timer_start_periodic(periodic_Second_timer, (int64_t)1000 * 1000);
 
 	SystemInfo.bCriticalBatteryLevel = false;
 	tft.setFreeFont(&Dialog_bold_16);
@@ -2203,6 +2199,30 @@ void SetScreenRotation(int rot)
 	tft.setRotation(SystemInfo.nDisplayRotation);
 	nMenuLineCount = tft.height() / tft.fontHeight();
 	TextLines.resize(nMenuLineCount);
+}
+
+void ShowProgressBar(int percent)
+{
+	//if (SystemInfo.bShowProgress && !(bIsRunning && SystemInfo.bShowDuringBmpFile)) {
+	if (SystemInfo.bShowProgress) {
+		static int lastpercent = 0;
+		if (lastpercent && (lastpercent == percent))
+			return;
+		int x = tft.width() - 1;
+		int y = (tft.fontHeight() + 4);
+		int h = 8;
+		if (percent == 0) {
+			tft.fillRect(0, y, x, h, TFT_BLACK);
+		}
+		DrawProgressBar(0, y, x, h, percent, true);
+		lastpercent = percent;
+	}
+}
+
+// show the update bin file progress
+void ShowUpdateProgress(size_t x, size_t total)
+{
+	ShowProgressBar(x * 100 / total);
 }
 
 // see if there is an update bin file in the SD slot
