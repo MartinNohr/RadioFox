@@ -138,7 +138,7 @@ void setup()
 		for (OnServerItem item : OnServerList) {
 			server.on(item.path, item.function);
 		}
-		server.on("/fupload", HTTP_POST, []() { server.send(200); }, handleFileUpload);
+		//server.on("/fupload", HTTP_POST, []() { server.send(200); }, handleFileUpload);
 		//server.on("/settings/increpeat", HTTP_GET, []() { server.send(200); }, IncRepeat);
 		//server.on("/settings/increpeat", HTTP_GET, IncRepeat);
 		/////////////////////////// End of Request commands
@@ -297,6 +297,10 @@ void MenuTextScrollSideways()
 	}
 }
 
+void DisplayMainScreen()
+{
+}
+
 void loop()
 {
 	static SYSTEM_INFO SystemInfoSaved;
@@ -378,7 +382,6 @@ void RunMenus(int button)
 					break;
 				case eText:
 				case eTextInt:
-				case eTextCurrentFile:
 				case eBool:
 				case eList:
 					bMenuChanged = true;
@@ -392,23 +395,6 @@ void RunMenus(int button)
 						(*MenuStack.top()->menu[ix].change)(&MenuStack.top()->menu[ix], -1);
 					}
 					break;
-				case eMacroList:
-					bMenuChanged = true;
-					if (MenuStack.top()->menu[ix].change != NULL) {
-						(*MenuStack.top()->menu[ix].change)(&MenuStack.top()->menu[ix], 1);
-					}
-					if (MenuStack.top()->menu[ix].function) {
-						(*MenuStack.top()->menu[ix].function)(&MenuStack.top()->menu[ix]);
-					}
-					if (MenuStack.top()->menu[ix].change != NULL) {
-						(*MenuStack.top()->menu[ix].change)(&MenuStack.top()->menu[ix], -1);
-					}
-					bExit = true;
-					// if there is a value, set the min value in it
-					if (MenuStack.top()->menu[ix].value) {
-						*(int*)MenuStack.top()->menu[ix].value = MenuStack.top()->menu[ix].min;
-					}
-					break;
 				case eMenu:
 					if (MenuStack.top()->menu) {
 						oldMenu = MenuStack.top();
@@ -418,15 +404,6 @@ void RunMenus(int button)
 						MenuStack.top()->index = 0;
 						MenuStack.top()->offset = 0;
 						//Serial.println("change menu");
-						// check if the new menu is an eMacroList and if it has a value, if it does, set the index to it
-						if (MenuStack.top()->menu->op == eMacroList && MenuStack.top()->menu->value) {
-							int ix = *(int*)MenuStack.top()->menu->value;
-							MenuStack.top()->index = ix;
-							// adjust offset if necessary
-							if (ix > 4) {
-								MenuStack.top()->offset = ix - 4;
-							}
-						}
 					}
 					break;
 				case eExit: // go back a level
@@ -517,7 +494,6 @@ void ShowMenu(struct MenuItem* menu)
 		switch (menu->op) {
 		case eTextInt:
 		case eText:
-		case eTextCurrentFile:
 			bMenuValid[menix] = true;
 			if (menu->value) {
 				val = *(int*)menu->value;
@@ -698,15 +674,7 @@ void GetIntegerValueHelper(MenuItem * menu, bool bShowHue)
 		tft.fillRect(0, 2 * tft.fontHeight(), tft.width() - 1, 6, TFT_BLACK);
 		DrawProgressBar(0, 2 * tft.fontHeight() + 4, tft.width() - 1, 12, map(*(int*)menu->value, menu->min, menu->max, 0, 100), true);
 		sprintf(line, menu->text, *(int*)menu->value / (int)pow10(menu->decimals), *(int*)menu->value % (int)pow10(menu->decimals));
-		// get the hue value
-		if (bShowHue) {
-			CHSV hue = CHSV(*(int*)menu->value, 255, 255);
-			CRGB rgb = CRGB(hue);
-			DisplayLine(0, line, tft.color565(rgb.r, rgb.g, rgb.b));
-		}
-		else {
-			DisplayLine(0, line, SystemInfo.menuTextColor);
-		}
+		DisplayLine(0, line, SystemInfo.menuTextColor);
 		sprintf(valstr, fmt, *(int*)menu->value / (int)pow10(menu->decimals), *(int*)menu->value % (int)pow10(menu->decimals));
 		DisplayLine(3, String("Value: ") + valstr, SystemInfo.menuTextColor);
 		sprintf(valstr, fmt, stepSize / (int)pow10(menu->decimals), stepSize % (int)pow10(menu->decimals));
@@ -762,7 +730,7 @@ void UpdateDisplayDimMode(MenuItem * menu, int flag)
 	case 1:		// every change
 		break;
 	case -1:	// last time
-		if (!SystemInfo.bHasLightSensor && SystemInfo.eDisplayDimMode == DISPLAY_DIM_MODE_SENSOR) {
+		if (SystemInfo.eDisplayDimMode == DISPLAY_DIM_MODE_SENSOR) {
 			SystemInfo.eDisplayDimMode = DISPLAY_DIM_MODE_NONE;
 		}
 		if (SystemInfo.eDisplayDimMode != DISPLAY_DIM_MODE_SENSOR) {
@@ -1010,23 +978,17 @@ bool HandleRunMode()
 		bSettingsMode = true;
 		break;
 	case BTN_B0_CLICK:
-		if (IsFolder(currentFileIndex.nFileIndex)) {
-			CRotaryDialButton::pushButton(BTN_SELECT);
-		}
-		else {
-			ShowBmp(NULL);
-			bRedraw = true;
-		}
+		// handle on board button 0
 		break;
 	case BTN_B0_LONG:
-		CallBtnLongFunction(SystemInfo.nBtn0LongFunction);
+		//CallBtnLongFunction(SystemInfo.nBtn0LongFunction);
 		bRedraw = true;
 		break;
 	case BTN_B1_CLICK:
 		break;
 	case BTN_B1_LONG:
 	case BTN_LEFT_RIGHT_LONG:
-		CallBtnLongFunction(SystemInfo.nBtn1LongFunction);
+		//CallBtnLongFunction(SystemInfo.nBtn1LongFunction);
 		bRedraw = true;
 		break;
 	default:
@@ -1035,7 +997,7 @@ bool HandleRunMode()
 	}
 	if (bRedraw) {
 		ClearScreen();
-		DisplayMainScreen(SystemInfo.bShowFolder);
+		DisplayMainScreen();
 	}
 	return didsomething;
 }
@@ -1492,7 +1454,7 @@ bool SaveLoadSettings(bool save, bool autoloadonly, bool ledonly, bool nodisplay
 	prefs.begin(prefsName, !save);
 	if (save) {
 		//Serial.println("saving");
-		prefs.putString(prefsVersion, MIW_Version);
+		prefs.putString(prefsVersion, FOX_Version);
 		prefs.putBool(prefsAutoload, bAutoLoadSettings);
 		// save things
 		if (!ledonly) {
@@ -1500,13 +1462,13 @@ bool SaveLoadSettings(bool save, bool autoloadonly, bool ledonly, bool nodisplay
 				WriteMessage("Settings Saved", false, 500);
 		}
 		// we always do these since they are hardware related
-		prefs.putBytes(prefsSystemInfo, &SystemInfo, sizeof(SystemInfo));
-		prefs.putBytes(prefsBuiltinInfo, &BuiltinInfo, sizeof(BuiltinInfo));
+		//prefs.putBytes(prefsSystemInfo, &SystemInfo, sizeof(SystemInfo));
+		//prefs.putBytes(prefsBuiltinInfo, &BuiltinInfo, sizeof(BuiltinInfo));
 	}
 	else {
 		// load things
 		String vsn = prefs.getString(prefsVersion, "");
-		if (vsn == MIW_Version) {
+		if (vsn == FOX_Version) {
 			if (autoloadonly) {
 				bAutoLoadSettings = prefs.getBool(prefsAutoload, false);
 				//Serial.println("getting autoload: " + String(bAutoLoadSettings));
@@ -1609,7 +1571,7 @@ void append_page_footer() {
 	webpage += "<li><a href='/utilities'>Utilities</a></li>";
 	webpage += "</ul>";
 	webpage += "<footer>Magic Image Wand ";
-	webpage += MIW_Version;
+	webpage += FOX_Version;
 	webpage += "</footer>";
 	webpage += "</body></html>";
 }
@@ -1637,7 +1599,6 @@ void SendHTML_Stop() {
 
 // display the homepage on the web browser
 void HomePage() {
-	g_nPercentDone = 0;
 	bWebRunning = false;
 	SendHTML_Header();
 	//webpage += "<a href='/download'><button style=\"width:auto\">Download</button></a>";
@@ -1648,88 +1609,11 @@ void HomePage() {
 	webpage += "<a href='/runimage'><button style='width:90%;font-size:200%;color:#00ff00'>";
 	webpage += "Run File:<br>" + FileNames[currentFileIndex.nFileIndex] + "</button></a>";
 	webpage += "<br><br>";
-	MakeFileForm("/changefile", "newfile", (ImgInfo.bShowBuiltInTests ? NULL : "Select Folder"), WPDD_FILES);
 	webpage += "<br>";
-	// now lets see if we need to add settings for a builtin
-	// this is done by checking for a menu entry for the current
-	webpage += "<br>";
-	webpage += "Switch to: " + String(ImgInfo.bShowBuiltInTests ? "SD Files" : "Built-Ins") + "</button></a>";
-	webpage += "<br><br><br>";
-	webpage += "<a href='/runmacro'><button style='width:90%;font-size:200%;color:#00ff00'>";
-	webpage += "Run Macro:<br>#" + String(ImgInfo.nCurrentMacro) + " " + MacroInfo[ImgInfo.nCurrentMacro].description + "</button></a>";
-	webpage += "</button></a>";
-	webpage += "<br><br>";
-	MakeFileForm("/changemacro", "newmacro", NULL, WPDD_MACROS);
 	webpage += "<br><br>";
 	append_page_footer();
 	SendHTML_Content();
 	SendHTML_Stop();
-}
-
-// handle the builtin settings changes
-void WebChangeBuiltinSettings()
-{
-	MenuItem* menu = BuiltInFiles[currentFileIndex.nFileIndex].menu;
-	//Serial.println("builtin settings change");
-	String str, line, name, stmp;
-	double sfloat;
-	for (int ix = 0; menu->op != eTerminate; ++ix, ++menu) {
-		name = "bi_" + String(ix);
-		//Serial.println("id:" + name);
-		switch (menu->op) {
-		case eText:
-			//Serial.println("eText");
-			break;
-		case eTextInt:
-			//Serial.println("eTextInt:" + name);
-			if (server.hasArg(name))
-				*(int*)(menu->value) = server.arg(name).toInt();
-			break;
-		case eBool:
-			*(bool*)(menu->value) = server.arg(name).length() ? true : false;
-			break;
-		case eList:	// a dropdown list
-			// figure out which one
-			if (server.hasArg(name)) {
-				for (int ix = 0; ix <= menu->max; ++ix) {
-					if (server.arg(name) == String(menu->nameList[ix])) {
-						*(int*)menu->value = ix;
-					}
-				}
-			}
-			//Serial.println("eList: " + String(server.arg(name)));
-			break;
-		case eIfEqual:
-		case eIfIntEqual:
-		case eElse:
-		case eEndif:
-		case eExit:	// do nothing
-		case eTextCurrentFile:
-		case eMenu:
-		case eBuiltinOptions:
-		case eReboot:
-		case eMacroList:
-		case eTerminate:
-			//Serial.println("unsupported menutype from html: " + String(menu->op));
-			break;
-		default:
-			break;
-		}
-	}
-	WebBuiltinSettings();
-}
-
-// handle builtin web settings
-void WebBuiltinSettings()
-{
-	load_page_header(false);
-	webpage += "<form id='builtinsettings' onchange='document.forms[\"builtinsettings\"].submit()' action='/changebuiltinsettings' method='post'>";
-	//webpage += "<form id='builtinsettings' action='/changebuiltinsettings' method='post'>";
-	webpage += MenuToHtml(BuiltInFiles[currentFileIndex.nFileIndex].menu);
-	webpage += "</form><br>";
-	webpage += "<a href='/' style='font-size:125%;color:#f0f0f0'>[Back]</a><br><br>";
-	append_page_footer();
-	server.send(200, "text/html", webpage);
 }
 
 // these are used for the list of things that can be set on the settings web page
@@ -1754,30 +1638,30 @@ struct WEB_SETTINGS {
 };
 typedef WEB_SETTINGS WebSettings;
 WebSettings WebSettingsPage[] = {
-	{WST_TEXT_ONLY,NULL,true,"Image Settings",NULL},
-	{WST_BOOL,NULL,true,"Use Fixed Image Time","use_fixed_time",&ImgInfo.bFixedTime},
-	{WST_NUMBER,&ImgInfo.bFixedTime,true,"Fixed Time Value (S)","fixed_time",&ImgInfo.nFixedImageTime,4,0},
-	{WST_NUMBER,&ImgInfo.bFixedTime,false,"Column Time(mS)","column_time",&ImgInfo.nFrameHold,4,0},
+	{(WEB_SETTINGS_TYPE)WST_TEXT_ONLY,NULL,true,"Image Settings",NULL},
+	//{WST_BOOL,NULL,true,"Use Fixed Image Time","use_fixed_time",&ImgInfo.bFixedTime},
+	//{WST_NUMBER,&ImgInfo.bFixedTime,true,"Fixed Time Value (S)","fixed_time",&ImgInfo.nFixedImageTime,4,0},
+	//{WST_NUMBER,&ImgInfo.bFixedTime,false,"Column Time(mS)","column_time",&ImgInfo.nFrameHold,4,0},
 	//{WST_SLIDER,&ImgInfo.bFixedTime,false,"Column Time(mS)","column_time_slider",&ImgInfo.nFrameHold,4,0,0,500},
-	{WST_NUMBER,NULL,true,"Start Delay (S)","start_delay",&ImgInfo.startDelay,4,1},
-	{WST_BOOL,NULL,true,"Upside Down","upside_down",&ImgInfo.bUpsideDown},
-	{WST_BOOL,NULL,true,"Reverse Walk (left-right)","reverse_walk",&ImgInfo.bReverseImage},
-	{WST_BOOL,NULL,true,"Play Mirror Image","mirror_image",&ImgInfo.bMirrorPlayImage},
-	{WST_NUMBER,&ImgInfo.bMirrorPlayImage,true,"Middle Mirror Delay (S)","mirror_delay",&ImgInfo.nMirrorDelay,4,1},
-	{WST_BOOL,NULL,true,"Scale Height to Fit Pixels","scale_height",&ImgInfo.bScaleHeight},
-	{WST_BOOL,NULL,true,"Double Pixels (144 to 288)","double_pixels",&ImgInfo.bDoublePixels},
-	{WST_BOOL,NULL,true,"Chain Images","chain_images",&ImgInfo.bChainFiles},
-	{WST_NUMBER,&ImgInfo.bChainFiles,true,"Chain Delay (S)","chain_delay",&ImgInfo.nChainDelay,4,1},
-	{WST_NUMBER,&ImgInfo.bChainFiles,true,"Chain Repeats","chain_repeats",&ImgInfo.nChainRepeats,4,0},
-	{WST_TEXT_ONLY,NULL,true,"File Repeat Settings",NULL},
-	{WST_NUMBER,NULL,true,"Repeat Count","repeat_count",&ImgInfo.repeatCount,4,0},
-	{WST_NUMBER,NULL,true,"Repeat Delay (S)","repeat_delay",&ImgInfo.repeatDelay,4,1},
-	{WST_TEXT_ONLY,NULL,true,"Macro Repeat Settings",NULL},
-	{WST_NUMBER,NULL,true,"Repeat Count","macro_repeat_count",&ImgInfo.nRepeatCountMacro,4,0},
-	{WST_NUMBER,NULL,true,"Repeat Delay (S)","macro_repeat_delay",&ImgInfo.nRepeatWaitMacro,4,1},
-	{WST_TEXT_ONLY,NULL,true,"LED Settings",NULL},
-	{WST_NUMBER,NULL,true,"LED Brightness (1-255)","LED_brightness",&LedInfo.nLEDBrightness,4,0},
-	{WST_BOOL,NULL,true,"Gamma Correction","gamma_correction",&LedInfo.bGammaCorrection},
+	//{WST_NUMBER,NULL,true,"Start Delay (S)","start_delay",&ImgInfo.startDelay,4,1},
+	//{WST_BOOL,NULL,true,"Upside Down","upside_down",&ImgInfo.bUpsideDown},
+	//{WST_BOOL,NULL,true,"Reverse Walk (left-right)","reverse_walk",&ImgInfo.bReverseImage},
+	//{WST_BOOL,NULL,true,"Play Mirror Image","mirror_image",&ImgInfo.bMirrorPlayImage},
+	//{WST_NUMBER,&ImgInfo.bMirrorPlayImage,true,"Middle Mirror Delay (S)","mirror_delay",&ImgInfo.nMirrorDelay,4,1},
+	//{WST_BOOL,NULL,true,"Scale Height to Fit Pixels","scale_height",&ImgInfo.bScaleHeight},
+	//{WST_BOOL,NULL,true,"Double Pixels (144 to 288)","double_pixels",&ImgInfo.bDoublePixels},
+	//{WST_BOOL,NULL,true,"Chain Images","chain_images",&ImgInfo.bChainFiles},
+	//{WST_NUMBER,&ImgInfo.bChainFiles,true,"Chain Delay (S)","chain_delay",&ImgInfo.nChainDelay,4,1},
+	//{WST_NUMBER,&ImgInfo.bChainFiles,true,"Chain Repeats","chain_repeats",&ImgInfo.nChainRepeats,4,0},
+	//{WST_TEXT_ONLY,NULL,true,"File Repeat Settings",NULL},
+	//{WST_NUMBER,NULL,true,"Repeat Count","repeat_count",&ImgInfo.repeatCount,4,0},
+	//{WST_NUMBER,NULL,true,"Repeat Delay (S)","repeat_delay",&ImgInfo.repeatDelay,4,1},
+	//{WST_TEXT_ONLY,NULL,true,"Macro Repeat Settings",NULL},
+	//{WST_NUMBER,NULL,true,"Repeat Count","macro_repeat_count",&ImgInfo.nRepeatCountMacro,4,0},
+	//{WST_NUMBER,NULL,true,"Repeat Delay (S)","macro_repeat_delay",&ImgInfo.nRepeatWaitMacro,4,1},
+	//{WST_TEXT_ONLY,NULL,true,"LED Settings",NULL},
+	//{WST_NUMBER,NULL,true,"LED Brightness (1-255)","LED_brightness",&LedInfo.nLEDBrightness,4,0},
+	//{WST_BOOL,NULL,true,"Gamma Correction","gamma_correction",&LedInfo.bGammaCorrection},
 	//{WST_TEXT_ONLY,NULL,true,"DMX512 Settings",NULL},
 	//{WST_BOOL,NULL,true,"DMX Enabled","dmx_enabled",&SystemInfo.bRunArtNetDMX},
 	//{WST_STRING,&SystemInfo.bRunArtNetDMX,true,"Art-Net Name","artnet_name",&SystemInfo.cArtNetName,14,sizeof(SystemInfo.cArtNetName)},
@@ -2170,7 +2054,7 @@ void ShowUpdateProgress(size_t x, size_t total)
 // see if there is an update bin file in the SD slot
 void CheckUpdateBin(MenuItem * menu)
 {
-	const char* binFileName = "/MagicImageWand.bin";
+	const char* binFileName = "/RadioFox.bin";
 	if (SD.exists(binFileName)) {
 		if (GetYesNo("Load New Firmware?")) {
 			ClearScreen();
@@ -2202,7 +2086,7 @@ void CheckUpdateBin(MenuItem * menu)
 			}
 		}
 	else {
-		WriteMessage("MagicImageFile.BIN missing", true);
+		WriteMessage("RadioFox.BIN missing", true);
 	}
 }
 
@@ -2281,4 +2165,35 @@ void GetNetworkName(MenuItem * menu)
 		}
 	}
 	delay(10);
+}
+
+// toggle web server running, reboot if needed
+void ToggleWebServer(MenuItem* menu)
+{
+	// save existing value
+	bool bWas = *(bool*)menu->value;
+	ToggleBool(menu);
+	bControllerReboot = (bWas != *(bool*)menu->value);
+}
+
+void EraseStartFile(MenuItem* menu)
+{
+	//if (GetYesNo("Erase START.MIW?"))
+	//	WriteOrDeleteConfigFile("", true, true, false);
+}
+
+void SaveStartFile(MenuItem* menu)
+{
+	//WriteOrDeleteConfigFile("", false, true, false);
+}
+
+void LoadStartFile(MenuItem* menu)
+{
+	//String name = StartFileName;
+	//if (ProcessConfigFile(name)) {
+	//	WriteMessage(String("Processed:\n") + name);
+	//}
+	//else {
+	//	WriteMessage("Failed reading:\n" + name, true);
+	//}
 }

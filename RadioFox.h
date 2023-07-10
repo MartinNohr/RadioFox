@@ -83,16 +83,19 @@ String file_size(int bytes) {
     return fsize;
 }
 
-#include "fonts.h"
+#include <nvs_flash.h>
 #include <Preferences.h>
 #include "RotaryDialButton.h"
 #include <TFT_eSPI.h>
+#include "fonts.h"
 #include <stack>
 
 // definitions for preferences
 const char* prefsName = "FOX";
 const char* prefsVars = "vars";
 const char* prefsVersion = "version";
+const char* prefsAutoload = "autoload";
+const char* prefsSystemInfo = "systeminfo";
 // rotary dial values
 const char* prefsLongPressTimer = "longpress";
 const char* prefsDialSensitivity = "dialsense";
@@ -133,9 +136,6 @@ void handleFileUpload();
 void append_page_header();
 void append_page_footer();
 void HomePage();
-void File_Download();
-void SD_file_download(String filename);
-void File_Upload();
 void SendHTML_Header();
 void SendHTML_Content();
 void SendHTML_Stop();
@@ -149,6 +149,7 @@ CRotaryDialButton::Button ReadButton();
 bool CheckCancel(bool bLeaveButton = false);
 
 bool bAutoLoadSettings = false;
+bool bWebRunning = false;                 // set while running from web
 
 // a stack to hold the file indexes as we navigate folders, put it in RTC memory for waking from sleep
 typedef struct FILEINDEXINFO {
@@ -303,7 +304,6 @@ void SetMenuColor(MenuItem* menu);
 void UpdateKeepOnTop(MenuItem* menu, int flag);
 void Sleep(MenuItem* menu);
 void ShowBattery(MenuItem* menu);
-void ShowLightSensor(MenuItem* menu);
 void GetStringName(MenuItem* menu);
 void GetNetworkName(MenuItem* menu);
 void ChangeNetCredentials(MenuItem* menu);
@@ -323,7 +323,6 @@ MenuItem BatteryMenu[] = {
 };
 MenuItem LightSensorMenu[] = {
     {eExit,"Light Sensor"},
-    {eText,"Read Light Sensor",ShowLightSensor},
     {eTextInt,"Dim Value: %d",GetIntegerValue,&SystemInfo.nLightSensorDim,1000,5000},
     {eTextInt,"Bright Value: %d",GetIntegerValue,&SystemInfo.nLightSensorBright,0,1000},
     {eExit,PreviousMenu},
@@ -428,7 +427,6 @@ MenuItem StartFileMenu[] = {
     {eText,"Save  START.MIW",SaveStartFile},
     {eText,"Load  START.MIW",LoadStartFile},
     {eText,"Erase START.MIW",EraseStartFile},
-    {eMenu,"Associated Files",{.menu = AssociatedFileMenu}},
     {eExit,PreviousMenu},
     // make sure this one is last
     {eTerminate}
@@ -517,8 +515,6 @@ struct ON_SERVER_ITEM {
 typedef ON_SERVER_ITEM OnServerItem;
 OnServerItem OnServerList[] = {
     {"/", HomePage},
-    {"/download", File_Download},
-    {"/upload", File_Upload},
     {"/settings", WebShowSettings},
     {"/changesettings", WebChangeSettings},
     {"/verifyrebootsystem", VerifyRebootSystem},
