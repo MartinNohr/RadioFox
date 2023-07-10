@@ -199,7 +199,6 @@ typedef struct SYSTEM_INFO {
     bool bSimpleMenu = false;                   // full or simple menu
     int nLightSensorDim = 4000;                 // value for the dimmest setting
     int nLightSensorBright = 100;               // value for the brightest setting
-    bool bHasLightSensor = false;               // set to true if the light sensor is detected
     int nPreviewAutoScroll = 0;                 // mSec for preview autoscroll, 0 means no scroll
     int nPreviewAutoScrollAmount = 1;           // now many pixels to auto scroll
     bool bPreviewScrollFiles = false;           // set for preview to scroll files instead of sideways
@@ -248,7 +247,6 @@ enum eDisplayOperation {
     eTerminate = 0,     // must be last in a menu, (or use {})
     eText,              // handle text with optional %s value
     eTextInt,           // handle text with optional %d value
-    eTextCurrentFile,   // adds current basefilename for %s in string
     eBool,              // handle bool using %s and on/off values
     eMenu,              // load another menu
     eExit,              // closes this menu, handles optional %d or %s in string
@@ -256,9 +254,7 @@ enum eDisplayOperation {
     eIfIntEqual,        // start skipping menu entries if match with int data value
     eElse,              // toggles the skipping
     eEndif,             // ends an if block
-    eBuiltinOptions,    // use an internal settings menu if available, see the internal name,function list below (BuiltInFiles[])
     eReboot,            // reboot the system
-    eMacroList,         // used to make a selection from the macro list
     eList,              // used to rotate selection from a list of choices
 };
 

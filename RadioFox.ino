@@ -118,18 +118,6 @@ void setup()
 	else {
 		// set the dial type
 		CheckRotaryDialType();
-		// see if there is a light sensor, read it until it is stable
-		int lastVal = 0;
-		int val = 0;
-		for (int i = 0; i < 50; ++i) {
-			val = ReadLightSensor();
-			//Serial.println("read sensor: " + String(val));
-			if (lastVal >= val)
-				break;
-			lastVal = val;
-			delay(10);
-		}
-		SystemInfo.bHasLightSensor = val < 4094;
 		// must not be anything there, so save it
 		SaveLoadSettings(true, false, false, true);
 	}
@@ -204,10 +192,6 @@ void setup()
 	nBootCount = 0;
 	// load the sleep timer
 	sleepTimer = SystemInfo.nSleepTime * 60;
-	GetFileNamesFromSDorBuiltins(currentFolder);
-	// read the macro data
-	if (bSdCardValid)
-		ReadMacroInfo();
 	for (int cnt = 0; cnt < 400; ++cnt) {
 		if (ReadButton() != BTN_NONE) {
 			break;
@@ -274,7 +258,6 @@ void MenuTextScrollSideways()
 	static unsigned long ledUpdateTime = 0;
 	if (SystemInfo.eDisplayDimMode == DISPLAY_DIM_MODE_SENSOR && millis() > ledUpdateTime + 100) {
 		ledUpdateTime = millis();
-		LightSensorLedBrightness();
 	}
 	if (millis() > menuUpdateTime + SystemInfo.nSidewayScrollSpeed) {
 		menuUpdateTime = millis();
@@ -446,19 +429,6 @@ void RunMenus(int button)
 						}
 					}
 					break;
-				case eBuiltinOptions: // find it in builtins
-					if (BuiltInFiles[currentFileIndex.nFileIndex].menu != NULL) {
-						MenuStack.top()->index = MenuStack.top()->index;
-						MenuStack.push(new MenuInfo);
-						MenuStack.top()->menu = BuiltInFiles[currentFileIndex.nFileIndex].menu;
-						MenuStack.top()->index = 0;
-						MenuStack.top()->offset = 0;
-					}
-					else {
-						WriteMessage("No settings available for:\n" + String(BuiltInFiles[currentFileIndex.nFileIndex].text));
-					}
-					bMenuChanged = true;
-					break;
 				case eExit: // go back a level
 					bExit = true;
 					break;
@@ -559,25 +529,8 @@ void ShowMenu(struct MenuItem* menu)
 				}
 			}
 			else {
-				if (menu->op == eTextCurrentFile) {
-					sprintf(line, menu->text, MakeMIWFilename(FileNames[currentFileIndex.nFileIndex], false).c_str());
-				}
-				else {
-					strcpy(line, menu->text);
-				}
+				strcpy(line, menu->text);
 			}
-			// next line
-			++y;
-			break;
-		case eMacroList:
-			bMenuValid[menix] = true;
-			// the list of macro files
-			// min holds the macro number
-			val = menu->min;
-			//// see if the macro is there and append the text
-			//exists = SD.exists("/" + String(val) + ".miw");
-			//sprintf(line, menu->text, val, exists ? menu->on : menu->off);
-			sprintf(line, menu->text, val, MacroInfo[val].description.c_str());
 			// next line
 			++y;
 			break;
@@ -599,14 +552,6 @@ void ShowMenu(struct MenuItem* menu)
 			}
 			// increment displayable lines
 			++y;
-			break;
-		case eBuiltinOptions:
-			// for builtins only show if available
-			if (BuiltInFiles[currentFileIndex.nFileIndex].menu != NULL) {
-				bMenuValid[menix] = true;
-				sprintf(line, menu->text, BuiltInFiles[currentFileIndex.nFileIndex].text);
-				++y;
-			}
 			break;
 		case eMenu:
 		case eExit:
@@ -2093,11 +2038,8 @@ String MenuToHtml(MenuItem * pMenu, bool bActive, int nLevel)
 		case eEndif:
 			return str;
 			break;
-		case eTextCurrentFile:
 		case eMenu:
-		case eBuiltinOptions:
 		case eReboot:
-		case eMacroList:
 		case eTerminate:
 			//Serial.println("unsupported menutype to html: " + String(menu->op));
 			break;
