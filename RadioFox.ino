@@ -156,6 +156,7 @@ void setup()
 	LineSprite.setTextPadding(tft.width());
 	// get our Battery sprite ready
 	BatterySprite.setColorDepth(16);
+	// TODO fix this so it will work with a width other than 100, needs code change also
 	BatterySprite.createSprite(100, tft.fontHeight() + BATTERY_BAR_HEIGHT);
 	BatterySprite.fillSprite(TFT_BLACK);
 	BatterySprite.setFreeFont(&Dialog_bold_16);
@@ -293,6 +294,10 @@ void MenuTextScrollSideways()
 
 void DisplayMainScreen()
 {
+	DisplayLine(0, String("Next TX: ") + SystemInfo.nTxTime + " Minutes", SystemInfo.menuTextColor);
+	DisplayLine(1, String("Next RX: ") + SystemInfo.nRxTime + " Minutes", SystemInfo.menuTextColor);
+	DisplayLine(2, String("RF Power: ") + (SystemInfo.bRfPowerHi ? "High" : "Low"), SystemInfo.menuTextColor);
+	DisplayLine(3, String("Frequency: ") + SystemInfo.nFrequency + " MHz", SystemInfo.menuTextColor);
 }
 
 void loop()
@@ -922,15 +927,12 @@ bool HandleRunMode()
 	}
 	switch (button) {
 	case BTN_SELECT:
-		DisplayMainScreen();
 		break;
 	case BTN_RIGHT_LONG:
 	case BTN_RIGHT:
-		//DisplayMainScreen();
 		break;
 	case BTN_LEFT_LONG:
 	case BTN_LEFT:
-		//DisplayMainScreen();
 		break;
 	case BTN_LONG:
 		ClearScreen();
@@ -940,15 +942,11 @@ bool HandleRunMode()
 		// handle on board button 0
 		break;
 	case BTN_B0_LONG:
-		//CallBtnLongFunction(SystemInfo.nBtn0LongFunction);
-		bRedraw = true;
 		break;
 	case BTN_B1_CLICK:
 		break;
 	case BTN_B1_LONG:
 	case BTN_LEFT_RIGHT_LONG:
-		//CallBtnLongFunction(SystemInfo.nBtn1LongFunction);
-		bRedraw = true;
 		break;
 	default:
 		didsomething = false;
@@ -1861,6 +1859,7 @@ void ShowBattery(MenuItem * menu)
 				DisplayLine(3, "Long Press to Cancel", SystemInfo.menuTextColor);
 			}
 			else {
+				// TODO: fix this so it works for a sprite that is not 100 pixels wide
 				int sh = BatterySprite.height();
 				BatterySprite.fillSprite(TFT_BLACK);
 				BatterySprite.setTextColor(SystemInfo.menuTextColor);
@@ -1869,11 +1868,10 @@ void ShowBattery(MenuItem * menu)
 				// thin line rest of line
 				BatterySprite.fillRect(percent, sh - 4, 100 - percent, 2, SystemInfo.menuTextColor);
 				// show the text above the bar
-				String pc = String(percent) + "%";
+				String pc = "Bat: " + String(percent) + "%";
 				BatterySprite.drawString(pc, 100 - tft.textWidth(pc) - 2, 0);
 				// push the sprite to the display
 				BatterySprite.pushSprite(tft.width() - 101, tft.height() - sh + 2);
-				//DisplayLine(MENU_LINES - 1, "          Battery: " + String(percent) + "%", SystemInfo.menuTextColor);
 			}
 			showtime = millis();
 		}
