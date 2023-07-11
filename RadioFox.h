@@ -346,7 +346,7 @@ MenuItem DisplayMenu[] = {
 };
 MenuItem WiFiMenu[] = {
     {eExit,"WiFi Settings"},
-    {eBool,"MIW Web Server: %s",ToggleWebServer,&SystemInfo.bRunWebServer,0,0,0,"On","Off"},
+    {eBool,"Web Server: %s",ToggleWebServer,&SystemInfo.bRunWebServer,0,0,0,"On","Off"},
     {eIfEqual,"",NULL,&SystemInfo.bRunWebServer,true},
         {eText,"Homepage: %s",NULL,localIpAddress},
     {eEndif},
@@ -369,15 +369,6 @@ MenuItem SystemMenu[] = {
     // make sure this one is last
     {eTerminate}
 };
-MenuItem StartFileMenu[] = {
-    {eExit,"Start File"},
-    {eText,"Save  START.MIW",SaveStartFile},
-    {eText,"Load  START.MIW",LoadStartFile},
-    {eText,"Erase START.MIW",EraseStartFile},
-    {eExit,PreviousMenu},
-    // make sure this one is last
-    {eTerminate}
-};
 MenuItem EepromMenu[] = {
     {eExit,"Saved Settings"},
     {eBool,"Autoload Settings: %s",ToggleBool,&bAutoLoadSettings,0,0,0,"On","Off"},
@@ -393,8 +384,8 @@ MenuItem RadioMenu[] = {
     {eExit,"Radio Settings"},
     {eTextInt,"RX Time: %d Min",GetIntegerValue,&SystemInfo.nRxTime,1,60},
     {eTextInt,"TX Time: %d Min",GetIntegerValue,&SystemInfo.nTxTime,1,60},
-    {eBool,"RF Power: %s",ToggleBool,&SystemInfo.bRfPowerHi,0,0,0,"Hi","Lo"},
-    {eTextInt,"Frequency: %d Min",GetIntegerValue,&SystemInfo.nFrequency,1,1000},
+    {eBool,"RF Power: %s",ToggleBool,&SystemInfo.bRfPowerHi,0,0,0,"High","Low"},
+    {eTextInt,"Frequency: %d MHz",GetIntegerValue,&SystemInfo.nFrequency,1,1000},
     {eExit,PreviousMenu},
     // make sure this one is last
     {eTerminate}

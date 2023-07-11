@@ -168,11 +168,11 @@ void setup()
 	MenuStack.top()->offset = 0;
 	if (nBootCount == 0) {
 		tft.setTextColor(SystemInfo.menuTextColor);
-		tft.setTextColor(TFT_BLACK);
+		tft.setTextColor(TFT_BLUE);
 		tft.setFreeFont(&Irish_Grover_Regular_24);
 		tft.drawRect(0, 0, tft.width() - 1, tft.height() - 1, SystemInfo.menuTextColor);
 		tft.drawRect(1, 1, tft.width() - 2, tft.height() - 2, SystemInfo.menuTextColor);
-		tft.drawString("Radio Fox", 5, 10);
+		tft.drawString("Radio Fox", 60, 10);
 		tft.setFreeFont(&Dialog_bold_16);
 		tft.drawString(String("Version ") + FOX_Version, 20, 70);
 		tft.setTextSize(1);
