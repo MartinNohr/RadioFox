@@ -151,17 +151,6 @@ bool CheckCancel(bool bLeaveButton = false);
 bool bAutoLoadSettings = false;
 bool bWebRunning = false;                 // set while running from web
 
-// a stack to hold the file indexes as we navigate folders, put it in RTC memory for waking from sleep
-typedef struct FILEINDEXINFO {
-    int nFileIndex;     // current file index
-    int nFileCursor;    // used when scrolling cursor, IE current file not always on top
-};
-#define FILEINDEXSTACKSIZE 10
-RTC_DATA_ATTR FILEINDEXINFO FileIndexStack[FILEINDEXSTACKSIZE];
-RTC_DATA_ATTR int FileIndexStackSize = 0;
-// hold the current information
-RTC_DATA_ATTR FILEINDEXINFO currentFileIndex = { 0,0 };
-
 // display dim modes, make sure sensor mode is last
 enum DISPLAY_DIM_MODES { DISPLAY_DIM_MODE_NONE, DISPLAY_DIM_MODE_TIME, DISPLAY_DIM_MODE_SENSOR };
 const char* DisplayDimModeText[] = { "None","Timer","Sensor" };
@@ -193,6 +182,11 @@ typedef struct SYSTEM_INFO {
     int nLightSensorBright = 100;               // value for the brightest setting
     int nPreviewAutoScroll = 0;                 // mSec for preview autoscroll, 0 means no scroll
     bool bRunWebServer = false;                 // run the web server
+    // radio settings
+    int nRxTime = 10;                           // rx pause
+    int nTxTime = 10;                           // tx pause
+    bool bRfPowerHi = false;                    // rf power control
+    int nFrequency = 100;                       // radio frequency
     //
 };
 RTC_DATA_ATTR SYSTEM_INFO SystemInfo;
@@ -201,13 +195,6 @@ RTC_DATA_ATTR SYSTEM_INFO SystemInfo;
 bool bSdCardValid = false;              // set to true when card is found
 bool bControllerReboot = false;         // set this when controllers or led count changed
 // settings
-constexpr auto NEXT_FOLDER_CHAR = '>';
-constexpr auto PREVIOUS_FOLDER_CHAR = '<';
-String currentFolder = "/";
-RTC_DATA_ATTR char sleepFolder[50];       // a place to save the folder during sleeping
-FILEINDEXINFO lastFileIndex = { 0,0 };    // save between switching of internal and SD
-String lastFolder = "/";
-std::vector<String> FileNames;
 bool bSettingsMode = false;               // set true when settings are displayed
 volatile int nTimerSeconds;
 
@@ -278,7 +265,6 @@ void LoadStartFile(MenuItem* menu);
 void SaveEepromSettings(MenuItem* menu);
 void LoadEepromSettings(MenuItem* menu);
 void GetIntegerValue(MenuItem* menu);
-void GetIntegerValueHue(MenuItem* menu);
 void GetSelectChoice(MenuItem* menu);
 void ToggleBool(MenuItem* menu);
 void ToggleWebServer(MenuItem* menu);
@@ -287,7 +273,6 @@ void UpdateBatteries(MenuItem* menu, int flag);
 void UpdateDisplayRotation(MenuItem* menu, int flag);
 void UpdateDisplayDimMode(MenuItem* menu, int flag);
 void SetMenuColor(MenuItem* menu);
-void UpdateKeepOnTop(MenuItem* menu, int flag);
 void Sleep(MenuItem* menu);
 void ShowBattery(MenuItem* menu);
 void GetStringName(MenuItem* menu);
@@ -404,7 +389,18 @@ MenuItem EepromMenu[] = {
     // make sure this one is last
     {eTerminate}
 };
+MenuItem RadioMenu[] = {
+    {eExit,"Radio Settings"},
+    {eTextInt,"RX Time: %d Min",GetIntegerValue,&SystemInfo.nRxTime,1,60},
+    {eTextInt,"TX Time: %d Min",GetIntegerValue,&SystemInfo.nTxTime,1,60},
+    {eBool,"RF Power: %s",ToggleBool,&SystemInfo.bRfPowerHi,0,0,0,"Hi","Lo"},
+    {eTextInt,"Frequency: %d Min",GetIntegerValue,&SystemInfo.nFrequency,1,1000},
+    {eExit,PreviousMenu},
+    // make sure this one is last
+    {eTerminate}
+};
 MenuItem MainMenu[] = {
+    {eMenu,"Radio Settings",{.menu = RadioMenu}},
     {eMenu,"Saved Settings",{.menu = EepromMenu}},
     {eMenu,"System Settings",{.menu = SystemMenu}},
     {eReboot,"Reboot"},

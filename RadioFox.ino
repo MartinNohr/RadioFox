@@ -141,9 +141,7 @@ void setup()
 		server.begin();
 	}
 	if (nBootCount) {
-		// see if we need to get the path back
-		if (strlen(sleepFolder))
-			currentFolder = sleepFolder;
+		// anything to do on sleep?
 	}
 #if !HAS_BATTERY_LEVEL
 	SystemInfo.bShowBatteryLevel = false;
@@ -683,12 +681,6 @@ void GetIntegerValueHelper(MenuItem * menu, bool bShowHue)
 	} while (!done);
 }
 
-// remember to clear the cursor spot or the display might act strange
-void UpdateKeepOnTop(MenuItem * menu, int flag)
-{
-	currentFileIndex.nFileCursor = 0;
-}
-
 // update the batterie default settings, 1-4 batteries
 void UpdateBatteries(MenuItem * menu, int flag)
 {
@@ -934,41 +926,12 @@ bool HandleRunMode()
 		break;
 	case BTN_RIGHT_LONG:
 	case BTN_RIGHT:
-		while (btnRepeatCount--) {
-			if (currentFileIndex.nFileCursor < maxMenuLine) {
-				++currentFileIndex.nFileCursor;
-				// pin to max
-				currentFileIndex.nFileCursor = min(currentFileIndex.nFileCursor, (int)FileNames.size() - 1);
-			}
-			// increase the current file index
-			if (SystemInfo.bAllowMenuWrap || (currentFileIndex.nFileIndex < FileNames.size() - 1))
-				++currentFileIndex.nFileIndex;
-			if (currentFileIndex.nFileIndex >= FileNames.size())
-				currentFileIndex.nFileIndex = 0;
-		}
-		//if (oldFileIndex != CurrentFileIndex)
-		DisplayMainScreen();
+		//DisplayMainScreen();
 		break;
 	case BTN_LEFT_LONG:
 	case BTN_LEFT:
-		while (btnRepeatCount--) {
-			if (currentFileIndex.nFileCursor > 0) {
-				--currentFileIndex.nFileCursor;
-			}
-			// decrease the current file index
-			if (SystemInfo.bAllowMenuWrap || (currentFileIndex.nFileIndex > 0))
-				--currentFileIndex.nFileIndex;
-			if (currentFileIndex.nFileIndex < 0)
-				currentFileIndex.nFileIndex = FileNames.size() - 1;
-		}
-		//if (oldFileIndex != CurrentFileIndex)
-		DisplayMainScreen();
+		//DisplayMainScreen();
 		break;
-		//case btnShowFiles:
-		//	bShowBuiltInTests = !bShowBuiltInTests;
-		//	GetFileNamesFromSDorBuiltins(currentFolder);
-		//	DisplayCurrentFile();
-		//	break;
 	case BTN_LONG:
 		ClearScreen();
 		bSettingsMode = true;
@@ -1101,29 +1064,8 @@ void Sleep(MenuItem * menu)
 	esp_timer_stop(periodic_Second_timer);
 	++nBootCount;
 	//rtc_gpio_pullup_en(BTNPUSH);
-	// save the current folder
-	memset(sleepFolder, '\0', sizeof(sleepFolder));
-	strncpy(sleepFolder, currentFolder.c_str(), sizeof(sleepFolder) - 1);
 	esp_sleep_enable_ext0_wakeup((gpio_num_t)DIAL_BTN, LOW);
 	esp_deep_sleep_start();
-}
-
-// push file index and cursor offset on stack to save
-void PushFileIndex()
-{
-	if (FileIndexStackSize < FILEINDEXSTACKSIZE) {
-		FileIndexStack[FileIndexStackSize] = currentFileIndex;
-		++FileIndexStackSize;
-	}
-}
-
-// pop the file index and cursor offset from the saved stack
-void PopFileIndex()
-{
-	if (FileIndexStackSize) {
-		--FileIndexStackSize;
-		currentFileIndex = FileIndexStack[FileIndexStackSize];
-	}
 }
 
 // display a line in selected colors and clear to the end of the line
@@ -1262,32 +1204,6 @@ void FileSeekBuf(uint32_t place)
 	}
 }
 
-// count the actual files, at a given starting point
-int FileCountOnly(int start)
-{
-	int count = 0;
-	// ignore folders, at the end
-	for (int files = start; files < FileNames.size(); ++files) {
-		if (!IsFolder(files))
-			++count;
-	}
-	return count;
-}
-
-// return true if file is folder
-bool IsFolder(String name)
-{
-	return name[0] == NEXT_FOLDER_CHAR
-		|| name[0] == PREVIOUS_FOLDER_CHAR;
-}
-
-// return true if current file is folder
-bool IsFolder(int index)
-{
-	return FileNames[index][0] == NEXT_FOLDER_CHAR
-		|| FileNames[index][0] == PREVIOUS_FOLDER_CHAR;
-}
-
 // insert newlines into a string so it doesn't wrap in the middle of words when displayed
 // existing newlines are honored
 String FormatMultiLine(String & input)
@@ -1363,16 +1279,6 @@ bool CompareNames(const String & a, const String & b)
 	String a1 = a, b1 = b;
 	a1.toUpperCase();
 	b1.toUpperCase();
-	// force folders to sort last
-	if (a1[0] == NEXT_FOLDER_CHAR)
-		a1[0] = '\x7e';
-	if (b1[0] == NEXT_FOLDER_CHAR)
-		b1[0] = '\x7e';
-	// force previous folder to sort first
-	if (a1[0] == PREVIOUS_FOLDER_CHAR)
-		a1[0] = '0' - 1;
-	if (b1[0] == PREVIOUS_FOLDER_CHAR)
-		b1[0] = '0' - 1;
 	return a1.compareTo(b1) < 0;
 }
 
@@ -1470,15 +1376,7 @@ bool SaveLoadSettings(bool save, bool autoloadonly, bool ledonly, bool nodisplay
 				//Serial.println("getting autoload: " + String(bAutoLoadSettings));
 			}
 			else if (!ledonly) {
-				int savedFileIndex = currentFileIndex.nFileIndex;
-				// we don't know the folder path, so just reset the folder level
-				currentFolder = "/";
 				setupSDcard();
-				currentFileIndex.nFileIndex = savedFileIndex;
-				// make sure file index isn't too big
-				if (currentFileIndex.nFileIndex >= FileNames.size()) {
-					currentFileIndex.nFileIndex = 0;
-				}
 				// set the brightness values since they might have changed
 				SetDisplayBrightness(SystemInfo.nDisplayBrightness);
 				if (!nodisplay)
@@ -1601,9 +1499,9 @@ void HomePage() {
 	//webpage += "<a href='/upload'><button style=\"width:auto\">Upload</button></a>";
 	//webpage += "<a href='/settings'><button style='width:auto'>Settings</button></a>";
 	//webpage += "<a href='/utilities'><button style='width:auto'>Utilities</button></a>";
-	webpage += "<br><h2>" + String("Folder: ") + currentFolder + "</h2>";
+	webpage += "<br><h2>" + String("Folder: ") + "/" + "</h2>";
 	webpage += "<a href='/runimage'><button style='width:90%;font-size:200%;color:#00ff00'>";
-	webpage += "Run File:<br>" + FileNames[currentFileIndex.nFileIndex] + "</button></a>";
+	webpage += String("Run File:<br>") + "/" + "</button></a>";
 	webpage += "<br><br>";
 	webpage += "<br>";
 	webpage += "<br><br>";
@@ -1777,7 +1675,6 @@ void UtilitiesPage()
 {
 	load_page_header(false);
 	webpage += "<h2>Utilities</h2>";
-	webpage += "<a href='/verifyfiledelete'><button style='width:80%;font-size:150%;color:#ffffff'>Delete File: " + FileNames[currentFileIndex.nFileIndex] + "</button></a>";
 	webpage += "<br><br><a href='/verifyrebootsystem'><button style='width:50%;font-size:150%;color:#ffffff'>Reboot System</button></a>";
 	webpage += "<br><br>";
 	append_page_footer();
@@ -1807,26 +1704,6 @@ void RebootSystem()
 	else {
 		UtilitiesPage();
 	}
-}
-
-// verify file delete
-void VerifyFileDelete()
-{
-	load_page_header(false);
-	webpage += "<h2>Confirm File Delete: " + FileNames[currentFileIndex.nFileIndex] + "</h2>";
-	webpage += "<a href='/utilities'><button style='width:30%;font-size:150%;color:#ffffff'>Cancel</button></a>";
-	webpage += "<a href='/dofiledelete'><button style='width:30%;font-size:150%;color:#ffffff'> Delete</button></a>";
-	webpage += "<br><br>";
-	append_page_footer();
-	server.send(200, "text/html", webpage);
-}
-
-// do the actual file deletion
-void DoFileDelete()
-{
-	SD.remove(currentFolder + FileNames[currentFileIndex.nFileIndex]);
-	//GetFileNamesFromSDorBuiltins(currentFolder);
-	UtilitiesPage();
 }
 
 // map a menuitem list to html
