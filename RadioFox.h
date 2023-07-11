@@ -170,15 +170,8 @@ const char* DisplayRotationText[] = { "90","180","270","0" };
 typedef struct SYSTEM_INFO {
     uint16_t menuTextColor = TFT_BLUE;
     bool bMenuStar = false;
-    bool bHiLiteCurrentFile = true;
     int nPreviewScrollCols = 20;                // now many columns to scroll with dial during preview
-    bool bShowProgress = true;                  // show the progress bar
-    bool bShowFolder = false;                   // show the path in front of the file
-#if TTGO_T == 1
     int nDisplayBrightness = 50;                // this is in %
-#elif TTGO_T == 4
-    int nDisplayBrightness = 75;                // this is in %
-#endif
     bool bAllowMenuWrap = false;                // allows menus to wrap around from end and start instead of pinning
     int nSidewayScrollSpeed = 25;               // mSec for pixel scroll
     int nSidewaysScrollPause = 20;              // how long to wait at each end
@@ -192,20 +185,13 @@ typedef struct SYSTEM_INFO {
     int nBatteries = 2;                         // how many batteries
     CRotaryDialButton::ROTARY_DIAL_SETTINGS DialSettings;
     int nSleepTime = 0;                         // value in minutes before going to sleep, 0 means never
-    int nDisplayBrightness = 50;                // display brightness setting
     int eDisplayDimMode = DISPLAY_DIM_MODE_NONE;// 0 is none, 1 is dimtime, 2 is light sensor
     int nDisplayDimTime = 0;                    // seconds before lcd is dimmed
     int nDisplayDimValue = 10;                  // the value to dim to
     int nDisplayRotation = 1;                   // rotates display 0, 180, 90, 270
-    bool bSimpleMenu = false;                   // full or simple menu
     int nLightSensorDim = 4000;                 // value for the dimmest setting
     int nLightSensorBright = 100;               // value for the brightest setting
     int nPreviewAutoScroll = 0;                 // mSec for preview autoscroll, 0 means no scroll
-    int nPreviewAutoScrollAmount = 1;           // now many pixels to auto scroll
-    bool bPreviewScrollFiles = false;           // set for preview to scroll files instead of sideways
-    int nPreviewStartOffset = 5;                // how many pixels to offset the start, the display is only 135, not 144
-    bool bKeepFileOnTopLine = false;            // keep the active file on the top line
-    bool bInitTest = true;                      // test the LED's on boot
     bool bRunWebServer = false;                 // run the web server
     //
 };
@@ -349,16 +335,6 @@ MenuItem DialMenu[] = {
     // make sure this one is last
     {eTerminate}
 };
-MenuItem HomeScreenMenu[] = {
-    {eExit,"Run Screen Settings"},
-    {eBool,"Current File: %s",ToggleBool,&SystemInfo.bHiLiteCurrentFile,0,0,0,"Color","Normal"},
-    {eBool,"File on Top Line: %s",ToggleBool,&SystemInfo.bKeepFileOnTopLine,0,0,0,"Yes","No",UpdateKeepOnTop},
-    {eBool,"Show Folder: %s",ToggleBool,&SystemInfo.bShowFolder,0,0,0,"Yes","No"},
-    {eBool,"Progress Bar: %s",ToggleBool,&SystemInfo.bShowProgress,0,0,0,"On","Off"},
-    {eExit,PreviousMenu},
-    // make sure this one is last
-    {eTerminate}
-};
 #define MAX_DIM_MODE (sizeof(DisplayDimModeText) / sizeof(*DisplayDimModeText) - 1)
 MenuItem DisplayMenu[] = {
     {eExit,"Display Settings"},
@@ -383,17 +359,6 @@ MenuItem DisplayMenu[] = {
     // make sure this one is last
     {eTerminate}
 };
-MenuItem PreviewMenu[] = {
-    {eExit,"Preview Settings"},
-    {eBool,"Scroll Mode: %s",ToggleBool,&SystemInfo.bPreviewScrollFiles,0,0,0,"Files","Sideways"},
-    {eTextInt,"Top Start Offset: %d px",GetIntegerValue,&SystemInfo.nPreviewStartOffset,0,10},
-    {eTextInt,"Dial Scroll Pixels: %d px",GetIntegerValue,&SystemInfo.nPreviewScrollCols,1,240},
-    {eTextInt,"Auto Scroll Time: %d mS",GetIntegerValue,&SystemInfo.nPreviewAutoScroll,0,1000},
-    {eTextInt,"Auto Scroll Pixels: %d px",GetIntegerValue,&SystemInfo.nPreviewAutoScrollAmount,1,240},
-    {eExit,PreviousMenu},
-    // make sure this one is last
-    {eTerminate}
-};
 MenuItem WiFiMenu[] = {
     {eExit,"WiFi Settings"},
     {eBool,"MIW Web Server: %s",ToggleWebServer,&SystemInfo.bRunWebServer,0,0,0,"On","Off"},
@@ -407,14 +372,11 @@ MenuItem WiFiMenu[] = {
 MenuItem SystemMenu[] = {
     {eExit,"System Settings"},
     {eMenu,"Display Settings",{.menu = DisplayMenu}},
-    {eMenu,"Run Screen Settings",{.menu = HomeScreenMenu}},
     {eMenu,"Dial & Button Settings",{.menu = DialMenu}},
-    {eMenu,"Preview Settings",{.menu = PreviewMenu}},
 #if HAS_BATTERY_LEVEL
     {eMenu,"Battery Settings",{.menu = BatteryMenu}},
 #endif
     {eTextInt,"Sleep Time: %d Min",GetIntegerValue,&SystemInfo.nSleepTime,0,120},
-    {eBool,"Startup LED Test: %s",ToggleBool,&SystemInfo.bInitTest,0,0,0,"On","Off"},
     {eMenu,"WiFi Settings",{.menu = WiFiMenu}},
     {eText,"New Version BIN file",CheckUpdateBin},
     {eText,"Reset All Settings",FactorySettings},
@@ -443,14 +405,10 @@ MenuItem EepromMenu[] = {
     {eTerminate}
 };
 MenuItem MainMenu[] = {
-    {eIfEqual,"",NULL,&SystemInfo.bSimpleMenu,true},
-        {eText,"Sleep",Sleep},
-    {eElse},
-        {eMenu,"Saved Settings",{.menu = EepromMenu}},
-        {eMenu,"System Settings",{.menu = SystemMenu}},
-        {eReboot,"Reboot"},
-        {eText,"Sleep",Sleep},
-    {eEndif},
+    {eMenu,"Saved Settings",{.menu = EepromMenu}},
+    {eMenu,"System Settings",{.menu = SystemMenu}},
+    {eReboot,"Reboot"},
+    {eText,"Sleep",Sleep},
     // make sure this one is last
 {eTerminate}
 };

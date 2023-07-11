@@ -89,11 +89,7 @@ void setup()
 
 	SystemInfo.bCriticalBatteryLevel = false;
 	tft.setFreeFont(&Dialog_bold_16);
-#if TTGO_T == 1
 	SystemInfo.nDisplayRotation = 3;
-#elif TTGO_T == 4
-	SystemInfo.nDisplayRotation = 0;
-#endif
 	tft.setTextSize(1);
 	tft.setTextPadding(tft.width());
 	SetScreenRotation(SystemInfo.nDisplayRotation);
@@ -939,7 +935,7 @@ bool HandleRunMode()
 	case BTN_RIGHT_LONG:
 	case BTN_RIGHT:
 		while (btnRepeatCount--) {
-			if (!SystemInfo.bKeepFileOnTopLine && currentFileIndex.nFileCursor < maxMenuLine) {
+			if (currentFileIndex.nFileCursor < maxMenuLine) {
 				++currentFileIndex.nFileCursor;
 				// pin to max
 				currentFileIndex.nFileCursor = min(currentFileIndex.nFileCursor, (int)FileNames.size() - 1);
@@ -956,7 +952,7 @@ bool HandleRunMode()
 	case BTN_LEFT_LONG:
 	case BTN_LEFT:
 		while (btnRepeatCount--) {
-			if (!SystemInfo.bKeepFileOnTopLine && currentFileIndex.nFileCursor > 0) {
+			if (currentFileIndex.nFileCursor > 0) {
 				--currentFileIndex.nFileCursor;
 			}
 			// decrease the current file index
@@ -2029,20 +2025,17 @@ void SetScreenRotation(int rot)
 
 void ShowProgressBar(int percent)
 {
-	//if (SystemInfo.bShowProgress && !(bIsRunning && SystemInfo.bShowDuringBmpFile)) {
-	if (SystemInfo.bShowProgress) {
-		static int lastpercent = 0;
-		if (lastpercent && (lastpercent == percent))
-			return;
-		int x = tft.width() - 1;
-		int y = (tft.fontHeight() + 4);
-		int h = 8;
-		if (percent == 0) {
-			tft.fillRect(0, y, x, h, TFT_BLACK);
-		}
-		DrawProgressBar(0, y, x, h, percent, true);
-		lastpercent = percent;
+	static int lastpercent = 0;
+	if (lastpercent && (lastpercent == percent))
+		return;
+	int x = tft.width() - 1;
+	int y = (tft.fontHeight() + 4);
+	int h = 8;
+	if (percent == 0) {
+		tft.fillRect(0, y, x, h, TFT_BLACK);
 	}
+	DrawProgressBar(0, y, x, h, percent, true);
+	lastpercent = percent;
 }
 
 // show the update bin file progress
@@ -2086,7 +2079,7 @@ void CheckUpdateBin(MenuItem * menu)
 			}
 		}
 	else {
-		WriteMessage("RadioFox.BIN missing", true);
+		WriteMessage("No RadioFox.BIN", true);
 	}
 }
 
