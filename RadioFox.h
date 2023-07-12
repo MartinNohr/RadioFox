@@ -183,11 +183,10 @@ typedef struct SYSTEM_INFO {
     int nPreviewAutoScroll = 0;                 // mSec for preview autoscroll, 0 means no scroll
     bool bRunWebServer = false;                 // run the web server
     // radio settings
-    char cRadioID[10] = "KK7JTE";               // ID to transmit
-    int nRxTime = 10;                           // rx pause
+    char cRadioID[21] = "KK7JTE";               // ID to transmit
     int nTxTime = 10;                           // tx pause
     bool bRfPowerHi = false;                    // rf power control
-    int nFrequency = 100;                       // radio frequency
+    int nFrequency = 140;                       // radio frequency
     //
 };
 RTC_DATA_ATTR SYSTEM_INFO SystemInfo;
@@ -220,8 +219,9 @@ bool bIsRunning = false;
 
 enum eDisplayOperation {
     eTerminate = 0,     // must be last in a menu, (or use {})
-    eText,              // handle text with optional %s value
+    eText,              // handle text with optional %s value, display only
     eTextInt,           // handle text with optional %d value
+    eEditText,          // edit a text string
     eBool,              // handle bool using %s and on/off values
     eMenu,              // load another menu
     eExit,              // closes this menu, handles optional %d or %s in string
@@ -279,6 +279,7 @@ void ShowBattery(MenuItem* menu);
 void GetStringName(MenuItem* menu);
 void GetNetworkName(MenuItem* menu);
 void ChangeNetCredentials(MenuItem* menu);
+void GetText(MenuItem* menu);
 
 const char* PreviousMenu = "Back";
 MenuItem BatteryMenu[] = {
@@ -383,10 +384,10 @@ MenuItem EepromMenu[] = {
 };
 MenuItem RadioMenu[] = {
     {eExit,"Radio Settings"},
-    {eTextInt,"RX Time: %d Min",GetIntegerValue,&SystemInfo.nRxTime,1,60},
     {eTextInt,"TX Time: %d Min",GetIntegerValue,&SystemInfo.nTxTime,1,60},
     {eBool,"RF Power: %s",ToggleBool,&SystemInfo.bRfPowerHi,0,0,0,"High","Low"},
-    {eTextInt,"Frequency: %d MHz",GetIntegerValue,&SystemInfo.nFrequency,1,1000},
+    {eTextInt,"Frequency: %d MHz",GetIntegerValue,&SystemInfo.nFrequency,137,174},
+	{eEditText,"Radio ID: %s",GetText,SystemInfo.cRadioID,1,sizeof(SystemInfo.cRadioID) - 1},
     {eExit,PreviousMenu},
     // make sure this one is last
     {eTerminate}

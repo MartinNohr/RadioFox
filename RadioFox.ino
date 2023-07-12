@@ -297,7 +297,6 @@ void DisplayMainScreen()
 	int lineNo = 0;
 	DisplayLine(lineNo++, String("ID: ") + SystemInfo.cRadioID, SystemInfo.menuTextColor);
 	DisplayLine(lineNo++, String("Next TX: ") + SystemInfo.nTxTime + " Minutes", SystemInfo.menuTextColor);
-	DisplayLine(lineNo++, String("Next RX: ") + SystemInfo.nRxTime + " Minutes", SystemInfo.menuTextColor);
 	DisplayLine(lineNo++, String("RF Power: ") + (SystemInfo.bRfPowerHi ? "High" : "Low"), SystemInfo.menuTextColor);
 	DisplayLine(lineNo++, String("Frequency: ") + SystemInfo.nFrequency + " MHz", SystemInfo.menuTextColor);
 }
@@ -383,6 +382,7 @@ void RunMenus(int button)
 					break;
 				case eText:
 				case eTextInt:
+				case eEditText:
 				case eBool:
 				case eList:
 					bMenuChanged = true;
@@ -495,10 +495,11 @@ void ShowMenu(struct MenuItem* menu)
 		switch (menu->op) {
 		case eTextInt:
 		case eText:
+		case eEditText:
 			bMenuValid[menix] = true;
 			if (menu->value) {
 				val = *(int*)menu->value;
-				if (menu->op == eText) {
+				if (menu->op == eText || menu->op == eEditText) {
 					sprintf(line, menu->text, (char*)(menu->value));
 				}
 				else if (menu->op == eTextInt) {
@@ -1749,6 +1750,7 @@ String MenuToHtml(MenuItem * pMenu, bool bActive, int nLevel)
 		}
 		switch (menu->op) {
 		case eText:
+		case eEditText:
 			str += String("<p>") + line + "</p>";
 			break;
 		case eTextInt:
@@ -2035,6 +2037,108 @@ void GetNetworkName(MenuItem * menu)
 		}
 	}
 	delay(10);
+}
+
+// get the text from a menu item
+void GetText(MenuItem* menu)
+{
+	char* str = (char*)menu->value;
+	if (str) {
+		String text = str;
+		ClearScreen();
+		String upperLetters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789 -_@#$%^&|";
+		String lowerLetters = "abcdefghijklmnopqrstuvwxyz0123456789 -_@#$%^&|";
+		String letters = upperLetters;
+		bool bUpper = true;
+		CRotaryDialButton::Button button = BTN_NONE;
+		bool done = false;
+		if (menu->op == eBool) {
+			DisplayLine(5, "Rotate dial to select, Click appends char, '|' separates OR fields", SystemInfo.menuTextColor);
+			DisplayLine(6, "Long press dial exits, BTN0 deletes last char, BTN0 Long clears text", SystemInfo.menuTextColor);
+		}
+		else {
+			DisplayLine(5, "Rotate dial to select, Click appends char, BTN1 Long toggles case", SystemInfo.menuTextColor);
+			DisplayLine(6, "Long press dial exits, BTN0 deletes last char, BTN0 Long clears text", SystemInfo.menuTextColor);
+		}
+		int nLetterIndex = 0;
+		// redraw screen only when necessary
+		bool bRedraw = true;
+		const int partA = 13;	// half the alphabet
+		do {
+			if (bRedraw) {
+				DisplayLine(0, text, SystemInfo.menuTextColor);
+				// draw the text
+				DisplayLine(1, letters.substring(0, partA), SystemInfo.menuTextColor);
+				DisplayLine(2, letters.substring(partA, partA * 2), SystemInfo.menuTextColor);
+				DisplayLine(3, letters.substring(partA * 2), SystemInfo.menuTextColor);
+				// figure out which letter to hilite
+				int y = nLetterIndex / partA;
+				y = constrain(y, 0, 2);
+				int x = tft.textWidth(letters.substring(y * partA, nLetterIndex));
+				char ch[2] = { 0 };
+				ch[0] = letters[nLetterIndex];
+				// the width calculation for ' ' is 0 (an error!), so we use something close
+				if (ch[0] == ' ')
+					ch[0] = '|';
+				if (SystemInfo.bMenuStar) {
+					tft.drawChar(x + 1, tft.fontHeight() * (y + 2) - 6, letters[nLetterIndex], TFT_WHITE, TFT_BLACK, 1);
+				}
+				else {
+					tft.fillRect(x + 1, tft.fontHeight() * (y + 1) - 4, tft.textWidth(ch), (y + 2) + tft.fontHeight(), SystemInfo.menuTextColor);
+					tft.drawChar(x + 1, tft.fontHeight() * (y + 2) - 6, letters[nLetterIndex], TFT_BLACK, TFT_BLACK, 1);
+				}
+				bRedraw = false;
+			}
+			button = ReadButton();
+			switch (button) {
+			case BTN_NONE:
+			case BTN_B1_CLICK:
+			case BTN_B2_LONG:
+				break;
+			case BTN_B1_LONG:
+				if (menu->op != eBool) {
+					bUpper = !bUpper;
+					letters = bUpper ? upperLetters : lowerLetters;
+					bRedraw = true;
+				}
+				break;
+			case BTN_LEFT:
+				if (nLetterIndex)
+					--nLetterIndex;
+				else
+					nLetterIndex = letters.length() - 1;
+				bRedraw = true;
+				break;
+			case BTN_RIGHT:
+				if (nLetterIndex < letters.length() - 1)
+					++nLetterIndex;
+				else
+					nLetterIndex = 0;
+				bRedraw = true;
+				break;
+			case BTN_SELECT:	// add a letter if room
+				if (text.length() < menu->max) {
+					text += letters[nLetterIndex];
+					bRedraw = true;
+				}
+				break;
+			case BTN_B0_CLICK:	// delete last character
+				if (text.length())
+					text = text.substring(0, text.length() - 1);
+				bRedraw = true;
+				break;
+			case BTN_B0_LONG:	// clear the text
+				text.clear();
+				bRedraw = true;
+				break;
+			case BTN_LONG:
+				done = true;
+				break;
+			}
+		} while (!done);
+		// copy the string back, we already checked to make sure not too long
+		strcpy(str, text.c_str());
+	}
 }
 
 // toggle web server running, reboot if needed
