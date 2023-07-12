@@ -183,6 +183,7 @@ typedef struct SYSTEM_INFO {
     int nPreviewAutoScroll = 0;                 // mSec for preview autoscroll, 0 means no scroll
     bool bRunWebServer = false;                 // run the web server
     // radio settings
+    char cRadioID[10] = "KK7JTE";               // ID to transmit
     int nRxTime = 10;                           // rx pause
     int nTxTime = 10;                           // tx pause
     bool bRfPowerHi = false;                    // rf power control

@@ -73,7 +73,7 @@ void setup()
 				/* argument specified here will be passed to timer callback function */
 				(void*)0,
 				ESP_TIMER_TASK,
-				"one-shotLED"
+				"one-shot timer"
 	};
 	esp_timer_create(&oneshot_LED_timer_args, &oneshot_LED_timer);
 
@@ -294,10 +294,12 @@ void MenuTextScrollSideways()
 
 void DisplayMainScreen()
 {
-	DisplayLine(0, String("Next TX: ") + SystemInfo.nTxTime + " Minutes", SystemInfo.menuTextColor);
-	DisplayLine(1, String("Next RX: ") + SystemInfo.nRxTime + " Minutes", SystemInfo.menuTextColor);
-	DisplayLine(2, String("RF Power: ") + (SystemInfo.bRfPowerHi ? "High" : "Low"), SystemInfo.menuTextColor);
-	DisplayLine(3, String("Frequency: ") + SystemInfo.nFrequency + " MHz", SystemInfo.menuTextColor);
+	int lineNo = 0;
+	DisplayLine(lineNo++, String("ID: ") + SystemInfo.cRadioID, SystemInfo.menuTextColor);
+	DisplayLine(lineNo++, String("Next TX: ") + SystemInfo.nTxTime + " Minutes", SystemInfo.menuTextColor);
+	DisplayLine(lineNo++, String("Next RX: ") + SystemInfo.nRxTime + " Minutes", SystemInfo.menuTextColor);
+	DisplayLine(lineNo++, String("RF Power: ") + (SystemInfo.bRfPowerHi ? "High" : "Low"), SystemInfo.menuTextColor);
+	DisplayLine(lineNo++, String("Frequency: ") + SystemInfo.nFrequency + " MHz", SystemInfo.menuTextColor);
 }
 
 void loop()
