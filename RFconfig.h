@@ -22,12 +22,8 @@
 #define DATA_PIN2 17
 // battery level
 #define HAS_BATTERY_LEVEL 1
-// the wheel frame advance gpio port
-#define FRAMEBUTTON_GPIO 32
 // battery sensor GPIO
 #define BATTERY_SENSOR_GPIO 36
-// the optional light sensor GPIO to control the LCD brightness
-#define LIGHT_SENSOR_GPIO 39
 // set the push button GPIO port
 #if PUSH_BUTTON_PORT
 	#define DIAL_BTN 37
@@ -42,3 +38,4 @@
 	#define DIAL_A 13
 	#define DIAL_B 12
 #endif
+#define PTT_PORT 36

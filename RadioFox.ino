@@ -12,7 +12,6 @@ int readByte(bool clear);
 uint16_t readInt();
 uint32_t readLong();
 void FileSeekBuf(uint32_t place);
-int FileCountOnly(int start = 0);
 
 void oneshot_LED_timer_callback(void* arg)
 {
@@ -105,9 +104,9 @@ void setup()
 	}
 	String msg;
 	// see if we can read the settings
-	if (SaveLoadSettings(false, true, false, true)) {
-		if ((nBootCount == 0) && bAutoLoadSettings) {
-			SaveLoadSettings(false, false, false, true);
+	if (SaveLoadSettings(false)) {
+		if (nBootCount == 0) {
+			SaveLoadSettings(false, true);
 			msg = "Settings Loaded";
 		}
 	}
@@ -115,7 +114,7 @@ void setup()
 		// set the dial type
 		CheckRotaryDialType();
 		// must not be anything there, so save it
-		SaveLoadSettings(true, false, false, true);
+		SaveLoadSettings(true);
 	}
 	// in case the saved ones were different
 	SetScreenRotation(SystemInfo.nDisplayRotation);
@@ -251,9 +250,6 @@ void MenuTextScrollSideways()
 	// this handles sideways scrolling of really long menu items
 	static unsigned long menuUpdateTime = 0;
 	static unsigned long ledUpdateTime = 0;
-	if (SystemInfo.eDisplayDimMode == DISPLAY_DIM_MODE_SENSOR && millis() > ledUpdateTime + 100) {
-		ledUpdateTime = millis();
-	}
 	if (millis() > menuUpdateTime + SystemInfo.nSidewayScrollSpeed) {
 		menuUpdateTime = millis();
 		for (int ix = 0; ix < nMenuLineCount; ++ix) {
@@ -320,7 +316,7 @@ void loop()
 			// make sure that the lcd dim is less than the bright
 			if (SystemInfo.nDisplayDimValue > SystemInfo.nDisplayBrightness)
 				SystemInfo.nDisplayDimValue = SystemInfo.nDisplayBrightness;
-			SaveLoadSettings(true, false, true, true);
+			SaveLoadSettings(true);
 		}
 	}
 	bLastSettingsMode = bSettingsMode;
@@ -350,8 +346,6 @@ void loop()
 // only two buttons are actually handled, SELECT and HELP
 void RunMenus(int button)
 {
-	// save this so we can see if we need to save a new changed value
-	bool lastAutoLoadFlag = bAutoLoadSettings;
 	// see if we got a menu match
 	bool gotmatch = false;
 	int menuix = 0;
@@ -422,11 +416,6 @@ void RunMenus(int button)
 	// if no match, and we are in a submenu, go back one level, or if bExit is set
 	if (bExit || (!bMenuChanged && MenuStack.size() > 1)) {
 		UpMenuLevel(false);
-	}
-	// see if the autoload flag changed
-	if (bAutoLoadSettings != lastAutoLoadFlag) {
-		// the flag is now true, so we should save the current settings
-		SaveLoadSettings(true);
 	}
 }
 
@@ -726,12 +715,7 @@ void UpdateDisplayDimMode(MenuItem * menu, int flag)
 	case 1:		// every change
 		break;
 	case -1:	// last time
-		if (SystemInfo.eDisplayDimMode == DISPLAY_DIM_MODE_SENSOR) {
-			SystemInfo.eDisplayDimMode = DISPLAY_DIM_MODE_NONE;
-		}
-		if (SystemInfo.eDisplayDimMode != DISPLAY_DIM_MODE_SENSOR) {
-			SetDisplayBrightness(SystemInfo.nDisplayBrightness);
-		}
+		SetDisplayBrightness(SystemInfo.nDisplayBrightness);
 	}
 }
 
@@ -1350,7 +1334,7 @@ void DrawProgressBar(int x, int y, int dx, int dy, int percent, bool rect)
 
 // save/load settings
 // return false if not found or wrong version
-bool SaveLoadSettings(bool save, bool autoloadonly, bool ledonly, bool nodisplay)
+bool SaveLoadSettings(bool save, bool nodisplay)
 {
 	bool retvalue = true;
 	Preferences prefs;
@@ -1358,31 +1342,20 @@ bool SaveLoadSettings(bool save, bool autoloadonly, bool ledonly, bool nodisplay
 	if (save) {
 		//Serial.println("saving");
 		prefs.putString(prefsVersion, FOX_Version);
-		prefs.putBool(prefsAutoload, bAutoLoadSettings);
+		prefs.putBytes(prefsSystemInfo, &SystemInfo, sizeof(SystemInfo));
 		// save things
-		if (!ledonly) {
-			if (!nodisplay)
-				WriteMessage("Settings Saved", false, 500);
-		}
-		// we always do these since they are hardware related
-		//prefs.putBytes(prefsSystemInfo, &SystemInfo, sizeof(SystemInfo));
-		//prefs.putBytes(prefsBuiltinInfo, &BuiltinInfo, sizeof(BuiltinInfo));
+		if (!nodisplay)
+			WriteMessage("Settings Saved", false, 500);
 	}
 	else {
 		// load things
 		String vsn = prefs.getString(prefsVersion, "");
 		if (vsn == FOX_Version) {
-			if (autoloadonly) {
-				bAutoLoadSettings = prefs.getBool(prefsAutoload, false);
-				//Serial.println("getting autoload: " + String(bAutoLoadSettings));
-			}
-			else if (!ledonly) {
-				setupSDcard();
-				// set the brightness values since they might have changed
-				SetDisplayBrightness(SystemInfo.nDisplayBrightness);
-				if (!nodisplay)
-					WriteMessage("Settings Loaded", false, 500);
-			}
+			setupSDcard();
+			// set the brightness values since they might have changed
+			SetDisplayBrightness(SystemInfo.nDisplayBrightness);
+			if (!nodisplay)
+				WriteMessage("Settings Loaded", false, 500);
 			// these are always done
 			prefs.getBytes(prefsSystemInfo, &SystemInfo, sizeof(SystemInfo));
 		}
@@ -1413,7 +1386,6 @@ void EraseFlash(MenuItem * menu)
 	if (GetYesNo("Format EEPROM? (factory reset)")) {
 		nvs_flash_erase(); // erase the NVS partition and...
 		nvs_flash_init(); // initialize the NVS partition.
-		//SaveLoadSettings(true);
 	}
 }
 

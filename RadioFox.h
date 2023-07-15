@@ -94,7 +94,6 @@ String file_size(int bytes) {
 const char* prefsName = "FOX";
 const char* prefsVars = "vars";
 const char* prefsVersion = "version";
-const char* prefsAutoload = "autoload";
 const char* prefsSystemInfo = "systeminfo";
 // rotary dial values
 const char* prefsLongPressTimer = "longpress";
@@ -131,36 +130,29 @@ void SetDisplayBrightness(int val);
 void DisplayLine(int line, String text, int16_t color = TFT_WHITE, int16_t backColor = TFT_BLACK);
 void DisplayMenuLine(int line, int displine, String text);
 void WriteMessage(String txt, bool error = false, int wait = 2000, bool process = false);
-void ReportCouldNotCreateFile(String target);
-void handleFileUpload();
 void append_page_header();
 void append_page_footer();
 void HomePage();
 void SendHTML_Header();
 void SendHTML_Content();
 void SendHTML_Stop();
-void SelectInput(String heading1, String command, String arg_calling_name);
-void ReportFileNotPresent(String target);
-void ReportSDNotPresent();
-void IncreaseRepeatButton();
-void DecreaseRepeatButton();
-bool SaveLoadSettings(bool save = false, bool autoloadonly = false, bool ledonly = false, bool nodisplay = false);
+bool SaveLoadSettings(bool save = false, bool nodisplay = false);
 CRotaryDialButton::Button ReadButton();
 bool CheckCancel(bool bLeaveButton = false);
 
-bool bAutoLoadSettings = false;
 bool bWebRunning = false;                 // set while running from web
 
 // display dim modes, make sure sensor mode is last
-enum DISPLAY_DIM_MODES { DISPLAY_DIM_MODE_NONE, DISPLAY_DIM_MODE_TIME, DISPLAY_DIM_MODE_SENSOR };
-const char* DisplayDimModeText[] = { "None","Timer","Sensor" };
+enum DISPLAY_DIM_MODES { DISPLAY_DIM_MODE_NONE, DISPLAY_DIM_MODE_TIME};
+const char* DisplayDimModeText[] = { "None","Timer"};
+
 const char* DisplayRotationText[] = { "90","180","270","0" };
 
 typedef struct SYSTEM_INFO {
     uint16_t menuTextColor = TFT_BLUE;
     bool bMenuStar = false;
     int nPreviewScrollCols = 20;                // now many columns to scroll with dial during preview
-    int nDisplayBrightness = 50;                // this is in %
+    int nDisplayBrightness = 100;               // this is in %
     bool bAllowMenuWrap = false;                // allows menus to wrap around from end and start instead of pinning
     int nSidewayScrollSpeed = 25;               // mSec for pixel scroll
     int nSidewaysScrollPause = 20;              // how long to wait at each end
@@ -294,14 +286,6 @@ MenuItem BatteryMenu[] = {
     // make sure this one is last
     {eTerminate}
 };
-MenuItem LightSensorMenu[] = {
-    {eExit,"Light Sensor"},
-    {eTextInt,"Dim Value: %d",GetIntegerValue,&SystemInfo.nLightSensorDim,1000,5000},
-    {eTextInt,"Bright Value: %d",GetIntegerValue,&SystemInfo.nLightSensorBright,0,1000},
-    {eExit,PreviousMenu},
-    // make sure this one is last
-    {eTerminate}
-};
 MenuItem SidewaysScrollMenu[] = {
     {eExit,"Sideways Scrolling"},
     {eTextInt,"Sideways Scroll Speed: %d mS",GetIntegerValue,&SystemInfo.nSidewayScrollSpeed,1,1000},
@@ -334,9 +318,6 @@ MenuItem DisplayMenu[] = {
     {eEndif},
     {eIfIntEqual,"",NULL,&SystemInfo.eDisplayDimMode,DISPLAY_DIM_MODE_TIME},
         {eTextInt,"Display Dim Time: %d S",GetIntegerValue,&SystemInfo.nDisplayDimTime,0,120},
-    {eEndif},
-    {eIfIntEqual,"",NULL,&SystemInfo.eDisplayDimMode,DISPLAY_DIM_MODE_SENSOR},
-        {eMenu,"Light Sensor",{.menu = LightSensorMenu}},
     {eEndif},
     {eMenu,"Sideways Scroll Settings",{.menu = SidewaysScrollMenu}},
     {eBool,"Menu Choice: %s",ToggleBool,&SystemInfo.bMenuStar,0,0,0,"*","Color"},
@@ -373,9 +354,7 @@ MenuItem SystemMenu[] = {
 };
 MenuItem EepromMenu[] = {
     {eExit,"Saved Settings"},
-    {eBool,"Autoload Settings: %s",ToggleBool,&bAutoLoadSettings,0,0,0,"On","Off"},
     {eText,"Save Current Settings",SaveEepromSettings},
-    {eText,"Load Saved Settings",LoadEepromSettings},
     {eText,"Reset All Settings",FactorySettings},
     {eText,"Format EEPROM",EraseFlash},
     {eExit,PreviousMenu},
