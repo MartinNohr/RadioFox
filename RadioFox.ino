@@ -279,6 +279,7 @@ void DisplayMainScreen()
 	DisplayLine(lineNo++, String("Next TX: ") + SystemInfo.nTxTime + " Minutes", SystemInfo.menuTextColor);
 	DisplayLine(lineNo++, String("RF Power: ") + (SystemInfo.bRfPowerHi ? "High" : "Low"), SystemInfo.menuTextColor);
 	DisplayLine(lineNo++, String("Frequency: ") + SystemInfo.nFrequency + " MHz", SystemInfo.menuTextColor);
+	DisplayLine(lineNo++, String("Audio: ") + SystemInfo.cAudioFile, SystemInfo.menuTextColor);
 }
 
 void loop()
@@ -352,6 +353,7 @@ void RunMenus(int button)
 				case eText:
 				case eTextInt:
 				case eEditText:
+				case eChooseFile:
 				case eBool:
 				case eList:
 					bMenuChanged = true;
@@ -460,10 +462,11 @@ void ShowMenu(struct MenuItem* menu)
 		case eTextInt:
 		case eText:
 		case eEditText:
+		case eChooseFile:
 			bMenuValid[menix] = true;
 			if (menu->value) {
 				val = *(int*)menu->value;
-				if (menu->op == eText || menu->op == eEditText) {
+				if (menu->op == eText || menu->op == eEditText || menu->op == eChooseFile) {
 					sprintf(line, menu->text, (char*)(menu->value));
 				}
 				else if (menu->op == eTextInt) {
@@ -1689,6 +1692,7 @@ String MenuToHtml(MenuItem * pMenu, bool bActive, int nLevel)
 		switch (menu->op) {
 		case eText:
 		case eEditText:
+		case eChooseFile:
 			str += String("<p>") + line + "</p>";
 			break;
 		case eTextInt:
@@ -2079,6 +2083,79 @@ void GetText(MenuItem* menu)
 	}
 }
 
+// get a wave file from the SD card
+void GetWave(MenuItem* menu)
+{
+	char* str = (char*)menu->value;
+	// keep the files here
+	std::vector<String> FileNames;
+	// read all the filenames
+	GetAudioFileNamesFromSD(FileNames, "WAV");
+	int nNameIndex = 0;
+	// todo: find the current audio file and set the index
+	if (str) {
+		String text = str;
+		ClearScreen();
+		CRotaryDialButton::Button button = BTN_NONE;
+		bool done = false;
+		// redraw screen only when necessary
+		bool bRedraw = true;
+		do {
+			if (bRedraw) {
+				String line;
+				bool hilite;
+				for (int ix = 0; ix < nMenuLineCount; ++ix) {
+					hilite = nNameIndex == ix;
+					if (SystemInfo.bMenuStar) {
+						line = (hilite ? "*" : " ") + FileNames[ix];
+						DisplayLine(ix, line, SystemInfo.menuTextColor);
+					}
+					else {
+						line = FileNames[ix];
+						DisplayLine(ix, line, hilite ? TFT_BLACK : SystemInfo.menuTextColor, hilite ? SystemInfo.menuTextColor : TFT_BLACK);
+					}
+				}
+				bRedraw = false;
+			}
+			button = ReadButton();
+			switch (button) {
+			case BTN_NONE:
+			case BTN_B1_CLICK:
+			case BTN_B2_LONG:
+				break;
+			case BTN_B1_LONG:
+				break;
+			case BTN_LEFT:
+				if (nNameIndex > 0) {
+					--nNameIndex;
+					bRedraw = true;
+				}
+				break;
+			case BTN_RIGHT:
+				++nNameIndex;
+				bRedraw = true;
+				break;
+			case BTN_SELECT:
+				text = FileNames[nNameIndex];
+				done = true;
+				break;
+			case BTN_B0_CLICK:	// delete last character
+				bRedraw = true;
+				break;
+			case BTN_B0_LONG:	// clear the text
+				bRedraw = true;
+				break;
+			case BTN_LONG:
+				done = true;
+				break;
+			}
+		} while (!done);
+		// copy the string back
+		if (text.length())
+			strcpy(str, text.c_str());
+	}
+}
+
 // toggle web server running, reboot if needed
 void ToggleWebServer(MenuItem* menu)
 {
@@ -2108,4 +2185,86 @@ void LoadStartFile(MenuItem* menu)
 	//else {
 	//	WriteMessage("Failed reading:\n" + name, true);
 	//}
+}
+
+// read the files from the card
+void GetAudioFileNamesFromSD(std::vector<String>& FileNames, String ext, String dir)
+{
+	ext.toUpperCase();
+	ext = "." + ext;
+	bool worked = true;
+	//Serial.print("reading files: " + dir + "*" + ext);
+	// start over
+	// first empty the current file names
+	FileNames.clear();
+	String startfile;
+	if (dir.length() > 1)
+		dir = dir.substring(0, dir.length() - 1);
+#if USE_STANDARD_SD
+	File root = SD.open(dir);
+	File file;
+#else
+	FsFile root = SD.open(dir, O_RDONLY);
+	FsFile file;
+#endif
+	String CurrentFilename = "";
+	if (!root) {
+		//Serial.println("Failed to open directory: " + dir + "\n");
+		//Serial.println("error: " + String(root.getError()));
+		//SD.errorPrint("fail");
+		worked = false;
+	}
+	if (!root.isDirectory()) {
+		//Serial.println("Not a directory: " + dir);
+		worked = false;
+	}
+	if (worked) {
+		file = root.openNextFile();
+		if (dir != "/") {
+			// add an arrow to go back
+			//String sdir = currentFolder.substring(0, currentFolder.length() - 1);
+			//sdir = sdir.substring(0, sdir.lastIndexOf("/"));
+			//if (sdir.length() == 0)
+			//	sdir = "/";
+			//FileNames.push_back(String(PREVIOUS_FOLDER_CHAR));
+		}
+		while (file) {
+#if USE_STANDARD_SD
+			CurrentFilename = file.name();
+#else
+			char fname[100];
+			file.getName(fname, sizeof(fname));
+			CurrentFilename = fname;
+#endif
+			// strip path
+			CurrentFilename = CurrentFilename.substring(CurrentFilename.lastIndexOf('/') + 1);
+			//Serial.println("name: " + CurrentFilename);
+			if (CurrentFilename != "System Volume Information") {
+				if (file.isDirectory()) {
+					//FileNames.push_back(String(NEXT_FOLDER_CHAR) + CurrentFilename);
+				}
+				else {
+					String uppername = CurrentFilename;
+					uppername.toUpperCase();
+					//find files with our extension only
+					if (uppername.endsWith(ext)) {
+						//Serial.println("name: " + CurrentFilename);
+						FileNames.push_back(CurrentFilename);
+					}
+					else if (uppername == StartFileName) {
+						startfile = CurrentFilename;
+					}
+				}
+			}
+			file.close();
+			file = root.openNextFile();
+		}
+		root.close();
+		std::sort(FileNames.begin(), FileNames.end(), CompareNames);
+		bSdCardValid = true;
+	}
+	else {
+		bSdCardValid = false;
+	}
+	return;
 }

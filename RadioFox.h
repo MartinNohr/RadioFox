@@ -139,6 +139,7 @@ void SendHTML_Stop();
 bool SaveLoadSettings(bool save = false, bool nodisplay = false);
 CRotaryDialButton::Button ReadButton();
 bool CheckCancel(bool bLeaveButton = false);
+void GetAudioFileNamesFromSD(std::vector<String>& FileNames, String ext = "", String dir = "/");
 
 bool bWebRunning = false;                 // set while running from web
 
@@ -177,6 +178,7 @@ typedef struct SYSTEM_INFO {
     int nTxTime = 10;                           // tx pause
     bool bRfPowerHi = false;                    // rf power control
     int nFrequency = 140;                       // radio frequency
+    char cAudioFile[31] = "";                   // choose the audio file
     //
 };
 RTC_DATA_ATTR SYSTEM_INFO SystemInfo;
@@ -210,6 +212,7 @@ enum eDisplayOperation {
     eText,              // handle text with optional %s value, display only
     eTextInt,           // handle text with optional %d value
     eEditText,          // edit a text string
+    eChooseFile,        // choose a file from the SD card
     eBool,              // handle bool using %s and on/off values
     eMenu,              // load another menu
     eExit,              // closes this menu, handles optional %d or %s in string
@@ -263,10 +266,10 @@ void UpdateDisplayRotation(MenuItem* menu, int flag);
 void UpdateDisplayDimMode(MenuItem* menu, int flag);
 void SetMenuColor(MenuItem* menu);
 void ShowBattery(MenuItem* menu);
-void GetStringName(MenuItem* menu);
 void GetNetworkName(MenuItem* menu);
 void ChangeNetCredentials(MenuItem* menu);
 void GetText(MenuItem* menu);
+void GetWave(MenuItem* menu);
 
 const char* PreviousMenu = "Back";
 MenuItem BatteryMenu[] = {
@@ -360,6 +363,7 @@ MenuItem RadioMenu[] = {
     {eBool,"RF Power: %s",ToggleBool,&SystemInfo.bRfPowerHi,0,0,0,"High","Low"},
     {eTextInt,"Frequency: %d MHz",GetIntegerValue,&SystemInfo.nFrequency,137,174},
 	{eEditText,"Radio ID: %s",GetText,SystemInfo.cRadioID,1,sizeof(SystemInfo.cRadioID) - 1},
+    {eEditText,"Audio File: %s",GetWave,SystemInfo.cAudioFile,1,sizeof(SystemInfo.cAudioFile) - 1},
     {eExit,PreviousMenu},
     // make sure this one is last
     {eTerminate}
@@ -413,8 +417,6 @@ typedef WEB_PAGE_DROP_DOWNS WebPageDropDowns;
 
 void RebootSystem();
 void VerifyRebootSystem();
-void DoFileDelete();
-void VerifyFileDelete();
 void UtilitiesPage();
 void WebCancel();
 void WebRunMacro();
