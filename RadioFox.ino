@@ -2097,9 +2097,25 @@ void GetAudioFile(MenuItem* menu)
 		// holds the list starting index
 		int nStartIndex = 0;
 		String text = str;
-		// todo: find the current audio file and set the index
+		// find the current audio file and set the index
+		int foundIx = 0;
+		for (String fn : FileNames) {
+			String to = str;
+			to.toUpperCase();
+			fn.toUpperCase();
+			if (fn.compareTo(to) == 0) {
+				//Serial.print(fn + " " + foundIx + "\n");
+				// set the current index and start if necessary
+				nNameIndex = foundIx;
+				if (foundIx >= nMenuLineCount - 1) {
+					nStartIndex = nNameIndex - nMenuLineCount + 2;
+				}
+				break;
+			}
+			++foundIx;
+		}
 		ClearScreen();
-		DisplayLine(nMenuLineCount - 1, "Click=OK Long=Cancel", SystemInfo.menuTextColor);
+		DisplayLine(nMenuLineCount - 1, "Long=OK Select=Cancel", SystemInfo.menuTextColor);
 		CRotaryDialButton::Button button = BTN_NONE;
 		bool done = false;
 		// redraw screen only when necessary
@@ -2139,7 +2155,6 @@ void GetAudioFile(MenuItem* menu)
 					if (nNameIndex - nStartIndex < 0) {
 						--nStartIndex;
 					}
-					Serial.print(String("ix: ") + nNameIndex + " start: " + nStartIndex + "\n");
 					bRedraw = true;
 				}
 				break;
@@ -2151,15 +2166,14 @@ void GetAudioFile(MenuItem* menu)
 					if (nNameIndex - nStartIndex >= nMenuLineCount - 1) {
 						++nStartIndex;
 					}
-					Serial.print(String("ix: ") + nNameIndex + " start: " + nStartIndex + "\n");
 					bRedraw = true;
 				}
 				break;
-			case BTN_SELECT:	// set the new name
+			case BTN_LONG:	// set the new name
 				text = FileNames[nNameIndex];
 				done = true;
 				break;
-			case BTN_LONG:	// use this to cancel
+			case BTN_SELECT:	// use this to cancel
 				done = true;
 				break;
 			}
