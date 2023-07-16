@@ -139,7 +139,7 @@ void SendHTML_Stop();
 bool SaveLoadSettings(bool save = false, bool nodisplay = false);
 CRotaryDialButton::Button ReadButton();
 bool CheckCancel(bool bLeaveButton = false);
-void GetAudioFileNamesFromSD(std::vector<String>& FileNames, String ext = "", String dir = "/");
+void GetFileNamesFromSD(std::vector<String>& FileNames, String ext = "", String dir = "/");
 
 bool bWebRunning = false;                 // set while running from web
 
@@ -150,7 +150,7 @@ const char* DisplayDimModeText[] = { "None","Timer"};
 const char* DisplayRotationText[] = { "90","180","270","0" };
 
 typedef struct SYSTEM_INFO {
-    uint16_t menuTextColor = TFT_BLUE;
+    uint16_t menuTextColor = TFT_WHITE;
     bool bMenuStar = false;
     int nPreviewScrollCols = 20;                // now many columns to scroll with dial during preview
     int nDisplayBrightness = 100;               // this is in %
@@ -269,7 +269,7 @@ void ShowBattery(MenuItem* menu);
 void GetNetworkName(MenuItem* menu);
 void ChangeNetCredentials(MenuItem* menu);
 void GetText(MenuItem* menu);
-void GetWave(MenuItem* menu);
+void GetAudioFile(MenuItem* menu);
 
 const char* PreviousMenu = "Back";
 MenuItem BatteryMenu[] = {
@@ -362,8 +362,8 @@ MenuItem RadioMenu[] = {
     {eTextInt,"TX Time: %d Min",GetIntegerValue,&SystemInfo.nTxTime,1,60},
     {eBool,"RF Power: %s",ToggleBool,&SystemInfo.bRfPowerHi,0,0,0,"High","Low"},
     {eTextInt,"Frequency: %d MHz",GetIntegerValue,&SystemInfo.nFrequency,137,174},
-	{eEditText,"Radio ID: %s",GetText,SystemInfo.cRadioID,1,sizeof(SystemInfo.cRadioID) - 1},
-    {eEditText,"Audio File: %s",GetWave,SystemInfo.cAudioFile,1,sizeof(SystemInfo.cAudioFile) - 1},
+	{eEditText,"Call Sign: %s",GetText,SystemInfo.cRadioID,1,sizeof(SystemInfo.cRadioID) - 1},
+    {eEditText,"Audio: %s",GetAudioFile,SystemInfo.cAudioFile,1,sizeof(SystemInfo.cAudioFile) - 1},
     {eExit,PreviousMenu},
     // make sure this one is last
     {eTerminate}

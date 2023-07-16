@@ -275,7 +275,7 @@ void MenuTextScrollSideways()
 void DisplayMainScreen()
 {
 	int lineNo = 0;
-	DisplayLine(lineNo++, String("ID: ") + SystemInfo.cRadioID, SystemInfo.menuTextColor);
+	DisplayLine(lineNo++, String("Call Sign: ") + SystemInfo.cRadioID, SystemInfo.menuTextColor);
 	DisplayLine(lineNo++, String("Next TX: ") + SystemInfo.nTxTime + " Minutes", SystemInfo.menuTextColor);
 	DisplayLine(lineNo++, String("RF Power: ") + (SystemInfo.bRfPowerHi ? "High" : "Low"), SystemInfo.menuTextColor);
 	DisplayLine(lineNo++, String("Frequency: ") + SystemInfo.nFrequency + " MHz", SystemInfo.menuTextColor);
@@ -2083,19 +2083,23 @@ void GetText(MenuItem* menu)
 	}
 }
 
-// get a wave file from the SD card
-void GetWave(MenuItem* menu)
+// get an audio file from the SD card
+void GetAudioFile(MenuItem* menu)
 {
 	char* str = (char*)menu->value;
 	// keep the files here
 	std::vector<String> FileNames;
 	// read all the filenames
-	GetAudioFileNamesFromSD(FileNames, "WAV");
-	int nNameIndex = 0;
-	// todo: find the current audio file and set the index
+	GetFileNamesFromSD(FileNames, "WAV");
 	if (str) {
+		// holds the current selection
+		int nNameIndex = 0;
+		// holds the list starting index
+		int nStartIndex = 0;
 		String text = str;
+		// todo: find the current audio file and set the index
 		ClearScreen();
+		DisplayLine(nMenuLineCount - 1, "Click=OK Long=Cancel", SystemInfo.menuTextColor);
 		CRotaryDialButton::Button button = BTN_NONE;
 		bool done = false;
 		// redraw screen only when necessary
@@ -2104,14 +2108,15 @@ void GetWave(MenuItem* menu)
 			if (bRedraw) {
 				String line;
 				bool hilite;
-				for (int ix = 0; ix < nMenuLineCount; ++ix) {
-					hilite = nNameIndex == ix;
+				for (int ix = 0; ix < FileNames.size() && ix < nMenuLineCount - 1; ++ix) {
+					// high light the current selection
+					hilite = (nNameIndex - nStartIndex) == ix;
+					line = FileNames[ix + nStartIndex];
 					if (SystemInfo.bMenuStar) {
-						line = (hilite ? "*" : " ") + FileNames[ix];
+						line = (hilite ? "*" : " ") + line;
 						DisplayLine(ix, line, SystemInfo.menuTextColor);
 					}
 					else {
-						line = FileNames[ix];
 						DisplayLine(ix, line, hilite ? TFT_BLACK : SystemInfo.menuTextColor, hilite ? SystemInfo.menuTextColor : TFT_BLACK);
 					}
 				}
@@ -2122,30 +2127,39 @@ void GetWave(MenuItem* menu)
 			case BTN_NONE:
 			case BTN_B1_CLICK:
 			case BTN_B2_LONG:
-				break;
 			case BTN_B1_LONG:
+			case BTN_B0_CLICK:
+			case BTN_B0_LONG:
 				break;
-			case BTN_LEFT:
+			case BTN_LEFT:	// previous line
 				if (nNameIndex > 0) {
+					// select the previous one
 					--nNameIndex;
+					// check if we need to scroll
+					if (nNameIndex - nStartIndex < 0) {
+						--nStartIndex;
+					}
+					Serial.print(String("ix: ") + nNameIndex + " start: " + nStartIndex + "\n");
 					bRedraw = true;
 				}
 				break;
-			case BTN_RIGHT:
-				++nNameIndex;
-				bRedraw = true;
+			case BTN_RIGHT:	// next line
+				// check if more available
+				if (nNameIndex < FileNames.size() - 1) {
+					++nNameIndex;
+					// check if we need to scroll
+					if (nNameIndex - nStartIndex >= nMenuLineCount - 1) {
+						++nStartIndex;
+					}
+					Serial.print(String("ix: ") + nNameIndex + " start: " + nStartIndex + "\n");
+					bRedraw = true;
+				}
 				break;
-			case BTN_SELECT:
+			case BTN_SELECT:	// set the new name
 				text = FileNames[nNameIndex];
 				done = true;
 				break;
-			case BTN_B0_CLICK:	// delete last character
-				bRedraw = true;
-				break;
-			case BTN_B0_LONG:	// clear the text
-				bRedraw = true;
-				break;
-			case BTN_LONG:
+			case BTN_LONG:	// use this to cancel
 				done = true;
 				break;
 			}
@@ -2188,7 +2202,7 @@ void LoadStartFile(MenuItem* menu)
 }
 
 // read the files from the card
-void GetAudioFileNamesFromSD(std::vector<String>& FileNames, String ext, String dir)
+void GetFileNamesFromSD(std::vector<String>& FileNames, String ext, String dir)
 {
 	ext.toUpperCase();
 	ext = "." + ext;
