@@ -5,8 +5,6 @@
 */
 #include "RadioFox.h"
 
-RTC_DATA_ATTR int nBootCount = 0;
-
 // some forward references that Arduino IDE needs
 int readByte(bool clear);
 uint16_t readInt();
@@ -20,8 +18,6 @@ void oneshot_LED_timer_callback(void* arg)
 // timer called every second
 void periodic_Second_timer_callback(void* arg)
 {
-	if (sleepTimer)
-		--sleepTimer;
 	if (SystemInfo.eDisplayDimMode == DISPLAY_DIM_MODE_TIME && displayDimTimer) {
 		--displayDimTimer;
 		if (displayDimTimer == 0) {
@@ -104,11 +100,8 @@ void setup()
 	}
 	String msg;
 	// see if we can read the settings
-	if (SaveLoadSettings(false)) {
-		if (nBootCount == 0) {
-			SaveLoadSettings(false, true);
-			msg = "Settings Loaded";
-		}
+	if (SaveLoadSettings(false, true)) {
+		msg = "Settings Loaded";
 	}
 	else {
 		// set the dial type
@@ -139,9 +132,6 @@ void setup()
 		/////////////////////////// End of Request commands
 		server.begin();
 	}
-	if (nBootCount) {
-		// anything to do on sleep?
-	}
 #if !HAS_BATTERY_LEVEL
 	SystemInfo.bShowBatteryLevel = false;
 #endif
@@ -166,26 +156,21 @@ void setup()
 	MenuStack.top()->menu = MainMenu;
 	MenuStack.top()->index = 0;
 	MenuStack.top()->offset = 0;
-	if (nBootCount == 0) {
-		tft.setTextColor(SystemInfo.menuTextColor);
-		tft.setTextColor(TFT_BLUE);
-		tft.setFreeFont(&Irish_Grover_Regular_24);
-		tft.drawRect(0, 0, tft.width() - 1, tft.height() - 1, SystemInfo.menuTextColor);
-		tft.drawRect(1, 1, tft.width() - 2, tft.height() - 2, SystemInfo.menuTextColor);
-		tft.drawString("Radio Fox", 60, 10);
-		tft.setFreeFont(&Dialog_bold_16);
-		tft.drawString(String("Version ") + FOX_Version, 20, 70);
-		tft.setTextSize(1);
-		tft.drawString(__DATE__, 20, 90);
-		if (msg.length()) {
-			tft.drawString(msg, 20, 110);
-		}
+	tft.setTextColor(SystemInfo.menuTextColor);
+	tft.setTextColor(TFT_BLUE);
+	tft.setFreeFont(&Irish_Grover_Regular_24);
+	tft.drawRect(0, 0, tft.width() - 1, tft.height() - 1, SystemInfo.menuTextColor);
+	tft.drawRect(1, 1, tft.width() - 2, tft.height() - 2, SystemInfo.menuTextColor);
+	tft.drawString("Radio Fox", 60, 10);
+	tft.setFreeFont(&Dialog_bold_16);
+	tft.drawString(String("Version ") + FOX_Version, 20, 70);
+	tft.setTextSize(1);
+	tft.drawString(__DATE__, 20, 90);
+	if (msg.length()) {
+		tft.drawString(msg, 20, 110);
 	}
 	// clear the button buffer
 	CRotaryDialButton::clear();
-	nBootCount = 0;
-	// load the sleep timer
-	sleepTimer = SystemInfo.nSleepTime * 60;
 	for (int cnt = 0; cnt < 400; ++cnt) {
 		if (ReadButton() != BTN_NONE) {
 			break;
@@ -235,8 +220,7 @@ void CheckRotaryDialType()
 	WriteMessage(String("Dial Type: ") + (SystemInfo.DialSettings.m_bToggleDial ? "Toggle" : "Pulse"), false, 1000);
 }
 
-void ResetSleepAndDimTimers() {
-	sleepTimer = SystemInfo.nSleepTime * 60;
+void ResetDimTimer() {
 	displayDimTimer = SystemInfo.nDisplayDimTime;
 	if (SystemInfo.eDisplayDimMode == DISPLAY_DIM_MODE_TIME && SystemInfo.nDisplayDimTime) {
 		SetDisplayBrightness(SystemInfo.nDisplayBrightness);
@@ -304,10 +288,6 @@ void loop()
 	static bool bLastSettingsMode = false;
 
 	didsomething = bSettingsMode ? HandleMenus() : HandleRunMode();
-	if (SystemInfo.nSleepTime && sleepTimer == 0) {
-		// go to sleep
-		Sleep(NULL);
-	}
 	if (bSettingsMode && !bLastSettingsMode) {
 		memcpy(&SystemInfoSaved, &SystemInfo, sizeof(SystemInfo));
 	}
@@ -334,11 +314,6 @@ void loop()
 		ReadBattery(&raw);
 		//Serial.println(String("bat:") + String(raw));
 		ShowBattery(NULL);
-		if (raw > 900 && SystemInfo.bSleepOnLowBattery && SystemInfo.bCriticalBatteryLevel) {
-			SystemInfo.bCriticalBatteryLevel = false;
-			WriteMessage("Entering sleep mode\ndue to low battery", true, 10000);
-			Sleep(NULL);
-		}
 	}
 }
 
@@ -964,7 +939,7 @@ enum CRotaryDialButton::Button ReadButton()
 	if (retValue == BTN_B1_CLICK)
 		retValue = BTN_LONG;
 	if (retValue != BTN_NONE) {
-		ResetSleepAndDimTimers();
+		ResetDimTimer();
 	}
 	else if (displayDimNow) {
 		for (int val = SystemInfo.nDisplayBrightness - 1; val >= SystemInfo.nDisplayDimValue; --val) {
@@ -993,7 +968,7 @@ enum CRotaryDialButton::Button ReadButton()
 // just check for longpress and cancel if it was there
 bool CheckCancel(bool bLeaveButton)
 {
-	ResetSleepAndDimTimers();
+	ResetDimTimer();
 	// if it has been set, just return true
 	CRotaryDialButton::Button button = ReadButton();
 	if (button) {
@@ -1042,15 +1017,6 @@ void setupSDcard()
 	//uint64_t cardSize = (uint64_t)SD.clusterCount() * SD.bytesPerCluster() / (1024 * 1024 * 1024);
 	//Serial.printf("SD Card Size: %llu GB\n", cardSize);
 #endif
-}
-
-void Sleep(MenuItem * menu)
-{
-	esp_timer_stop(periodic_Second_timer);
-	++nBootCount;
-	//rtc_gpio_pullup_en(BTNPUSH);
-	esp_sleep_enable_ext0_wakeup((gpio_num_t)DIAL_BTN, LOW);
-	esp_deep_sleep_start();
 }
 
 // display a line in selected colors and clear to the end of the line

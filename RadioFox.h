@@ -160,12 +160,10 @@ typedef struct SYSTEM_INFO {
     int nBatteryFullLevel = 1760;               // 100% battery
     int nBatteryEmptyLevel = 1230;              // 0% battery, should cause a shutdown to save the batteries
     int bShowBatteryLevel = HAS_BATTERY_LEVEL;  // display the battery level on the bottom line
-    int bSleepOnLowBattery = false;             // sleep on low battery
     int bCriticalBatteryLevel = false;          // set true if battery too low
     //int bShowBatteryLevel = 0;  // display the battery level on the bottom line
     int nBatteries = 2;                         // how many batteries
     CRotaryDialButton::ROTARY_DIAL_SETTINGS DialSettings;
-    int nSleepTime = 0;                         // value in minutes before going to sleep, 0 means never
     int eDisplayDimMode = DISPLAY_DIM_MODE_NONE;// 0 is none, 1 is dimtime, 2 is light sensor
     int nDisplayDimTime = 0;                    // seconds before lcd is dimmed
     int nDisplayDimValue = 10;                  // the value to dim to
@@ -193,8 +191,6 @@ volatile int nTimerSeconds;
 // esp timers
 esp_timer_handle_t oneshot_LED_timer;
 esp_timer_create_args_t oneshot_LED_timer_args;
-// use this timer for seconds countdown
-volatile int sleepTimer = 0;
 // seconds before dimming the display
 volatile int displayDimTimer = 30;
 volatile bool displayDimNow = false;
@@ -266,7 +262,6 @@ void UpdateBatteries(MenuItem* menu, int flag);
 void UpdateDisplayRotation(MenuItem* menu, int flag);
 void UpdateDisplayDimMode(MenuItem* menu, int flag);
 void SetMenuColor(MenuItem* menu);
-void Sleep(MenuItem* menu);
 void ShowBattery(MenuItem* menu);
 void GetStringName(MenuItem* menu);
 void GetNetworkName(MenuItem* menu);
@@ -276,7 +271,6 @@ void GetText(MenuItem* menu);
 const char* PreviousMenu = "Back";
 MenuItem BatteryMenu[] = {
     {eExit,"Battery"},
-    {eBool,"Low Battery Sleep: %s",ToggleBool,&SystemInfo.bSleepOnLowBattery,0,0,0,"Yes","No"},
     {eBool,"Show Battery: %s",ToggleBool,&SystemInfo.bShowBatteryLevel,0,0,0,"Yes","No"},
     {eText,"Read Battery",ShowBattery},
     {eTextInt,"100%% Battery: %d",GetIntegerValue,&SystemInfo.nBatteryFullLevel,900,4200},
@@ -344,7 +338,6 @@ MenuItem SystemMenu[] = {
 #if HAS_BATTERY_LEVEL
     {eMenu,"Battery Settings",{.menu = BatteryMenu}},
 #endif
-    {eTextInt,"Sleep Time: %d Min",GetIntegerValue,&SystemInfo.nSleepTime,0,120},
     {eMenu,"WiFi Settings",{.menu = WiFiMenu}},
     {eText,"New Version BIN file",CheckUpdateBin},
     {eText,"Reset All Settings",FactorySettings},
@@ -376,7 +369,6 @@ MenuItem MainMenu[] = {
     {eMenu,"Saved Settings",{.menu = EepromMenu}},
     {eMenu,"System Settings",{.menu = SystemMenu}},
     {eReboot,"Reboot"},
-    {eText,"Sleep",Sleep},
     // make sure this one is last
 {eTerminate}
 };
