@@ -54,6 +54,7 @@ const char* StartFileName = "START.FOX";
 #include <sdfat.h>
 #endif
 #include "SPI.h"
+#include "RFconfig.h"
 
 #include <WiFi.h>
 #include <WiFiClient.h>
@@ -127,8 +128,8 @@ TFT_eSPI tft = TFT_eSPI();       // Invoke custom library
 
 // functions
 void SetDisplayBrightness(int val);
-void DisplayLine(int line, String text, int16_t color = TFT_WHITE, int16_t backColor = TFT_BLACK);
-void DisplayMenuLine(int line, int displine, String text);
+void DisplayLine(int lineNum, String text, int16_t color = TFT_WHITE, int16_t backColor = TFT_BLACK);
+void DisplayMenuLine(int lineNum, int displine, String text);
 void WriteMessage(String txt, bool error = false, int wait = 2000, bool process = false);
 void append_page_header();
 void append_page_footer();
@@ -186,9 +187,8 @@ RTC_DATA_ATTR SYSTEM_INFO SystemInfo;
 // settings
 bool bSdCardValid = false;              // set to true when card is found
 bool bControllerReboot = false;         // set this when controllers or led count changed
-// settings
-bool bSettingsMode = false;               // set true when settings are displayed
-volatile int nTimerSeconds;
+// settings TODO: this should be changed to a semaphore
+volatile bool bSettingsMode = false;    // set true when settings are displayed
 
 // esp timers
 // seconds before dimming the display
@@ -202,8 +202,6 @@ SDFile dataFile;
 #else
 FsFile dataFile;
 #endif
-// system state, idle or running
-bool bIsRunning = false;
 
 enum eDisplayOperation {
     eTerminate = 0,     // must be last in a menu, (or use {})
@@ -403,9 +401,8 @@ struct TEXTLINES {
 };
 std::vector<struct TEXTLINES> TextLines;
 
-// task for LED test on startup and then for sideways scrolling
-TaskHandle_t TaskLEDTest;
-TaskHandle_t TaskArtNet;
+// task for running the radio
+TaskHandle_t TaskRunRadio;
 // enums for what to fill the web page dropdowns with
 enum WEB_PAGE_DROP_DOWNS {
     WPDD_FILES,     // image file types

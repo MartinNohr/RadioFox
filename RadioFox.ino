@@ -25,6 +25,39 @@ TFT_eSprite LineSprite = TFT_eSprite(&tft);  // Create Sprite object "LineSprite
 #define BATTERY_BAR_HEIGHT 5
 TFT_eSprite BatterySprite = TFT_eSprite(&tft);  // Create Sprite object "BatterySprite" with pointer to "tft" object
 
+void TransmitCall()
+{
+	// hit the PTT button
+}
+
+void TaskRunRadioFunction(void* parameter)
+{
+	bool bOldSettingsMode = true;
+	int secondsLeft = 0;
+	while (true) {
+		if (!bSettingsMode) {
+			if (secondsLeft <= 0) {
+				DisplayLine(0, String("Transmitting"));
+				vTaskDelay(2000 / portTICK_PERIOD_MS);
+				// do the TX function here
+				TransmitCall();
+				secondsLeft = SystemInfo.nTxTime * 60;
+			}
+			DisplayLine(0, String("TX: ") + secondsLeft + " seconds");
+			--secondsLeft;
+			if (bOldSettingsMode) {
+				int lineNo = 1;
+				DisplayLine(lineNo++, String("Call Sign: ") + SystemInfo.cRadioID, SystemInfo.menuTextColor);
+				DisplayLine(lineNo++, String("RF Power: ") + (SystemInfo.bRfPowerHi ? "High" : "Low"), SystemInfo.menuTextColor);
+				DisplayLine(lineNo++, String("Frequency: ") + SystemInfo.nFrequency + " MHz", SystemInfo.menuTextColor);
+				DisplayLine(lineNo++, String("Audio: ") + SystemInfo.cAudioFile, SystemInfo.menuTextColor);
+			}
+		}
+		bOldSettingsMode = bSettingsMode;
+		vTaskDelay(1000 / portTICK_PERIOD_MS);
+	}
+}
+
 void setup()
 {
 	// init the display
@@ -158,7 +191,12 @@ void setup()
 		}
 		vTaskDelay(10 / portTICK_PERIOD_MS);
 	}
+	// set the PTT port
+	gpio_set_direction((gpio_num_t)PTT_PORT, GPIO_MODE_OUTPUT);
+	gpio_set_level((gpio_num_t)PTT_PORT, 0);
 	ClearScreen();
+	xTaskCreate(TaskRunRadioFunction, "FOXRADIO", 10000, NULL, 1, &TaskRunRadio);
+	//xTaskCreatePinnedToCore(TaskRunRadioFunction, "FOXRADIO", 10000, NULL, 1, &TaskRunRadio, xPortGetCoreID());
 	// display the main screen here
 	DisplayMainScreen();
 }
@@ -209,10 +247,8 @@ void ResetDimTimer() {
 }
 
 // scroll the long menu lines
-// this also checks the light sensor if enabled
 void MenuTextScrollSideways()
 {
-	// this handles sideways scrolling of really long menu items
 	static unsigned long menuUpdateTime = 0;
 	static unsigned long ledUpdateTime = 0;
 	if (millis() > menuUpdateTime + SystemInfo.nSidewayScrollSpeed) {
@@ -255,6 +291,7 @@ void MenuTextScrollSideways()
 
 void DisplayMainScreen()
 {
+	return;
 	int lineNo = 0;
 	DisplayLine(lineNo++, String("Call Sign: ") + SystemInfo.cRadioID, SystemInfo.menuTextColor);
 	DisplayLine(lineNo++, String("Next TX: ") + SystemInfo.nTxTime + " Minutes", SystemInfo.menuTextColor);
@@ -937,15 +974,6 @@ enum CRotaryDialButton::Button ReadButton()
 		}
 		displayDimNow = false;
 	}
-	if (bIsRunning) {
-		int amt = 0, newval = 0;
-		switch (retValue) {
-		case BTN_LEFT:
-			break;
-		case BTN_RIGHT:
-			break;
-		}
-	}
 	return retValue;
 }
 
@@ -1004,31 +1032,28 @@ void setupSDcard()
 }
 
 // display a line in selected colors and clear to the end of the line
-void DisplayLine(int line, String text, int16_t color, int16_t backColor)
+void DisplayLine(int lineNum, String text, int16_t color, int16_t backColor)
 {
-	if (line >= 0 && line < nMenuLineCount) {
-		// don't show if running and displaying file on LCD
-		if (!(bIsRunning)) {
-			if (TextLines[line].Line != text || TextLines[line].backColor != backColor || TextLines[line].foreColor != color) {
-				int pixels = tft.textWidth(text);
-				if (pixels > tft.width()) {
-					TextLines[line].nRollLength = pixels;
-					TextLines[line].nRollOffset = 0;
-				}
-				else {
-					TextLines[line].nRollOffset = TextLines[line].nRollLength = 0;
-				}
-				// save the line for scrolling purposes
-				TextLines[line].Line = text;
-				TextLines[line].foreColor = color;
-				TextLines[line].backColor = backColor;
+	if (lineNum >= 0 && lineNum < nMenuLineCount) {
+		if (TextLines[lineNum].Line != text || TextLines[lineNum].backColor != backColor || TextLines[lineNum].foreColor != color) {
+			int pixels = tft.textWidth(text);
+			if (pixels > tft.width()) {
+				TextLines[lineNum].nRollLength = pixels;
+				TextLines[lineNum].nRollOffset = 0;
 			}
-			// push the sprite text to the display
-			int y = line * tft.fontHeight();
-			LineSprite.setTextColor(color, backColor);
-			LineSprite.drawString(text, -TextLines[line].nRollOffset, 0);
-			LineSprite.pushSprite(0, y);
+			else {
+				TextLines[lineNum].nRollOffset = TextLines[lineNum].nRollLength = 0;
+			}
+			// save the line for scrolling purposes
+			TextLines[lineNum].Line = text;
+			TextLines[lineNum].foreColor = color;
+			TextLines[lineNum].backColor = backColor;
 		}
+		// push the sprite text to the display
+		int y = lineNum * tft.fontHeight();
+		LineSprite.setTextColor(color, backColor);
+		LineSprite.drawString(text, -TextLines[lineNum].nRollOffset, 0);
+		LineSprite.pushSprite(0, y);
 	}
 }
 
@@ -1051,9 +1076,9 @@ void ResetTextLines()
 }
 
 // active menu line is in reverse video or * at front depending on bMenuStar
-void DisplayMenuLine(int line, int displine, String text)
+void DisplayMenuLine(int lineNum, int displine, String text)
 {
-	bool hilite = MenuStack.top()->index == line;
+	bool hilite = MenuStack.top()->index == lineNum;
 	String mline = (hilite && SystemInfo.bMenuStar ? "*" : " ") + text;
 	if (displine >= 0 && displine < nMenuLineCount) {
 		if (SystemInfo.bMenuStar) {
