@@ -46,7 +46,6 @@ void TaskRunRadioFunction(void* parameter)
 				secondsLeft = SystemInfo.nTxTime * 60;
 			}
 			DisplayLine(0, String("TX: ") + (secondsLeft / 60) + " Min " + (secondsLeft % 60) + " Sec");
-			--secondsLeft;
 			if (bOldSettingsMode) {
 				int lineNo = 1;
 				DisplayLine(lineNo++, String("Call Sign: ") + SystemInfo.cRadioID, SystemInfo.menuTextColor);
@@ -55,6 +54,8 @@ void TaskRunRadioFunction(void* parameter)
 				DisplayLine(lineNo++, String("Audio: ") + SystemInfo.cAudioFile, SystemInfo.menuTextColor);
 			}
 		}
+		if (secondsLeft)
+			--secondsLeft;
 		bOldSettingsMode = bSettingsMode;
 		vTaskDelay(1000 / portTICK_PERIOD_MS);
 	}
