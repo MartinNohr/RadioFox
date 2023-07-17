@@ -45,7 +45,7 @@ void TaskRunRadioFunction(void* parameter)
 				TransmitCall();
 				secondsLeft = SystemInfo.nTxTime * 60;
 			}
-			DisplayLine(0, String("TX: ") + secondsLeft + " seconds");
+			DisplayLine(0, String("TX: ") + (secondsLeft / 60) + " Min " + (secondsLeft % 60) + " Sec");
 			--secondsLeft;
 			if (bOldSettingsMode) {
 				int lineNo = 1;
