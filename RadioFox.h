@@ -191,8 +191,6 @@ bool bSettingsMode = false;               // set true when settings are displaye
 volatile int nTimerSeconds;
 
 // esp timers
-esp_timer_handle_t oneshot_LED_timer;
-esp_timer_create_args_t oneshot_LED_timer_args;
 // seconds before dimming the display
 volatile int displayDimTimer = 30;
 volatile bool displayDimNow = false;

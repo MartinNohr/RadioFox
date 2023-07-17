@@ -5,16 +5,6 @@
 */
 #include "RadioFox.h"
 
-// some forward references that Arduino IDE needs
-int readByte(bool clear);
-uint16_t readInt();
-uint32_t readLong();
-void FileSeekBuf(uint32_t place);
-
-void oneshot_LED_timer_callback(void* arg)
-{
-}
-
 // timer called every second
 void periodic_Second_timer_callback(void* arg)
 {
@@ -62,15 +52,6 @@ void setup()
 	gpio_set_direction(GPIO_NUM_0, GPIO_MODE_INPUT);
 	gpio_set_pull_mode(GPIO_NUM_0, GPIO_PULLUP_ONLY);
 	gpio_set_direction(GPIO_NUM_35, GPIO_MODE_INPUT);
-
-	oneshot_LED_timer_args = {
-				oneshot_LED_timer_callback,
-				/* argument specified here will be passed to timer callback function */
-				(void*)0,
-				ESP_TIMER_TASK,
-				"one-shot timer"
-	};
-	esp_timer_create(&oneshot_LED_timer_args, &oneshot_LED_timer);
 
 	periodic_Second_timer_args = {
 				periodic_Second_timer_callback,
@@ -1084,80 +1065,6 @@ void DisplayMenuLine(int line, int displine, String text)
 	}
 }
 
-uint32_t readLong() {
-	uint32_t retValue;
-	byte incomingbyte;
-
-	incomingbyte = readByte(false);
-	retValue = (uint32_t)((byte)incomingbyte);
-
-	incomingbyte = readByte(false);
-	retValue += (uint32_t)((byte)incomingbyte) << 8;
-
-	incomingbyte = readByte(false);
-	retValue += (uint32_t)((byte)incomingbyte) << 16;
-
-	incomingbyte = readByte(false);
-	retValue += (uint32_t)((byte)incomingbyte) << 24;
-
-	return retValue;
-}
-
-uint16_t readInt() {
-	byte incomingbyte;
-	uint16_t retValue = 0;
-
-	incomingbyte = readByte(false);
-	retValue += (uint16_t)((byte)incomingbyte);
-
-	incomingbyte = readByte(false);
-	retValue += (uint16_t)((byte)incomingbyte) << 8;
-
-	return retValue;
-}
-byte filebuf[512];
-int fileindex = 0;
-int filebufsize = 0;
-uint32_t filePosition = 0;
-
-int readByte(bool clear) {
-	//int retbyte = -1;
-	if (clear) {
-		filebufsize = 0;
-		fileindex = 0;
-		return 0;
-	}
-	// TODO: this needs to align with 512 byte boundaries, maybe
-	if (filebufsize == 0 || fileindex >= sizeof(filebuf)) {
-		filePosition = dataFile.position();
-		//// if not on 512 boundary yet, just return a byte
-		//if ((filePosition % 512) && filebufsize == 0) {
-		//    //Serial.println("not on 512");
-		//    return dataFile.read();
-		//}
-		// read a block
-//        Serial.println("block read");
-		do {
-			filebufsize = dataFile.read(filebuf, sizeof(filebuf));
-		} while (filebufsize < 0);
-		fileindex = 0;
-	}
-	return filebuf[fileindex++];
-	//while (retbyte < 0) 
-	//    retbyte = dataFile.read();
-	//return retbyte;
-}
-
-// make sure we are the right place
-void FileSeekBuf(uint32_t place)
-{
-	if (place < filePosition || place >= filePosition + filebufsize) {
-		// we need to read some more
-		filebufsize = 0;
-		dataFile.seek(place);
-	}
-}
-
 // insert newlines into a string so it doesn't wrap in the middle of words when displayed
 // existing newlines are honored
 String FormatMultiLine(String & input)
@@ -1361,7 +1268,7 @@ void EraseFlash(MenuItem * menu)
 void load_page_header(bool bRefresh) {
 	webpage = "<!DOCTYPE html><html>";
 	webpage += "<head>";
-	webpage += "<title>MagicImageWand</title>";
+	webpage += "<title>RadioFox</title>";
 	webpage += "<META name='viewport' content='width=device-width, initial-scale=1.0'>";
 	if (bRefresh)
 		webpage += "<META http-equiv='refresh' content='2'>";
@@ -1406,7 +1313,7 @@ void append_page_footer() {
 	webpage += "<li><a href='/settings'>Settings</a></li>";
 	webpage += "<li><a href='/utilities'>Utilities</a></li>";
 	webpage += "</ul>";
-	webpage += "<footer>Magic Image Wand ";
+	webpage += "<footer>Radio Fox ";
 	webpage += FOX_Version;
 	webpage += "</footer>";
 	webpage += "</body></html>";
