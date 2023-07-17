@@ -38,4 +38,4 @@
 	#define DIAL_A 13
 	#define DIAL_B 12
 #endif
-#define PTT_PORT 36
+#define PTT_PORT 17

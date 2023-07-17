@@ -38,7 +38,9 @@ void TaskRunRadioFunction(void* parameter)
 		if (!bSettingsMode) {
 			if (secondsLeft <= 0) {
 				DisplayLine(0, String("Transmitting"));
+				gpio_set_level((gpio_num_t)PTT_PORT, 0);
 				vTaskDelay(2000 / portTICK_PERIOD_MS);
+				gpio_set_level((gpio_num_t)PTT_PORT, 1);
 				// do the TX function here
 				TransmitCall();
 				secondsLeft = SystemInfo.nTxTime * 60;
@@ -193,7 +195,7 @@ void setup()
 	}
 	// set the PTT port
 	gpio_set_direction((gpio_num_t)PTT_PORT, GPIO_MODE_OUTPUT);
-	gpio_set_level((gpio_num_t)PTT_PORT, 0);
+	gpio_set_level((gpio_num_t)PTT_PORT, 1);
 	ClearScreen();
 	xTaskCreate(TaskRunRadioFunction, "FOXRADIO", 10000, NULL, 1, &TaskRunRadio);
 	//xTaskCreatePinnedToCore(TaskRunRadioFunction, "FOXRADIO", 10000, NULL, 1, &TaskRunRadio, xPortGetCoreID());
