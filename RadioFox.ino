@@ -199,9 +199,8 @@ void setup()
 	gpio_set_level((gpio_num_t)PTT_PORT, 1);
 	ClearScreen();
 	xTaskCreate(TaskRunRadioFunction, "FOXRADIO", 10000, NULL, 1, &TaskRunRadio);
+	ResetDimTimer();
 	//xTaskCreatePinnedToCore(TaskRunRadioFunction, "FOXRADIO", 10000, NULL, 1, &TaskRunRadio, xPortGetCoreID());
-	// display the main screen here
-	DisplayMainScreen();
 }
 
 // check and handle the rotary dial type
@@ -290,17 +289,6 @@ void MenuTextScrollSideways()
 			}
 		}
 	}
-}
-
-void DisplayMainScreen()
-{
-	return;
-	int lineNo = 0;
-	DisplayLine(lineNo++, String("Call Sign: ") + SystemInfo.cRadioID, SystemInfo.menuTextColor);
-	DisplayLine(lineNo++, String("Next TX: ") + SystemInfo.nTxTime + " Minutes", SystemInfo.menuTextColor);
-	DisplayLine(lineNo++, String("RF Power: ") + (SystemInfo.bRfPowerHi ? "High" : "Low"), SystemInfo.menuTextColor);
-	DisplayLine(lineNo++, String("Frequency: ") + SystemInfo.nFrequency + " MHz", SystemInfo.menuTextColor);
-	DisplayLine(lineNo++, String("Audio: ") + SystemInfo.cAudioFile, SystemInfo.menuTextColor);
 }
 
 void loop()
@@ -882,7 +870,6 @@ bool HandleMenus()
 	case BTN_LONG:
 		ClearScreen();
 		bSettingsMode = false;
-		DisplayMainScreen();
 		bMenuChanged = true;
 		break;
 	default:
@@ -940,7 +927,6 @@ bool HandleRunMode()
 	}
 	if (bRedraw) {
 		ClearScreen();
-		DisplayMainScreen();
 	}
 	return didsomething;
 }

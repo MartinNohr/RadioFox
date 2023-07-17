@@ -437,5 +437,3 @@ OnServerItem OnServerList[] = {
 };
 
 String MenuToHtml(MenuItem* menu, bool bActive = true, int nLevel = 0);
-
-void DisplayMainScreen();
