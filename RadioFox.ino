@@ -1,9 +1,50 @@
 /*
  Name:		RadioFox.ino
  Created:	3/25/2023 8:37:33 AM
- Author:	Martin Nohr
+ Author:	Sven Schumacher & Martin Nohr
+ Call Sign: VE6IDK & KK7JTE
 */
+#include <phoneDTMF.h>
+#include "pitches.h"
+#include <EEPROM.h>
 #include "RadioFox.h"
+
+int sensorPin = A0;  //Input Pin for DTMF Tones
+PhoneDTMF dtmf = PhoneDTMF();
+float d_mags[8];
+
+int tempo = 145; // Tempo of Melody
+
+// notes in the melody:
+int melody[] = {
+
+  NOTE_E5, 4,  NOTE_B4, 8,  NOTE_C5, 8,  NOTE_D5, 4,  NOTE_C5, 8,  NOTE_B4, 8,
+  NOTE_A4, 4,  NOTE_A4, 8,  NOTE_C5, 8,  NOTE_E5, 4,  NOTE_D5, 8,  NOTE_C5, 8,
+  NOTE_B4, -4,  NOTE_C5, 8,  NOTE_D5, 4,  NOTE_E5, 4,
+  NOTE_C5, 4,  NOTE_A4, 4,  NOTE_A4, 8,  NOTE_A4, 4,  NOTE_B4, 8,  NOTE_C5, 8,
+
+  NOTE_D5, -4,  NOTE_F5, 8,  NOTE_A5, 4,  NOTE_G5, 8,  NOTE_F5, 8,
+  NOTE_E5, -4,  NOTE_C5, 8,  NOTE_E5, 4,  NOTE_D5, 8,  NOTE_C5, 8,
+  NOTE_B4, 4,  NOTE_B4, 8,  NOTE_C5, 8,  NOTE_D5, 4,  NOTE_E5, 4,
+  NOTE_C5, 4,  NOTE_A4, 4,  NOTE_A4, 4, REST, 4,
+};
+
+// sizeof gives the number of bytes, each int value is composed of two bytes (16 bits)
+// there are two values per note (pitch and duration), so for each note there are four bytes
+int notes = sizeof(melody) / sizeof(melody[0]) / 2;
+
+// this calculates the duration of a whole note in ms (60s/tempo)*4 beats
+int wholenote = (60000 * 4) / tempo;
+int divider = 0, noteDuration = 0;
+
+// NOTE: pins 3, 4, and 5 should not be used as they are sometimes used for timer outputs
+// pin 13 is the builtin LED
+
+#define HL 2                 // Pin to control TX Power, not conncted -> high power, connect to GND -> Low power
+#define BUZZER_PIN 11        // send music and cw out this pin
+#define PTT  6               // Pin to control TX
+#define BUZZER_FREQUENCY 700  // cw pitch
+#define Relay 12
 
 // timer called every second
 void periodic_Second_timer_callback(void* arg)
@@ -25,38 +66,95 @@ TFT_eSprite LineSprite = TFT_eSprite(&tft);  // Create Sprite object "LineSprite
 #define BATTERY_BAR_HEIGHT 5
 TFT_eSprite BatterySprite = TFT_eSprite(&tft);  // Create Sprite object "BatterySprite" with pointer to "tft" object
 
-void TransmitCall()
+// this controls the radio sending operations
+void TaskRunTransmit(void* parameter)
 {
-	// hit the PTT button
+	// perform any initializations here
+	while (true) {
+		// pause this task waiting to be started by TaskRunRadio
+		ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
+		// see if we need to start
+		if (true) {
+			// turn on PTT here if allowed to send
+			if (SystemInfo.bXmit)
+				gpio_set_level((gpio_num_t)PTT_PORT, 0);
+			xTaskNotify(TaskRunRadioHandle, (uint32_t)"TX Start", eSetValueWithOverwrite);
+			// wait for PTT to take effect
+			vTaskDelay(1000 / portTICK_PERIOD_MS);
+			while (ulTaskNotifyTake(pdTRUE, 0) == 0) {
+				// do all the send operations
+				xTaskNotify(TaskRunRadioHandle, (uint32_t)"Audio", eSetValueWithOverwrite);
+				vTaskDelay(3000 / portTICK_PERIOD_MS);
+				xTaskNotify(TaskRunRadioHandle, (uint32_t)"Morse", eSetValueWithOverwrite);
+				vTaskDelay(2000 / portTICK_PERIOD_MS);
+			}
+			// turn PTT off here
+			gpio_set_level((gpio_num_t)PTT_PORT, 1);
+			// set to 1 (can't be a string pointer) to indicate we're done for now
+			xTaskNotify(TaskRunRadioHandle, 1, eSetValueWithOverwrite);
+		}
+		vTaskDelay(1000 / portTICK_PERIOD_MS);
+	}
 }
 
-void TaskRunRadioFunction(void* parameter)
+// all the timing and screen display is done here
+void TaskRunRadio(void* parameter)
 {
-	bool bOldSettingsMode = true;
-	int secondsLeft = 0;
+	// wait for xmit task to start, it should be running...
+	while (!TaskRunTransmitHandle)
+		vTaskDelay(10 / portTICK_PERIOD_MS);
+
 	while (true) {
-		if (!bSettingsMode) {
+		// these need to be static for some reason that I don't understand, something about task switching I think...
+		static const char* cStatusText = NULL;
+		static uint32_t status = 0;
+		static bool bTransmitting = false;
+		static bool bOldSettingsMode = true;
+		static int secondsLeft = 0;
+		static int cycleCount = 0;
+
+		if (!g_bSettingsMode) {
 			if (secondsLeft <= 0) {
-				DisplayLine(0, String("Transmitting"));
-				gpio_set_level((gpio_num_t)PTT_PORT, 0);
-				vTaskDelay(2000 / portTICK_PERIOD_MS);
-				gpio_set_level((gpio_num_t)PTT_PORT, 1);
-				// do the TX function here
-				TransmitCall();
-				secondsLeft = SystemInfo.nTxTime * 60;
+				bTransmitting = !bTransmitting;
+				if (bTransmitting) {
+					// tell xmitter to start
+					xTaskNotifyGive(TaskRunTransmitHandle);
+					vTaskDelay(5 / portTICK_PERIOD_MS);
+					cycleCount++;
+				}
+				else {
+					// tell the xmitter to stop
+					xTaskNotify(TaskRunTransmitHandle, 1, eSetValueWithOverwrite);
+					// wait for the xmitter to finish
+					while ((status = ulTaskNotifyTake(pdTRUE, 0)) != 1) {
+						if (status > 1) {
+							cStatusText = (const char*)status;
+						}
+						DisplayLine(0, String(cStatusText) + ": Stopping");
+						vTaskDelay(1000 / portTICK_PERIOD_MS);
+					}
+				}
+				secondsLeft = bTransmitting ? SystemInfo.nTxTime : SystemInfo.nTxPause;
 			}
-			DisplayLine(0, String("TX: ") + (secondsLeft / 60) + " Min " + (secondsLeft % 60) + " Sec");
+			status = ulTaskNotifyTake(pdTRUE, 0);
+			// see if this is a string pointer
+			if (status > 1) {
+				cStatusText = (const char*)status;
+			}
+			if (!bTransmitting)
+				cStatusText = "Pause";
+			DisplayLine(0, String(cStatusText) + ": " + (secondsLeft / 60) + " Min " + (secondsLeft % 60) + " Sec");
+			DisplayLine(1, String("Cycles: ") + cycleCount);
 			if (bOldSettingsMode) {
-				int lineNo = 1;
+				int lineNo = 2;
 				DisplayLine(lineNo++, String("Call Sign: ") + SystemInfo.cRadioID, SystemInfo.menuTextColor);
-				DisplayLine(lineNo++, String("RF Power: ") + (SystemInfo.bRfPowerHi ? "High" : "Low"), SystemInfo.menuTextColor);
-				DisplayLine(lineNo++, String("Frequency: ") + SystemInfo.nFrequency + " MHz", SystemInfo.menuTextColor);
+				DisplayLine(lineNo++, String(SystemInfo.nFrequency) + " MHz " + (SystemInfo.bRfPowerHi ? "High" : "Low"), SystemInfo.menuTextColor);
 				DisplayLine(lineNo++, String("Audio: ") + SystemInfo.cAudioFile, SystemInfo.menuTextColor);
 			}
 		}
 		if (secondsLeft)
 			--secondsLeft;
-		bOldSettingsMode = bSettingsMode;
+		bOldSettingsMode = g_bSettingsMode;
 		vTaskDelay(1000 / portTICK_PERIOD_MS);
 	}
 }
@@ -70,6 +168,12 @@ void setup()
 	while (!Serial.availableForWrite()) {
 		delay(10);
 	}
+	// start the tone generator
+	ledcSetup(1, 0, 8);
+	ledcAttachPin(12, 1);
+	ledcWrite(1, 127);
+	// start the DTMF detector
+	dtmf.begin(36);
 	//Serial.println("flash:" + String(ESP.getFlashChipSize()));
 	//Serial.print("setup() is running on core ");
 	//Serial.println(xPortGetCoreID());
@@ -87,14 +191,13 @@ void setup()
 	// init the onboard buttons
 	gpio_set_direction(GPIO_NUM_0, GPIO_MODE_INPUT);
 	gpio_set_pull_mode(GPIO_NUM_0, GPIO_PULLUP_ONLY);
-	gpio_set_direction(GPIO_NUM_35, GPIO_MODE_INPUT);
 
 	periodic_Second_timer_args = {
 				periodic_Second_timer_callback,
 				/* argument specified here will be passed to timer callback function */
 				(void*)0,
 				ESP_TIMER_TASK,
-				"second timer"
+				"seconds timer"
 	};
 	esp_timer_create(&periodic_Second_timer_args, &periodic_Second_timer);
 	esp_timer_start_periodic(periodic_Second_timer, (int64_t)1000 * 1000);
@@ -188,6 +291,7 @@ void setup()
 	}
 	// clear the button buffer
 	CRotaryDialButton::clear();
+	// leave the intro screen up for 4 seconds or until a button is pressed or dial rotated
 	for (int cnt = 0; cnt < 400; ++cnt) {
 		if (ReadButton() != BTN_NONE) {
 			break;
@@ -198,9 +302,10 @@ void setup()
 	gpio_set_direction((gpio_num_t)PTT_PORT, GPIO_MODE_OUTPUT);
 	gpio_set_level((gpio_num_t)PTT_PORT, 1);
 	ClearScreen();
-	xTaskCreate(TaskRunRadioFunction, "FOXRADIO", 10000, NULL, 1, &TaskRunRadio);
+	// start this one first
+	xTaskCreate(TaskRunTransmit, "XMITFOX", 20000, NULL, 1, &TaskRunTransmitHandle);
+	xTaskCreate(TaskRunRadio, "FOXRADIO", 20000, NULL, 1, &TaskRunRadioHandle);
 	ResetDimTimer();
-	//xTaskCreatePinnedToCore(TaskRunRadioFunction, "FOXRADIO", 10000, NULL, 1, &TaskRunRadio, xPortGetCoreID());
 }
 
 // check and handle the rotary dial type
@@ -297,11 +402,11 @@ void loop()
 	static bool didsomething = false;
 	static bool bLastSettingsMode = false;
 
-	didsomething = bSettingsMode ? HandleMenus() : HandleRunMode();
-	if (bSettingsMode && !bLastSettingsMode) {
+	didsomething = g_bSettingsMode ? HandleMenus() : HandleRunMode();
+	if (g_bSettingsMode && !bLastSettingsMode) {
 		memcpy(&SystemInfoSaved, &SystemInfo, sizeof(SystemInfo));
 	}
-	if (!bSettingsMode && bLastSettingsMode) {
+	if (!g_bSettingsMode && bLastSettingsMode) {
 		if (memcmp(&SystemInfoSaved, &SystemInfo, sizeof(SystemInfo))) {
 			// make sure that the lcd dim is less than the bright
 			if (SystemInfo.nDisplayDimValue > SystemInfo.nDisplayBrightness)
@@ -309,7 +414,7 @@ void loop()
 			SaveLoadSettings(true);
 		}
 	}
-	bLastSettingsMode = bSettingsMode;
+	bLastSettingsMode = g_bSettingsMode;
 	if (SystemInfo.bRunWebServer) {
 		server.handleClient();
 	}
@@ -319,12 +424,13 @@ void loop()
 		delay(1);
 	}
 	// show battery level if on
-	if (SystemInfo.bShowBatteryLevel && !bSettingsMode) {
+	if (SystemInfo.bShowBatteryLevel && !g_bSettingsMode) {
 		int raw;
 		ReadBattery(&raw);
 		//Serial.println(String("bat:") + String(raw));
 		ShowBattery(NULL);
 	}
+	CheckDTMF();
 }
 
 // do something from the menu depending on the button argument
@@ -869,7 +975,7 @@ bool HandleMenus()
 		break;
 	case BTN_LONG:
 		ClearScreen();
-		bSettingsMode = false;
+		g_bSettingsMode = false;
 		bMenuChanged = true;
 		break;
 	default:
@@ -909,7 +1015,7 @@ bool HandleRunMode()
 		break;
 	case BTN_LONG:
 		ClearScreen();
-		bSettingsMode = true;
+		g_bSettingsMode = true;
 		break;
 	case BTN_B0_CLICK:
 		// handle on board button 0
@@ -2216,4 +2322,257 @@ void GetFileNamesFromSD(std::vector<String>& FileNames, String ext, String dir)
 		bSdCardValid = false;
 	}
 	return;
+}
+#if 0
+void loop() {
+	// use this to time the pause
+	static unsigned long endPauseTime = 0;
+	// this times the xmit loop
+	static unsigned long endXmit = 0;
+	// see if the xmit flag was changed
+	static bool bOldXmit = false;
+	if (bOldXmit != bXmit) {
+		bOldXmit = bXmit;
+		if (bXmit)
+			endPauseTime = millis();
+	}
+	CheckDTMF();
+
+	if ((endPauseTime == 0) || (millis() >= endPauseTime)) {
+		//Serial.println("ending pause");
+		// set the end xmit time
+		endXmit = millis() + (unsigned long)txTime * 1000;
+		// keep sending until the time is expired
+		while (bXmit && millis() < endXmit) {
+			// Serial.println(String("Transmitting Pause: ") + String(pauseTime) + " mSec: " + String(endPauseTime) + " millis()=" + String(millis()));
+			//Serial.println("tx on");
+			digitalWrite(PTT, LOW);
+			delay(500);    // Wait 0.5 Sec for RF module to start up
+
+			// iterate over the notes of the melody.
+			// Remember, the array is twice the number of notes (notes + durations)
+			for (int thisNote = 0; thisNote < notes * 2; thisNote = thisNote + 2) {
+				if (millis() >= endXmit)
+					break;
+				// calculates the duration of each note
+				divider = melody[thisNote + 1];
+				if (divider > 0) {
+					// regular note, just proceed
+					noteDuration = (wholenote) / divider;
+				}
+				else if (divider < 0) {
+					// dotted notes are represented with negative durations!!
+					noteDuration = (wholenote) / abs(divider);
+					noteDuration *= 1.5; // increases the duration in half for dotted notes
+				}
+				// we only play the note for 90% of the duration, leaving 10% as a pause
+				ledcWriteTone(1, melody[thisNote]);
+				delay(noteDuration * 0.9);
+				ledcWriteTone(1, 0);
+				delay(noteDuration * 0.1);
+				// Wait for the special duration before playing the next note.
+				//delay(noteDuration);
+				// stop the waveform generation before the next note.
+				//noTone(BUZZER_PIN);
+			}
+			delay(500);  // 0.5 SEC pause between melody and beaconstring for better hearing between melody and morse code
+			for (int i = 0; i < sizeof(SystemInfo.cBeaconString); i++) {
+				if (millis() >= endXmit)
+					break;
+				if (SystemInfo.cBeaconString[i] == '\0')
+					break;
+				sendLetter(SystemInfo.cBeaconString[i]);
+			}
+			for (int i = 0; i < sizeof(SystemInfo.cRadioID); i++) {
+				if (millis() >= endXmit)
+					break;
+				if (SystemInfo.cRadioID[i] == '\0')
+					break;
+				sendLetter(SystemInfo.cRadioID[i]);
+			}
+		}
+		//Serial.println("tx off");
+		digitalWrite(PTT, HIGH);  // Set RF module into RX state
+		//Serial.println("starting pause");
+		// save the time after we ran this so can pause that many seconds
+		endPauseTime = millis() + (unsigned long)1000 * pauseTime;
+	}
+}
+#endif
+
+// check DTMF commands
+void CheckDTMF()
+{
+	uint8_t   tones;
+	char      button;
+	// detect tone
+	tones = dtmf.detect();
+
+	// if valid tone was found, proof for validity
+	button = dtmf.tone2char(tones);
+	if (button > 0)
+	{
+		Serial.print("Detected tone...");
+		// measure 4 times, result of each measurement should be always the same 
+		// time need for this process: 80ms, so the tone must be present at least 100ms to be valid
+		tones |= dtmf.detect() | dtmf.detect() | dtmf.detect();
+
+		switch (dtmf.tone2char(tones)) {
+		case '1':// Number 1 - Start Loop
+			digitalWrite(Relay, LOW);
+			digitalWrite(PTT, LOW);
+			delay(1500);
+			sendLetter('R');
+			digitalWrite(PTT, HIGH);
+			SystemInfo.bXmit = true;        // set the flag to ENABLE transmissions
+			break;
+
+		case '2':// Number 2 - LOW Power Mode - No Loop           
+			digitalWrite(PTT, LOW);
+			delay(1500);
+			sendLetter('R');
+			digitalWrite(PTT, HIGH);
+			digitalWrite(Relay, LOW);
+			SystemInfo.bXmit = false;
+			break;
+
+		case '3':// Number 3 - High Power Mode
+			digitalWrite(Relay, HIGH);
+			digitalWrite(PTT, LOW);
+			delay(1500);
+			sendLetter('R');
+			digitalWrite(PTT, HIGH);
+			SystemInfo.bXmit = true;
+			break;
+
+		default:     // any other number, turn off transmissions - send a short letter to confirm receive
+			digitalWrite(PTT, LOW);
+			delay(1500);
+			sendLetter('R');
+			digitalWrite(PTT, HIGH);
+			SystemInfo.bXmit = false;    // set the flag to DISABLE transmissions
+			break;
+		}
+	}
+}
+
+// Functions
+void sendLetter(char c) {
+	const char* morseCodeLetter[] = {
+	  ".-",       // A
+	  "-...",     // B
+	  "-.-.",     // C
+	  "-..",      // D
+	  ".",        // E
+	  "..-.",     // F
+	  "--.",      // G
+	  "....",     // H
+	  "..",       // I
+	  ".---",     // J
+	  "-.-",      // K
+	  ".-..",     // L
+	  "--",       // M
+	  "-.",       // N
+	  "---",      // O
+	  ".--.",     // P
+	  "--.-",     // Q
+	  ".-.",      // R
+	  "...",      // S
+	  "-",        // T
+	  "..-",      // U
+	  "...-",     // V
+	  ".--",      // W
+	  "-..-",     // X
+	  "-.--",     // Y
+	  "--..",     // Z
+	};
+	const char* morseCodeDigit[] = {
+	  "-----",    // 0
+	  ".----",    // 1
+	  "..---",    // 2
+	  "...--",    // 3
+	  "....-",    // 4
+	  ".....",    // 5
+	  "-....",    // 6
+	  "--...",    // 7
+	  "---..",    // 8
+	  "----.",    // 9
+	};
+
+	c = toupper(c);
+	char const* pm = NULL;
+	if (isalpha(c)) {
+		pm = morseCodeLetter[c - 'A'];
+	}
+	else if (isdigit(c)) {
+		pm = morseCodeDigit[c - '0'];
+	}
+	else if (c == '/') {
+		pm = "-..-.";
+	}
+	else if (c == ' ') {
+		pm = " ";
+	}
+	if (pm)
+		sendMorseCode(pm);
+}
+
+void sendMorseCode(const char* tokens) {
+	int i;
+	// Serial.println("Morse: " + String(tokens));
+	for (i = 0; tokens[i]; ++i) {
+		switch (tokens[i]) {
+		case '-':
+			sendDash();
+			break;
+		case '.':
+			sendDot();
+			break;
+		case ' ':
+			sendEndOfWord();
+			break;
+		}
+	}
+	morseOutputOff(2);
+	//   Serial.print(" ");
+}
+
+void sendEndOfWord() {
+	morseOutputOff(4);
+	//   Serial.print("  ");
+}
+
+// basic functions - Morse code concepts
+void sendDot() {
+	ledcWriteTone(1, BUZZER_FREQUENCY);
+	morseOutputOn(1);
+	ledcWriteTone(1, 0);
+	morseOutputOff(1);
+	//   Serial.print(".");
+}
+
+void sendDash() {
+	ledcWriteTone(1, BUZZER_FREQUENCY);
+	morseOutputOn(3);
+	ledcWriteTone(1, 0);
+	morseOutputOff(1);
+	//   Serial.print("-");
+}
+
+// Low level functions - how the actions are accomplished
+// n = number of intervals
+// SystemInfo.nMorseInterval is a fixed length of time determined at start, for example 200 milliseconds
+void morseOutputOn(int n) {
+	digitalWrite(LED_BUILTIN, HIGH);
+	//   example: morseOutputOn(1) means turn output on and keep it on for 1 interval
+	//            morseOutputOn(3) means turn output on and keep it on for 3 intervals
+	//
+	//   digitalWrite(morseOutput, HIGH);
+	delay(n * SystemInfo.nMorseInterval);
+}
+
+void morseOutputOff(int n) {
+	digitalWrite(LED_BUILTIN, LOW);
+	//   digitalWrite(morseOutput, LOW);
+	delay(n * SystemInfo.nMorseInterval);
 }

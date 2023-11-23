@@ -36,6 +36,9 @@
     <ClInclude Include="..\libraries\TFT_eSPI\Extensions\Sprite.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="pitches.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="WebServerX.cpp">

@@ -1,6 +1,6 @@
 #pragma once
 
-const char* FOX_Version = "0.01";
+const char* FOX_Version = "0.02";
 
 const char* StartFileName = "START.FOX";
 // some config things
@@ -12,8 +12,6 @@ const char* StartFileName = "START.FOX";
 
 // 1 for standard SD library, 0 for the new exFat library which allows > 32GB SD cards
 #define USE_STANDARD_SD 0
-// reverse A and B for some PCB or wired versions, this is set for rev 2 PCB, 0 for older PCB, and 0 for rev 3 pcb
-#define ROTARY_DIAL_REVERSE 0
 // The push button setting, set to 1 for onboard PS version 1.4
 #define PUSH_BUTTON_PORT 0
 
@@ -176,10 +174,15 @@ typedef struct SYSTEM_INFO {
     bool bRunWebServer = false;                 // run the web server
     // radio settings
     char cRadioID[21] = "KK7JTE";               // ID to transmit
-    int nTxTime = 10;                           // tx pause
+    char cBeaconString[31] = "BEACON";          // beacon string to send
+    char cSerialNumber[13] = "G2023XX";         // fox serial number
+	int nTxTime = 2 * 60;                       // tx time in seconds
+	int nTxPause = 3 * 60;                      // tx pause time in seconds
     bool bRfPowerHi = false;                    // rf power control
     int nFrequency = 140;                       // radio frequency
     char cAudioFile[31] = "";                   // choose the audio file
+    int nMorseInterval = 200;                   // mSec morse timer
+    bool bXmit = false;                         // if xmit = false, don't transmit
     //
 };
 RTC_DATA_ATTR SYSTEM_INFO SystemInfo;
@@ -188,7 +191,7 @@ RTC_DATA_ATTR SYSTEM_INFO SystemInfo;
 bool bSdCardValid = false;              // set to true when card is found
 bool bControllerReboot = false;         // set this when controllers or led count changed
 // settings TODO: this should be changed to a semaphore
-volatile bool bSettingsMode = false;    // set true when settings are displayed
+volatile bool g_bSettingsMode = false;    // set true when settings are displayed
 
 // esp timers
 // seconds before dimming the display
@@ -355,11 +358,14 @@ MenuItem EepromMenu[] = {
 };
 MenuItem RadioMenu[] = {
     {eExit,"Radio Settings"},
-    {eTextInt,"TX Time: %d Min",GetIntegerValue,&SystemInfo.nTxTime,1,60},
+    {eBool,"XMIT: %s",ToggleBool,&SystemInfo.bXmit,0,0,0,"On","Off"},
+    {eTextInt,"TX Send Time: %d Sec",GetIntegerValue,&SystemInfo.nTxTime,1,300},
+    {eTextInt,"TX Pause Time: %d Sec",GetIntegerValue,&SystemInfo.nTxPause,1,60},
     {eBool,"RF Power: %s",ToggleBool,&SystemInfo.bRfPowerHi,0,0,0,"High","Low"},
     {eTextInt,"Frequency: %d MHz",GetIntegerValue,&SystemInfo.nFrequency,137,174},
 	{eEditText,"Call Sign: %s",GetText,SystemInfo.cRadioID,1,sizeof(SystemInfo.cRadioID) - 1},
     {eEditText,"Audio: %s",GetAudioFile,SystemInfo.cAudioFile,1,sizeof(SystemInfo.cAudioFile) - 1},
+    {eTextInt,"Morse Interval: %d mS",GetIntegerValue,&SystemInfo.nMorseInterval,10,500},
     {eExit,PreviousMenu},
     // make sure this one is last
     {eTerminate}
@@ -401,8 +407,11 @@ struct TEXTLINES {
 };
 std::vector<struct TEXTLINES> TextLines;
 
-// task for running the radio
-TaskHandle_t TaskRunRadio;
+// task handles for running the radio
+TaskHandle_t TaskRunRadioHandle;
+TaskHandle_t TaskRunTransmitHandle;
+// the tx task puts the current operation in here
+
 // enums for what to fill the web page dropdowns with
 enum WEB_PAGE_DROP_DOWNS {
     WPDD_FILES,     // image file types

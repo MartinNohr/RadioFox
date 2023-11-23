@@ -7,10 +7,11 @@ public:
 		BTN_NONE = 0, BTN_CLICK, BTN_LONGPRESS,
         BTN0_CLICK, BTN0_LONGPRESS,
         BTN1_CLICK, BTN1_LONGPRESS,
-        BTN2_LONGPRESS,
+        BTN2_LONGPRESS,     // BTN0 + BTN1
         BTN_LEFT, BTN_RIGHT,
         BTN_LEFT_LONG, BTN_RIGHT_LONG,
         BTN_LEFT_RIGHT_LONG,
+        BTN1DIAL_LONGPRESS, // BTN1 + DIAL
 	};
     struct ROTARY_DIAL_SETTINGS {
         int m_nLongPressTimerValue; // mS for long press
@@ -86,28 +87,38 @@ private:
                         btn = BTN2_LONGPRESS;
                     }
                 }
-                // check for both left and right T4 btn's down
-                if ((m_nWhichButton == 3 && !gpio_get_level(gpioNums[4])) || (m_nWhichButton == 4 && !gpio_get_level(gpioNums[3]))) {
+                // check for both btn1 and the dial PCB down
+                if ((m_nWhichButton == 0 && !gpio_get_level(gpioNums[2])) || (m_nWhichButton == 2 && !gpio_get_level(gpioNums[0]))) {
                     // make sure both buttons are still down
                     delay(1000);
-                    if (!gpio_get_level(gpioNums[4]) && !gpio_get_level(gpioNums[3])) {
-                        btn = BTN_LEFT_RIGHT_LONG;
+                    if (!gpio_get_level(gpioNums[2]) && !gpio_get_level(gpioNums[0])) {
+                        btn = BTN1DIAL_LONGPRESS;
                     }
                 }
-                // check for both left and center T4 btn's down
-                if ((m_nWhichButton == 3 && !gpio_get_level(gpioNums[0])) || (m_nWhichButton == 0 && !gpio_get_level(gpioNums[3]))) {
-                    // make sure both buttons are still down
-                    delay(1000);
-                    if (!gpio_get_level(gpioNums[0]) && !gpio_get_level(gpioNums[3])) {
-                        btn = BTN0_CLICK;
+                if (gpioNums[3] != -1 && gpioNums[4] != -1) {
+                    // check for both left and right T4 btn's down
+                    if ((m_nWhichButton == 3 && !gpio_get_level(gpioNums[4])) || (m_nWhichButton == 4 && !gpio_get_level(gpioNums[3]))) {
+                        // make sure both buttons are still down
+                        delay(1000);
+                        if (!gpio_get_level(gpioNums[4]) && !gpio_get_level(gpioNums[3])) {
+                            btn = BTN_LEFT_RIGHT_LONG;
+                        }
                     }
-                }
-                // check for both right and center T4 btn's down
-                if ((m_nWhichButton == 4 && !gpio_get_level(gpioNums[0])) || (m_nWhichButton == 0 && !gpio_get_level(gpioNums[4]))) {
-                    // make sure both buttons are still down
-                    delay(1000);
-                    if (!gpio_get_level(gpioNums[0]) && !gpio_get_level(gpioNums[4])) {
-                        btn = BTN1_CLICK;
+                    // check for both left and center T4 btn's down
+                    if ((m_nWhichButton == 3 && !gpio_get_level(gpioNums[0])) || (m_nWhichButton == 0 && !gpio_get_level(gpioNums[3]))) {
+                        // make sure both buttons are still down
+                        delay(1000);
+                        if (!gpio_get_level(gpioNums[0]) && !gpio_get_level(gpioNums[3])) {
+                            btn = BTN0_CLICK;
+                        }
+                    }
+                    // check for both right and center T4 btn's down
+                    if ((m_nWhichButton == 4 && !gpio_get_level(gpioNums[0])) || (m_nWhichButton == 0 && !gpio_get_level(gpioNums[4]))) {
+                        // make sure both buttons are still down
+                        delay(1000);
+                        if (!gpio_get_level(gpioNums[0]) && !gpio_get_level(gpioNums[4])) {
+                            btn = BTN1_CLICK;
+                        }
                     }
                 }
                 m_nWaitRelease = 20;
@@ -200,6 +211,7 @@ private:
 
     // public things
 public:
+    // set the alt ones to -1, they will be ignored for T1 chip
 	static void begin(gpio_num_t a, gpio_num_t b, gpio_num_t c, gpio_num_t btn0, gpio_num_t btn1, gpio_num_t altLeft, gpio_num_t altRight, ROTARY_DIAL_SETTINGS* ps) {
         // first time, set things up
         pSettings = ps;
@@ -266,6 +278,7 @@ public:
             gpio_set_pull_mode(gpioAltRight, GPIO_PULLUP_ONLY);
             attachInterruptArg(gpioAltRight, clickHandler, (void*)"3", FALLING);
         }
+        encoder.setFilter(1023);
     }
     // see what the next button is, return None if queue empty
     static Button peek()
