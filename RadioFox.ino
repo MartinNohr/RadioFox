@@ -942,7 +942,6 @@ bool UpMenuLevel(bool gotoMain)
 // handle the menus
 bool HandleMenus()
 {
-	LockDisplay(true);
 	if (bMenuChanged) {
 		ShowMenu(MenuStack.top()->menu);
 		bMenuChanged = false;
@@ -1015,6 +1014,7 @@ bool HandleMenus()
 	case BTN_LONG:
 		ClearScreen();
 		g_bSettingsMode = false;
+		UnLockDisplay();
 		bMenuChanged = true;
 		break;
 	default:
@@ -1026,7 +1026,6 @@ bool HandleMenus()
 		bMenuChanged = true;
 		//Serial.println("menu changed");
 	}
-	UnLockDisplay();
 	return didsomething;
 }
 
@@ -1047,6 +1046,7 @@ bool HandleRunMode()
 		break;
 	case BTN_LONG:
 		g_bSettingsMode = true;
+		LockDisplay(true);
 		break;
 	case BTN_B0_CLICK:
 		// handle on board button 0
