@@ -94,6 +94,8 @@ void TaskRunTransmit(void* parameter)
 			xTaskNotify(TaskRunRadioHandle, 1, eSetValueWithOverwrite);
 		}
 		vTaskDelay(1000 / portTICK_PERIOD_MS);
+		//int freestack = uxTaskGetStackHighWaterMark(NULL);
+		//Serial.println(String("xmit high water: ") + freestack);
 	}
 }
 
@@ -145,17 +147,19 @@ void TaskRunRadio(void* parameter)
 				cStatusText = "Pause";
 			DisplayLine(0, String(cStatusText) + ": " + (secondsLeft / 60) + " Min " + (secondsLeft % 60) + " Sec");
 			DisplayLine(1, String("Cycles: ") + cycleCount);
-			if (bOldSettingsMode) {
-				int lineNo = 2;
-				DisplayLine(lineNo++, String("Call Sign: ") + SystemInfo.cRadioID, SystemInfo.menuTextColor);
-				DisplayLine(lineNo++, String(SystemInfo.nFrequency) + " MHz " + (SystemInfo.bRfPowerHi ? "High" : "Low"), SystemInfo.menuTextColor);
-				DisplayLine(lineNo++, String("Audio: ") + SystemInfo.cAudioFile, SystemInfo.menuTextColor);
-			}
+			//if (bOldSettingsMode) {
+			//	int lineNo = 2;
+			//	DisplayLine(lineNo++, String("Call Sign: ") + SystemInfo.cRadioID, SystemInfo.menuTextColor);
+			//	DisplayLine(lineNo++, String(SystemInfo.nFrequency) + " MHz " + (SystemInfo.bRfPowerHi ? "High" : "Low"), SystemInfo.menuTextColor);
+			//	DisplayLine(lineNo++, String("Audio: ") + SystemInfo.cAudioFile, SystemInfo.menuTextColor);
+			//}
 		}
 		if (secondsLeft)
 			--secondsLeft;
 		bOldSettingsMode = g_bSettingsMode;
 		vTaskDelay(1000 / portTICK_PERIOD_MS);
+		//int freestack = uxTaskGetStackHighWaterMark(NULL);
+		//Serial.println(String("radio high water: ") + freestack);
 	}
 }
 
@@ -303,8 +307,8 @@ void setup()
 	gpio_set_level((gpio_num_t)PTT_PORT, 1);
 	ClearScreen();
 	// start this one first
-	xTaskCreate(TaskRunTransmit, "XMITFOX", 20000, NULL, 1, &TaskRunTransmitHandle);
-	xTaskCreate(TaskRunRadio, "FOXRADIO", 20000, NULL, 1, &TaskRunRadioHandle);
+	xTaskCreate(TaskRunTransmit, "XMITFOX", 4000, NULL, 1, &TaskRunTransmitHandle);
+	xTaskCreate(TaskRunRadio, "FOXRADIO", 4000, NULL, 2, &TaskRunRadioHandle);
 	ResetDimTimer();
 }
 
@@ -428,9 +432,9 @@ void loop()
 		int raw;
 		ReadBattery(&raw);
 		//Serial.println(String("bat:") + String(raw));
-		ShowBattery(NULL);
+		//ShowBattery(NULL);
 	}
-	CheckDTMF();
+//	CheckDTMF();
 }
 
 // do something from the menu depending on the button argument
@@ -997,13 +1001,6 @@ bool HandleRunMode()
 	bool didsomething = true;
 	int maxMenuLine = nMenuLineCount - (SystemInfo.bShowBatteryLevel ? 2 : 1);
 	CRotaryDialButton::Button button = ReadButton();
-	int btnRepeatCount = 1;
-	switch (button) {
-	case BTN_LEFT_LONG:
-	case BTN_RIGHT_LONG:
-		btnRepeatCount = 5;
-		break;
-	}
 	switch (button) {
 	case BTN_SELECT:
 		break;
@@ -1029,6 +1026,7 @@ bool HandleRunMode()
 		break;
 	default:
 		didsomething = false;
+		taskYIELD();
 		break;
 	}
 	if (bRedraw) {
