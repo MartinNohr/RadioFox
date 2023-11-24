@@ -67,16 +67,23 @@ TFT_eSprite LineSprite = TFT_eSprite(&tft);  // Create Sprite object "LineSprite
 TFT_eSprite BatterySprite = TFT_eSprite(&tft);  // Create Sprite object "BatterySprite" with pointer to "tft" object
 
 // lock the display to prevent others from using it, if busy it will wait
-void LockDisplay()
+// bWait true to wait for free
+// returns lock status
+bool LockDisplay(bool bWait)
 {
 	// take the mutex
 	if (MutexDisplayHandle) {
-		if (xSemaphoreTake(MutexDisplayHandle, portMAX_DELAY) != pdTRUE) {
-			return;
+		if (bWait) {
+			if (xSemaphoreTake(MutexDisplayHandle, portMAX_DELAY) != pdTRUE) {
+				return true;
+			}
+		}
+		else {
+			return xSemaphoreTake(MutexDisplayHandle, 0);
 		}
 	}
 	else {
-		return;
+		return false;
 	}
 }
 
@@ -134,54 +141,52 @@ void TaskRunRadio(void* parameter)
 		static const char* cStatusText = NULL;
 		static uint32_t status = 0;
 		static bool bTransmitting = false;
-		static bool bOldSettingsMode = true;
 		static int secondsLeft = 0;
 		static int cycleCount = 0;
 
-		if (!g_bSettingsMode) {
-			if (secondsLeft <= 0) {
-				bTransmitting = !bTransmitting;
-				if (bTransmitting) {
-					// tell xmitter to start
-					xTaskNotifyGive(TaskRunTransmitHandle);
-					vTaskDelay(5 / portTICK_PERIOD_MS);
-					cycleCount++;
-				}
-				else {
-					// tell the xmitter to stop
-					xTaskNotify(TaskRunTransmitHandle, 1, eSetValueWithOverwrite);
-					// wait for the xmitter to finish
-					while ((status = ulTaskNotifyTake(pdTRUE, 0)) != 1) {
-						if (status > 1) {
-							cStatusText = (const char*)status;
-						}
-						DisplayLine(0, String(cStatusText) + ": Stopping");
-						vTaskDelay(1000 / portTICK_PERIOD_MS);
+		if (secondsLeft <= 0) {
+			bTransmitting = !bTransmitting;
+			if (bTransmitting) {
+				// tell xmitter to start
+				xTaskNotifyGive(TaskRunTransmitHandle);
+				vTaskDelay(5 / portTICK_PERIOD_MS);
+				cycleCount++;
+			}
+			else {
+				// tell the xmitter to stop
+				xTaskNotify(TaskRunTransmitHandle, 1, eSetValueWithOverwrite);
+				// wait for the xmitter to finish
+				while ((status = ulTaskNotifyTake(pdTRUE, 0)) != 1) {
+					if (status > 1) {
+						cStatusText = (const char*)status;
 					}
+					if (LockDisplay(false)) {
+						DisplayLine(0, String(cStatusText) + ": Stopping");
+						UnLockDisplay();
+					}
+					vTaskDelay(1000 / portTICK_PERIOD_MS);
 				}
-				secondsLeft = bTransmitting ? SystemInfo.nTxTime : SystemInfo.nTxPause;
 			}
-			status = ulTaskNotifyTake(pdTRUE, 0);
-			// see if this is a string pointer
-			if (status > 1) {
-				cStatusText = (const char*)status;
-			}
-			if (!bTransmitting)
-				cStatusText = "Pause";
-			LockDisplay();
-			DisplayLine(0, String(cStatusText) + ": " + (secondsLeft / 60) + " Min " + (secondsLeft % 60) + " Sec");
-			DisplayLine(1, String("Cycles: ") + cycleCount);
-			if (bOldSettingsMode) {
-				int lineNo = 2;
-				DisplayLine(lineNo++, String("Call Sign: ") + SystemInfo.cRadioID, SystemInfo.menuTextColor);
-				DisplayLine(lineNo++, String(SystemInfo.nFrequency) + " MHz " + (SystemInfo.bRfPowerHi ? "High" : "Low"), SystemInfo.menuTextColor);
-				DisplayLine(lineNo++, String("Audio: ") + SystemInfo.cAudioFile, SystemInfo.menuTextColor);
-			}
+			secondsLeft = bTransmitting ? SystemInfo.nTxTime : SystemInfo.nTxPause;
+		}
+		status = ulTaskNotifyTake(pdTRUE, 0);
+		// see if this is a string pointer
+		if (status > 1) {
+			cStatusText = (const char*)status;
+		}
+		if (!bTransmitting)
+			cStatusText = "Pause";
+		if (LockDisplay(false)) {
+			int lineNo = 0;
+			DisplayLine(lineNo++, String(cStatusText) + ": " + (secondsLeft / 60) + " Min " + (secondsLeft % 60) + " Sec");
+			DisplayLine(lineNo++, String("Cycles: ") + cycleCount);
+			DisplayLine(lineNo++, String("Call Sign: ") + SystemInfo.cRadioID, SystemInfo.menuTextColor);
+			DisplayLine(lineNo++, String(SystemInfo.nFrequency) + " MHz " + (SystemInfo.bRfPowerHi ? "High" : "Low"), SystemInfo.menuTextColor);
+			DisplayLine(lineNo++, String("Audio: ") + SystemInfo.cAudioFile, SystemInfo.menuTextColor);
 			UnLockDisplay();
 		}
 		if (secondsLeft)
 			--secondsLeft;
-		bOldSettingsMode = g_bSettingsMode;
 		vTaskDelay(1000 / portTICK_PERIOD_MS);
 		//int freestack = uxTaskGetStackHighWaterMark(NULL);
 		//Serial.println(String("radio high water: ") + freestack);
@@ -937,6 +942,7 @@ bool UpMenuLevel(bool gotoMain)
 // handle the menus
 bool HandleMenus()
 {
+	LockDisplay(true);
 	if (bMenuChanged) {
 		ShowMenu(MenuStack.top()->menu);
 		bMenuChanged = false;
@@ -1020,13 +1026,13 @@ bool HandleMenus()
 		bMenuChanged = true;
 		//Serial.println("menu changed");
 	}
+	UnLockDisplay();
 	return didsomething;
 }
 
 // handle keys in run mode
 bool HandleRunMode()
 {
-	bool bRedraw = false;
 	bool didsomething = true;
 	int maxMenuLine = nMenuLineCount - (SystemInfo.bShowBatteryLevel ? 2 : 1);
 	CRotaryDialButton::Button button = ReadButton();
@@ -1040,7 +1046,6 @@ bool HandleRunMode()
 	case BTN_LEFT:
 		break;
 	case BTN_LONG:
-		ClearScreen();
 		g_bSettingsMode = true;
 		break;
 	case BTN_B0_CLICK:
@@ -1057,9 +1062,6 @@ bool HandleRunMode()
 		didsomething = false;
 		taskYIELD();
 		break;
-	}
-	if (bRedraw) {
-		ClearScreen();
 	}
 	return didsomething;
 }
@@ -1846,7 +1848,7 @@ int ReadBattery(int* raw)
 // otherwise it shows the current raw integer readings of the battery sensor
 void ShowBattery(MenuItem * menu)
 {
-	LockDisplay();
+	LockDisplay(true);
 	static int percent = 0, raw = 0;
 	if (menu)
 		ClearScreen();
