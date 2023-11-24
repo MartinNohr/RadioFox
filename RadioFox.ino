@@ -66,6 +66,29 @@ TFT_eSprite LineSprite = TFT_eSprite(&tft);  // Create Sprite object "LineSprite
 #define BATTERY_BAR_HEIGHT 5
 TFT_eSprite BatterySprite = TFT_eSprite(&tft);  // Create Sprite object "BatterySprite" with pointer to "tft" object
 
+// lock the display to prevent others from using it, if busy it will wait
+void LockDisplay()
+{
+	// take the mutex
+	if (MutexDisplayHandle) {
+		if (xSemaphoreTake(MutexDisplayHandle, portMAX_DELAY) != pdTRUE) {
+			return;
+		}
+	}
+	else {
+		return;
+	}
+}
+
+// unlock the display when you're done
+void UnLockDisplay()
+{
+	if (MutexDisplayHandle) {
+		// return the mutex so others can use the display
+		xSemaphoreGive(MutexDisplayHandle);
+	}
+}
+
 // this controls the radio sending operations
 void TaskRunTransmit(void* parameter)
 {
@@ -145,14 +168,16 @@ void TaskRunRadio(void* parameter)
 			}
 			if (!bTransmitting)
 				cStatusText = "Pause";
+			LockDisplay();
 			DisplayLine(0, String(cStatusText) + ": " + (secondsLeft / 60) + " Min " + (secondsLeft % 60) + " Sec");
 			DisplayLine(1, String("Cycles: ") + cycleCount);
-			//if (bOldSettingsMode) {
-			//	int lineNo = 2;
-			//	DisplayLine(lineNo++, String("Call Sign: ") + SystemInfo.cRadioID, SystemInfo.menuTextColor);
-			//	DisplayLine(lineNo++, String(SystemInfo.nFrequency) + " MHz " + (SystemInfo.bRfPowerHi ? "High" : "Low"), SystemInfo.menuTextColor);
-			//	DisplayLine(lineNo++, String("Audio: ") + SystemInfo.cAudioFile, SystemInfo.menuTextColor);
-			//}
+			if (bOldSettingsMode) {
+				int lineNo = 2;
+				DisplayLine(lineNo++, String("Call Sign: ") + SystemInfo.cRadioID, SystemInfo.menuTextColor);
+				DisplayLine(lineNo++, String(SystemInfo.nFrequency) + " MHz " + (SystemInfo.bRfPowerHi ? "High" : "Low"), SystemInfo.menuTextColor);
+				DisplayLine(lineNo++, String("Audio: ") + SystemInfo.cAudioFile, SystemInfo.menuTextColor);
+			}
+			UnLockDisplay();
 		}
 		if (secondsLeft)
 			--secondsLeft;
@@ -306,9 +331,13 @@ void setup()
 	gpio_set_direction((gpio_num_t)PTT_PORT, GPIO_MODE_OUTPUT);
 	gpio_set_level((gpio_num_t)PTT_PORT, 1);
 	ClearScreen();
-	// start this one first
+	// create the display mutex
+	MutexDisplayHandle = xSemaphoreCreateMutex();
+	// start the transmit and management tasks
+	// TODO: could these be combined into one task?
 	xTaskCreate(TaskRunTransmit, "XMITFOX", 4000, NULL, 1, &TaskRunTransmitHandle);
 	xTaskCreate(TaskRunRadio, "FOXRADIO", 4000, NULL, 2, &TaskRunRadioHandle);
+
 	ResetDimTimer();
 }
 
@@ -432,7 +461,7 @@ void loop()
 		int raw;
 		ReadBattery(&raw);
 		//Serial.println(String("bat:") + String(raw));
-		//ShowBattery(NULL);
+		ShowBattery(NULL);
 	}
 //	CheckDTMF();
 }
@@ -1817,6 +1846,7 @@ int ReadBattery(int* raw)
 // otherwise it shows the current raw integer readings of the battery sensor
 void ShowBattery(MenuItem * menu)
 {
+	LockDisplay();
 	static int percent = 0, raw = 0;
 	if (menu)
 		ClearScreen();
@@ -1851,6 +1881,7 @@ void ShowBattery(MenuItem * menu)
 		else
 			break;
 	}
+	UnLockDisplay();
 }
 
 // set the screen rotation to the correct value, 0-3, allocate the screen memory

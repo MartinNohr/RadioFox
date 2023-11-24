@@ -410,7 +410,8 @@ std::vector<struct TEXTLINES> TextLines;
 // task handles for running the radio
 TaskHandle_t TaskRunRadioHandle;
 TaskHandle_t TaskRunTransmitHandle;
-// the tx task puts the current operation in here
+// a mutex to control access to writing on the display, the TFT driver is not re-entrant
+SemaphoreHandle_t MutexDisplayHandle;
 
 // enums for what to fill the web page dropdowns with
 enum WEB_PAGE_DROP_DOWNS {
