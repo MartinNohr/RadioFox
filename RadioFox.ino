@@ -42,7 +42,7 @@ int divider = 0, noteDuration = 0;
 
 #define HL 2                 // Pin to control TX Power, not conncted -> high power, connect to GND -> Low power
 #define BUZZER_PIN 11        // send music and cw out this pin
-#define PTT  6               // Pin to control TX
+//#define PTT  6               // Pin to control TX
 #define BUZZER_FREQUENCY 700  // cw pitch
 #define Relay 12
 
@@ -56,6 +56,9 @@ void periodic_Second_timer_callback(void* arg)
 		}
 	}
 }
+
+// tone generator
+const int toneChannel = 2;
 
 constexpr int TFT_ENABLE = 4;
 // use these to control the LCD brightness
@@ -110,11 +113,12 @@ void TaskRunTransmit(void* parameter)
 				gpio_set_level((gpio_num_t)PTT_PORT, 0);
 			xTaskNotify(TaskRunRadioHandle, (uint32_t)"TX Start", eSetValueWithOverwrite);
 			// wait for PTT to take effect
-			vTaskDelay(1000 / portTICK_PERIOD_MS);
+			vTaskDelay(500 / portTICK_PERIOD_MS);
 			while (ulTaskNotifyTake(pdTRUE, 0) == 0) {
 				// do all the send operations
-				xTaskNotify(TaskRunRadioHandle, (uint32_t)"Audio", eSetValueWithOverwrite);
-				vTaskDelay(3000 / portTICK_PERIOD_MS);
+				xTaskNotify(TaskRunRadioHandle, (uint32_t)"Music", eSetValueWithOverwrite);
+				SendMusic();
+				vTaskDelay(500 / portTICK_PERIOD_MS);
 				xTaskNotify(TaskRunRadioHandle, (uint32_t)"Morse", eSetValueWithOverwrite);
 				vTaskDelay(2000 / portTICK_PERIOD_MS);
 			}
@@ -204,9 +208,9 @@ void setup()
 		delay(10);
 	}
 	// start the tone generator
-	ledcSetup(1, 0, 8);
-	ledcAttachPin(12, 1);
-	ledcWrite(1, 127);
+	ledcSetup(toneChannel, 0, 8);
+	ledcAttachPin(12, toneChannel);
+	ledcWrite(toneChannel, 127);
 	// start the DTMF detector
 	dtmf.begin(36);
 	//Serial.println("flash:" + String(ESP.getFlashChipSize()));
@@ -2362,6 +2366,35 @@ void GetFileNamesFromSD(std::vector<String>& FileNames, String ext, String dir)
 	}
 	return;
 }
+
+// Send the music
+void SendMusic()
+{
+	// iterate over the notes of the melody.
+	// Remember, the array is twice the number of notes (notes + durations)
+	for (int thisNote = 0; thisNote < notes * 2; thisNote = thisNote + 2) {
+		// calculates the duration of each note
+		divider = melody[thisNote + 1];
+		if (divider > 0) {
+			// regular note, just proceed
+			noteDuration = (wholenote) / divider;
+		}
+		else if (divider < 0) {
+			// dotted notes are represented with negative durations!!
+			noteDuration = (wholenote) / abs(divider);
+			noteDuration *= 1.5; // increases the duration in half for dotted notes
+		}
+		// we only play the note for 90% of the duration, leaving 10% as a pause
+		ledcWriteTone(toneChannel, melody[thisNote]);
+		delay(noteDuration * 0.9);
+		ledcWriteTone(toneChannel, 0);
+		delay(noteDuration * 0.1);
+		// Wait for the special duration before playing the next note.
+		//delay(noteDuration);
+		// stop the waveform generation before the next note.
+		//noTone(BUZZER_PIN);
+	}
+}
 #if 0
 void loop() {
 	// use this to time the pause
@@ -2459,36 +2492,36 @@ void CheckDTMF()
 		switch (dtmf.tone2char(tones)) {
 		case '1':// Number 1 - Start Loop
 			digitalWrite(Relay, LOW);
-			digitalWrite(PTT, LOW);
+			digitalWrite(PTT_PORT, LOW);
 			delay(1500);
 			sendLetter('R');
-			digitalWrite(PTT, HIGH);
+			digitalWrite(PTT_PORT, HIGH);
 			SystemInfo.bXmit = true;        // set the flag to ENABLE transmissions
 			break;
 
 		case '2':// Number 2 - LOW Power Mode - No Loop           
-			digitalWrite(PTT, LOW);
+			digitalWrite(PTT_PORT, LOW);
 			delay(1500);
 			sendLetter('R');
-			digitalWrite(PTT, HIGH);
+			digitalWrite(PTT_PORT, HIGH);
 			digitalWrite(Relay, LOW);
 			SystemInfo.bXmit = false;
 			break;
 
 		case '3':// Number 3 - High Power Mode
 			digitalWrite(Relay, HIGH);
-			digitalWrite(PTT, LOW);
+			digitalWrite(PTT_PORT, LOW);
 			delay(1500);
 			sendLetter('R');
-			digitalWrite(PTT, HIGH);
+			digitalWrite(PTT_PORT, HIGH);
 			SystemInfo.bXmit = true;
 			break;
 
 		default:     // any other number, turn off transmissions - send a short letter to confirm receive
-			digitalWrite(PTT, LOW);
+			digitalWrite(PTT_PORT, LOW);
 			delay(1500);
 			sendLetter('R');
-			digitalWrite(PTT, HIGH);
+			digitalWrite(PTT_PORT, HIGH);
 			SystemInfo.bXmit = false;    // set the flag to DISABLE transmissions
 			break;
 		}
@@ -2583,17 +2616,17 @@ void sendEndOfWord() {
 
 // basic functions - Morse code concepts
 void sendDot() {
-	ledcWriteTone(1, BUZZER_FREQUENCY);
+	ledcWriteTone(toneChannel, BUZZER_FREQUENCY);
 	morseOutputOn(1);
-	ledcWriteTone(1, 0);
+	ledcWriteTone(toneChannel, 0);
 	morseOutputOff(1);
 	//   Serial.print(".");
 }
 
 void sendDash() {
-	ledcWriteTone(1, BUZZER_FREQUENCY);
+	ledcWriteTone(toneChannel, BUZZER_FREQUENCY);
 	morseOutputOn(3);
-	ledcWriteTone(1, 0);
+	ledcWriteTone(toneChannel, 0);
 	morseOutputOff(1);
 	//   Serial.print("-");
 }
