@@ -119,8 +119,9 @@ void TaskRunTransmit(void* parameter)
 				xTaskNotify(TaskRunRadioHandle, (uint32_t)"Music", eSetValueWithOverwrite);
 				SendMusic();
 				vTaskDelay(500 / portTICK_PERIOD_MS);
-				xTaskNotify(TaskRunRadioHandle, (uint32_t)"Morse", eSetValueWithOverwrite);
-				vTaskDelay(2000 / portTICK_PERIOD_MS);
+				xTaskNotify(TaskRunRadioHandle, (uint32_t)"BeaconID", eSetValueWithOverwrite);
+				SendBeaconID();
+				vTaskDelay(500 / portTICK_PERIOD_MS);
 			}
 			// turn PTT off here
 			gpio_set_level((gpio_num_t)PTT_PORT, 1);
@@ -2365,6 +2366,21 @@ void GetFileNamesFromSD(std::vector<String>& FileNames, String ext, String dir)
 		bSdCardValid = false;
 	}
 	return;
+}
+
+// send the beacon and id infor
+void SendBeaconID()
+{
+	for (int i = 0; i < sizeof(SystemInfo.cBeaconString); i++) {
+		if (SystemInfo.cBeaconString[i] == '\0')
+			break;
+		sendLetter(SystemInfo.cBeaconString[i]);
+	}
+	for (int i = 0; i < sizeof(SystemInfo.cRadioID); i++) {
+		if (SystemInfo.cRadioID[i] == '\0')
+			break;
+		sendLetter(SystemInfo.cRadioID[i]);
+	}
 }
 
 // Send the music
