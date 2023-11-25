@@ -174,8 +174,9 @@ void TaskRunRadio(void* parameter)
 		if (status > 1) {
 			cStatusText = (const char*)status;
 		}
-		if (!bTransmitting)
+		if (!bTransmitting) {
 			cStatusText = "Pause";
+		}
 		if (LockDisplay(false)) {
 			int lineNo = 0;
 			DisplayLine(lineNo++, String(cStatusText) + ": " + (secondsLeft / 60) + " Min " + (secondsLeft % 60) + " Sec");
@@ -339,9 +340,8 @@ void setup()
 	// create the display mutex
 	MutexDisplayHandle = xSemaphoreCreateMutex();
 	// start the transmit and management tasks
-	// TODO: could these be combined into one task?
 	xTaskCreate(TaskRunTransmit, "XMITFOX", 4000, NULL, 1, &TaskRunTransmitHandle);
-	xTaskCreate(TaskRunRadio, "FOXRADIO", 4000, NULL, 2, &TaskRunRadioHandle);
+	xTaskCreate(TaskRunRadio, "FOXRADIO", 4000, NULL, 1, &TaskRunRadioHandle);
 
 	ResetDimTimer();
 }
@@ -439,6 +439,7 @@ void loop()
 	static SYSTEM_INFO SystemInfoSaved;
 	static bool didsomething = false;
 	static bool bLastSettingsMode = false;
+	static int oldBattery = -1;
 
 	didsomething = g_bSettingsMode ? HandleMenus() : HandleRunMode();
 	if (g_bSettingsMode && !bLastSettingsMode) {
@@ -466,7 +467,10 @@ void loop()
 		int raw;
 		ReadBattery(&raw);
 		//Serial.println(String("bat:") + String(raw));
-		ShowBattery(NULL);
+		if (raw != oldBattery) {
+			oldBattery = raw;
+			ShowBattery(NULL);
+		}
 	}
 //	CheckDTMF();
 }
@@ -1047,6 +1051,7 @@ bool HandleRunMode()
 	case BTN_LONG:
 		g_bSettingsMode = true;
 		LockDisplay(true);
+		ClearScreen();
 		break;
 	case BTN_B0_CLICK:
 		// handle on board button 0
@@ -1846,12 +1851,14 @@ int ReadBattery(int* raw)
 
 // this code shows the battery on the main display when menu is NULL
 // otherwise it shows the current raw integer readings of the battery sensor
+// if this call comes from the menu system the display is already locked, otherwise we lock it here
 void ShowBattery(MenuItem * menu)
 {
-	LockDisplay(true);
 	static int percent = 0, raw = 0;
 	if (menu)
 		ClearScreen();
+	else
+		LockDisplay(true);
 	static unsigned long showtime = 0;
 	while (!menu || ReadButton() != BTN_LONG) {
 		percent = ReadBattery(&raw);
@@ -1883,7 +1890,8 @@ void ShowBattery(MenuItem * menu)
 		else
 			break;
 	}
-	UnLockDisplay();
+	if (!menu)
+		UnLockDisplay();
 }
 
 // set the screen rotation to the correct value, 0-3, allocate the screen memory
