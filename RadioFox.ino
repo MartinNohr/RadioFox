@@ -37,15 +37,6 @@ int notes = sizeof(melody) / sizeof(melody[0]) / 2;
 int wholenote = (60000 * 4) / tempo;
 int divider = 0, noteDuration = 0;
 
-// NOTE: pins 3, 4, and 5 should not be used as they are sometimes used for timer outputs
-// pin 13 is the builtin LED
-
-#define HL 2                 // Pin to control TX Power, not conncted -> high power, connect to GND -> Low power
-#define BUZZER_PIN 11        // send music and cw out this pin
-//#define PTT  6               // Pin to control TX
-#define BUZZER_FREQUENCY 700  // cw pitch
-#define Relay 12
-
 // timer called every second
 void periodic_Second_timer_callback(void* arg)
 {
@@ -210,7 +201,7 @@ void setup()
 	}
 	// start the tone generator
 	ledcSetup(toneChannel, 0, 8);
-	ledcAttachPin(12, toneChannel);
+	ledcAttachPin(AUDIO_OUT_PORT, toneChannel);
 	ledcWrite(toneChannel, 127);
 	// start the DTMF detector
 	dtmf.begin(36);
@@ -2507,7 +2498,7 @@ void CheckDTMF()
 
 		switch (dtmf.tone2char(tones)) {
 		case '1':// Number 1 - Start Loop
-			digitalWrite(Relay, LOW);
+			digitalWrite(RELAY, LOW);
 			digitalWrite(PTT_PORT, LOW);
 			delay(1500);
 			sendLetter('R');
@@ -2520,12 +2511,12 @@ void CheckDTMF()
 			delay(1500);
 			sendLetter('R');
 			digitalWrite(PTT_PORT, HIGH);
-			digitalWrite(Relay, LOW);
+			digitalWrite(RELAY, LOW);
 			SystemInfo.bXmit = false;
 			break;
 
 		case '3':// Number 3 - High Power Mode
-			digitalWrite(Relay, HIGH);
+			digitalWrite(RELAY, HIGH);
 			digitalWrite(PTT_PORT, LOW);
 			delay(1500);
 			sendLetter('R');
