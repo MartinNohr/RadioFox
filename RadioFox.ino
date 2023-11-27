@@ -551,13 +551,13 @@ void loop()
 		memcpy(&SystemInfoSaved, &SystemInfo, sizeof(SystemInfo));
 	}
 	if (!g_bSettingsMode && bLastSettingsMode) {
+		// show the battery display by telling the task to run
+		xTaskNotifyGive(TaskShowBatteryHandle);
 		if (memcmp(&SystemInfoSaved, &SystemInfo, sizeof(SystemInfo))) {
 			// make sure that the lcd dim is less than the bright
 			if (SystemInfo.nDisplayDimValue > SystemInfo.nDisplayBrightness)
 				SystemInfo.nDisplayDimValue = SystemInfo.nDisplayBrightness;
 			SaveLoadSettings(true);
-			// show the battery display by telling the task to run
-			xTaskNotifyGive(TaskShowBatteryHandle);
 		}
 	}
 	bLastSettingsMode = g_bSettingsMode;
