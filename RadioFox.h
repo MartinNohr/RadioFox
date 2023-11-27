@@ -179,7 +179,7 @@ typedef struct SYSTEM_INFO {
 	int nTxTime = 2 * 60;                       // tx time in seconds
 	int nTxPause = 3 * 60;                      // tx pause time in seconds
     bool bRfPowerHi = false;                    // rf power control
-    int nFrequency = 140;                       // radio frequency
+    int nFrequency = 140.000;                   // radio frequency in kHz
     char cAudioFile[31] = "";                   // choose the audio file
     int nMorseInterval = 200;                   // mSec morse timer
     bool bXmit = false;                         // if xmit = false, don't transmit
@@ -237,7 +237,7 @@ typedef struct MenuItem {
     const void* value;                  // associated variable
     long min;                           // the minimum value, also used for ifequal, min length for string
     long max;                           // the maximum value, also size to compare for if, max length for string
-    int decimals;                       // 0 for int, 1 for 0.1
+    int decimals;                       // 0 for int, 1 for 0.1, 2 for 0.01 etc
     const char* on;                     // text for boolean true
     const char* off;                    // text for boolean false
     // flag is 1 for first time, 0 for changes, and -1 for last call, bools only call this with -1
@@ -362,7 +362,7 @@ MenuItem RadioMenu[] = {
     {eTextInt,"TX Send Time: %d Sec",GetIntegerValue,&SystemInfo.nTxTime,1,300},
     {eTextInt,"TX Pause Time: %d Sec",GetIntegerValue,&SystemInfo.nTxPause,1,600},
     {eBool,"RF Power: %s",ToggleBool,&SystemInfo.bRfPowerHi,0,0,0,"High","Low"},
-    {eTextInt,"Frequency: %d MHz",GetIntegerValue,&SystemInfo.nFrequency,137,174},
+    {eTextInt,"Frequency: %d.%d MHz",GetIntegerValue,&SystemInfo.nFrequency,137000,174000,3},
 	{eEditText,"Call Sign: %s",GetText,SystemInfo.cRadioID,1,sizeof(SystemInfo.cRadioID) - 1},
     {eEditText,"Audio: %s",GetAudioFile,SystemInfo.cAudioFile,1,sizeof(SystemInfo.cAudioFile) - 1},
     {eTextInt,"Morse Interval: %d mS",GetIntegerValue,&SystemInfo.nMorseInterval,10,500},
@@ -407,9 +407,11 @@ struct TEXTLINES {
 };
 std::vector<struct TEXTLINES> TextLines;
 
-// task handles for running the radio
+// task handles for running the radio parts
 TaskHandle_t TaskRunRadioHandle;
 TaskHandle_t TaskRunTransmitHandle;
+TaskHandle_t TaskSendBeaconHandle;
+TaskHandle_t TaskSendMusicHandle;
 // a mutex to control access to writing on the display, the TFT driver is not re-entrant
 SemaphoreHandle_t MutexDisplayHandle;
 

@@ -90,6 +90,55 @@ void UnLockDisplay()
 	}
 }
 
+void TaskSendBeacon(void* parameter)
+{
+	for (int i = 0; i < sizeof(SystemInfo.cBeaconString); i++) {
+		if (SystemInfo.cBeaconString[i] == '\0')
+			break;
+		sendLetter(SystemInfo.cBeaconString[i]);
+	}
+	for (int i = 0; i < sizeof(SystemInfo.cRadioID); i++) {
+		if (SystemInfo.cRadioID[i] == '\0')
+			break;
+		sendLetter(SystemInfo.cRadioID[i]);
+	}
+	// terminate this task
+	TaskSendBeaconHandle = NULL;
+	vTaskDelete(NULL);
+}
+
+//task to send the music
+void TaskSendMusic(void* parameter)
+{
+	// iterate over the notes of the melody.
+	// Remember, the array is twice the number of notes (notes + durations)
+	for (int thisNote = 0; thisNote < notes * 2; thisNote = thisNote + 2) {
+		// calculates the duration of each note
+		divider = melody[thisNote + 1];
+		if (divider > 0) {
+			// regular note, just proceed
+			noteDuration = (wholenote) / divider;
+		}
+		else if (divider < 0) {
+			// dotted notes are represented with negative durations!!
+			noteDuration = (wholenote) / abs(divider);
+			noteDuration *= 1.5; // increases the duration in half for dotted notes
+		}
+		// we only play the note for 90% of the duration, leaving 10% as a pause
+		ledcWriteTone(toneChannel, melody[thisNote]);
+		vTaskDelay(pdMS_TO_TICKS(noteDuration * 0.9));
+		ledcWriteTone(toneChannel, 0);
+		vTaskDelay(pdMS_TO_TICKS(noteDuration * 0.1));
+		// Wait for the special duration before playing the next note.
+		//delay(noteDuration);
+		// stop the waveform generation before the next note.
+		//noTone(BUZZER_PIN);
+	}
+	// terminate this task
+	TaskSendMusicHandle = NULL;
+	vTaskDelete(NULL);
+}
+
 // this controls the radio sending operations
 void TaskRunTransmit(void* parameter)
 {
@@ -104,22 +153,33 @@ void TaskRunTransmit(void* parameter)
 				gpio_set_level((gpio_num_t)PTT_PORT, 0);
 			xTaskNotify(TaskRunRadioHandle, (uint32_t)"TX Start", eSetValueWithOverwrite);
 			// wait for PTT to take effect
-			vTaskDelay(500 / portTICK_PERIOD_MS);
+			vTaskDelay(pdMS_TO_TICKS(500));
 			while (ulTaskNotifyTake(pdTRUE, 0) == 0) {
 				// do all the send operations
 				xTaskNotify(TaskRunRadioHandle, (uint32_t)"Music", eSetValueWithOverwrite);
-				SendMusic();
-				vTaskDelay(500 / portTICK_PERIOD_MS);
+				xTaskCreate(TaskSendMusic, "SendMusic", 2000, NULL, 4, &TaskSendMusicHandle);
+				// wait for task to end
+				while (TaskSendMusicHandle) {
+					// TODO: check for timeout and cancel task
+					vTaskDelay(pdMS_TO_TICKS(1000));
+				}
+				vTaskDelay(pdMS_TO_TICKS(500));
+				// send the new title
 				xTaskNotify(TaskRunRadioHandle, (uint32_t)"BeaconID", eSetValueWithOverwrite);
-				SendBeaconID();
-				vTaskDelay(500 / portTICK_PERIOD_MS);
+				xTaskCreate(TaskSendBeacon, "SendBeaconID", 2000, NULL, 4, &TaskSendBeaconHandle);
+				// wait for task to end
+				while (TaskSendBeaconHandle) {
+					// TODO: check for timeout and cancel task
+					vTaskDelay(pdMS_TO_TICKS(1000));
+				}
+				vTaskDelay(pdMS_TO_TICKS(500));
 			}
 			// turn PTT off here
 			gpio_set_level((gpio_num_t)PTT_PORT, 1);
 			// set to 1 (can't be a string pointer) to indicate we're done for now
 			xTaskNotify(TaskRunRadioHandle, 1, eSetValueWithOverwrite);
 		}
-		vTaskDelay(1000 / portTICK_PERIOD_MS);
+		vTaskDelay(pdMS_TO_TICKS(1000));
 		//int freestack = uxTaskGetStackHighWaterMark(NULL);
 		//Serial.println(String("xmit high water: ") + freestack);
 	}
@@ -128,65 +188,105 @@ void TaskRunTransmit(void* parameter)
 // all the timing and screen display is done here
 void TaskRunRadio(void* parameter)
 {
-	// wait for xmit task to start, it should be running...
+	const char* cStatusText = NULL;
+	uint32_t status = 0;
+	bool bTransmitting = false;
+	int secondsLeft = 0;
+	int cycleCount;
+	bool bWaitingForStop = false;
+	TickType_t xLastWakeTime;
+	const TickType_t xFrequency = pdMS_TO_TICKS(1000);
+	// Initialise the xLastWakeTime variable with the current time.
+	xLastWakeTime = xTaskGetTickCount();
+
+	// wait for xmit task to start, it must be running...
 	while (!TaskRunTransmitHandle)
-		vTaskDelay(10 / portTICK_PERIOD_MS);
+		vTaskDelay(pdMS_TO_TICKS(10));
 
 	while (true) {
-		// these need to be static for some reason that I don't understand, something about task switching I think...
-		static const char* cStatusText = NULL;
-		static uint32_t status = 0;
-		static bool bTransmitting = false;
-		static int secondsLeft = 0;
-		static int cycleCount = 0;
-
-		if (secondsLeft <= 0) {
+		if (bWaitingForStop) {
+			// check if the xmitter us finished
+			status = ulTaskNotifyTake(pdTRUE, 0);
+			if (status == 1) {
+				// 1 indicates that the task is stopped
+				bWaitingForStop = false;
+				secondsLeft = SystemInfo.nTxPause;
+			}
+			else if (status > 1) {
+				// must be a string pointer if > 1
+				cStatusText = (const char*)status;
+			}
+			else if (status == 0) {
+				// update the running display to show we're waiting
+				if (LockDisplay(false)) {
+					DisplayLine(0, String(cStatusText) + ": Stopping");
+					UnLockDisplay();
+				}
+			}
+		}
+		else if (secondsLeft <= 0) {
 			bTransmitting = !bTransmitting;
 			if (bTransmitting) {
 				// tell xmitter to start
 				xTaskNotifyGive(TaskRunTransmitHandle);
-				vTaskDelay(5 / portTICK_PERIOD_MS);
+				vTaskDelay(pdMS_TO_TICKS(5));
 				cycleCount++;
+				secondsLeft = SystemInfo.nTxTime;
 			}
 			else {
 				// tell the xmitter to stop
 				xTaskNotify(TaskRunTransmitHandle, 1, eSetValueWithOverwrite);
-				// wait for the xmitter to finish
-				while ((status = ulTaskNotifyTake(pdTRUE, 0)) != 1) {
-					if (status > 1) {
-						cStatusText = (const char*)status;
-					}
-					if (LockDisplay(false)) {
-						DisplayLine(0, String(cStatusText) + ": Stopping");
-						UnLockDisplay();
-					}
-					vTaskDelay(1000 / portTICK_PERIOD_MS);
-				}
+				bWaitingForStop = true;
 			}
-			secondsLeft = bTransmitting ? SystemInfo.nTxTime : SystemInfo.nTxPause;
 		}
+		// see if the task sent us anything
 		status = ulTaskNotifyTake(pdTRUE, 0);
-		// see if this is a string pointer
+		// check if this is a string pointer
 		if (status > 1) {
 			cStatusText = (const char*)status;
 		}
-		if (!bTransmitting) {
+		if (!bTransmitting && !bWaitingForStop) {
 			cStatusText = "Pause";
 		}
-		if (LockDisplay(false)) {
+		if (!bWaitingForStop && LockDisplay(false)) {
 			int lineNo = 0;
 			DisplayLine(lineNo++, String(cStatusText) + ": " + (secondsLeft / 60) + " Min " + (secondsLeft % 60) + " Sec");
 			DisplayLine(lineNo++, String("Cycles: ") + cycleCount);
 			DisplayLine(lineNo++, String("Call Sign: ") + SystemInfo.cRadioID, SystemInfo.menuTextColor);
-			DisplayLine(lineNo++, String(SystemInfo.nFrequency) + " MHz " + (SystemInfo.bRfPowerHi ? "High" : "Low"), SystemInfo.menuTextColor);
+			DisplayLine(lineNo++, String(SystemInfo.nFrequency % 1000) + "." + SystemInfo.nFrequency / 1000 + " MHz " + (SystemInfo.bRfPowerHi ? "High" : "Low"), SystemInfo.menuTextColor);
 			DisplayLine(lineNo++, String("Audio: ") + SystemInfo.cAudioFile, SystemInfo.menuTextColor);
 			UnLockDisplay();
 		}
+		//else {
+		//	Serial.println("failed lockdisplay");
+		//}
 		if (secondsLeft)
 			--secondsLeft;
-		vTaskDelay(1000 / portTICK_PERIOD_MS);
+		// Wait for the next cycle.
+		vTaskDelayUntil(&xLastWakeTime, xFrequency);
+
 		//int freestack = uxTaskGetStackHighWaterMark(NULL);
 		//Serial.println(String("radio high water: ") + freestack);
+	}
+}
+
+// show the battery every 60 seconds
+void TaskShowBattery(void* parameters)
+{
+	TickType_t xLastWakeTime;
+	const TickType_t xFrequency = pdMS_TO_TICKS(60000);
+	// Initialise the xLastWakeTime variable with the current time.
+	xLastWakeTime = xTaskGetTickCount();
+
+	while (true) {
+		// show battery level if on
+		if (SystemInfo.bShowBatteryLevel && !g_bSettingsMode) {
+			int raw;
+			ReadBattery(&raw);
+			ShowBattery(NULL);
+		}
+		// Wait for the next cycle.
+		vTaskDelayUntil(&xLastWakeTime, xFrequency);
 	}
 }
 
@@ -203,6 +303,7 @@ void setup()
 	ledcSetup(toneChannel, 0, 8);
 	ledcAttachPin(AUDIO_OUT_PORT, toneChannel);
 	ledcWrite(toneChannel, 127);
+	ledcWriteTone(toneChannel, 0);
 	// start the DTMF detector
 	dtmf.begin(36);
 	//Serial.println("flash:" + String(ESP.getFlashChipSize()));
@@ -222,6 +323,8 @@ void setup()
 	// init the onboard buttons
 	gpio_set_direction(GPIO_NUM_0, GPIO_MODE_INPUT);
 	gpio_set_pull_mode(GPIO_NUM_0, GPIO_PULLUP_ONLY);
+	// enable the onboard LED
+	gpio_set_direction((gpio_num_t)LED_BUILTIN, GPIO_MODE_OUTPUT);
 
 	periodic_Second_timer_args = {
 				periodic_Second_timer_callback,
@@ -239,7 +342,6 @@ void setup()
 	tft.setTextSize(1);
 	tft.setTextPadding(tft.width());
 	SetScreenRotation(SystemInfo.nDisplayRotation);
-	//ClearScreen();
 	SetDisplayBrightness(SystemInfo.nDisplayBrightness);
 	// see if the button is down, if so clear all settings
 	if (gpio_get_level((gpio_num_t)DIAL_BTN) == 0) {
@@ -327,7 +429,7 @@ void setup()
 		if (ReadButton() != BTN_NONE) {
 			break;
 		}
-		vTaskDelay(10 / portTICK_PERIOD_MS);
+		vTaskDelay(pdMS_TO_TICKS(10));
 	}
 	// set the PTT port
 	gpio_set_direction((gpio_num_t)PTT_PORT, GPIO_MODE_OUTPUT);
@@ -336,9 +438,9 @@ void setup()
 	// create the display mutex
 	MutexDisplayHandle = xSemaphoreCreateMutex();
 	// start the transmit and management tasks
-	xTaskCreate(TaskRunTransmit, "XMITFOX", 4000, NULL, 1, &TaskRunTransmitHandle);
-	xTaskCreate(TaskRunRadio, "FOXRADIO", 4000, NULL, 1, &TaskRunRadioHandle);
-
+	xTaskCreate(TaskRunTransmit, "XMITFOX", 4000, NULL, 2, &TaskRunTransmitHandle);
+	xTaskCreate(TaskRunRadio, "FOXRADIO", 4000, NULL, 4, &TaskRunRadioHandle);
+	xTaskCreate(TaskShowBattery, "BATTERYLEVEL", 2000, NULL, 1, NULL);
 	ResetDimTimer();
 }
 
@@ -435,7 +537,6 @@ void loop()
 	static SYSTEM_INFO SystemInfoSaved;
 	static bool didsomething = false;
 	static bool bLastSettingsMode = false;
-	static int oldBattery = -1;
 
 	didsomething = g_bSettingsMode ? HandleMenus() : HandleRunMode();
 	if (g_bSettingsMode && !bLastSettingsMode) {
@@ -457,16 +558,6 @@ void loop()
 	if (didsomething) {
 		didsomething = false;
 		delay(1);
-	}
-	// show battery level if on
-	if (SystemInfo.bShowBatteryLevel && !g_bSettingsMode) {
-		int raw;
-		ReadBattery(&raw);
-		//Serial.println(String("bat:") + String(raw));
-		if (raw != oldBattery) {
-			oldBattery = raw;
-			ShowBattery(NULL);
-		}
 	}
 //	CheckDTMF();
 }
@@ -2359,49 +2450,6 @@ void GetFileNamesFromSD(std::vector<String>& FileNames, String ext, String dir)
 	return;
 }
 
-// send the beacon and id infor
-void SendBeaconID()
-{
-	for (int i = 0; i < sizeof(SystemInfo.cBeaconString); i++) {
-		if (SystemInfo.cBeaconString[i] == '\0')
-			break;
-		sendLetter(SystemInfo.cBeaconString[i]);
-	}
-	for (int i = 0; i < sizeof(SystemInfo.cRadioID); i++) {
-		if (SystemInfo.cRadioID[i] == '\0')
-			break;
-		sendLetter(SystemInfo.cRadioID[i]);
-	}
-}
-
-// Send the music
-void SendMusic()
-{
-	// iterate over the notes of the melody.
-	// Remember, the array is twice the number of notes (notes + durations)
-	for (int thisNote = 0; thisNote < notes * 2; thisNote = thisNote + 2) {
-		// calculates the duration of each note
-		divider = melody[thisNote + 1];
-		if (divider > 0) {
-			// regular note, just proceed
-			noteDuration = (wholenote) / divider;
-		}
-		else if (divider < 0) {
-			// dotted notes are represented with negative durations!!
-			noteDuration = (wholenote) / abs(divider);
-			noteDuration *= 1.5; // increases the duration in half for dotted notes
-		}
-		// we only play the note for 90% of the duration, leaving 10% as a pause
-		ledcWriteTone(toneChannel, melody[thisNote]);
-		delay(noteDuration * 0.9);
-		ledcWriteTone(toneChannel, 0);
-		delay(noteDuration * 0.1);
-		// Wait for the special duration before playing the next note.
-		//delay(noteDuration);
-		// stop the waveform generation before the next note.
-		//noTone(BUZZER_PIN);
-	}
-}
 #if 0
 void loop() {
 	// use this to time the pause
@@ -2647,11 +2695,11 @@ void morseOutputOn(int n) {
 	//            morseOutputOn(3) means turn output on and keep it on for 3 intervals
 	//
 	//   digitalWrite(morseOutput, HIGH);
-	delay(n * SystemInfo.nMorseInterval);
+	vTaskDelay(pdMS_TO_TICKS(n * SystemInfo.nMorseInterval));
 }
 
 void morseOutputOff(int n) {
 	digitalWrite(LED_BUILTIN, LOW);
 	//   digitalWrite(morseOutput, LOW);
-	delay(n * SystemInfo.nMorseInterval);
+	vTaskDelay(pdMS_TO_TICKS(n * SystemInfo.nMorseInterval));
 }
