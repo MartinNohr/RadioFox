@@ -287,11 +287,6 @@ void TaskRunRadio(void* parameter)
 // show the battery every 60 seconds
 void TaskShowBattery(void* parameters)
 {
-	TickType_t xLastWakeTime;
-	const TickType_t xFrequency = pdMS_TO_TICKS(60000);
-	// Initialise the xLastWakeTime variable with the current time.
-	xLastWakeTime = xTaskGetTickCount();
-
 	while (true) {
 		// show battery level if on
 		if (SystemInfo.bShowBatteryLevel && !g_bSettingsMode) {
@@ -299,8 +294,7 @@ void TaskShowBattery(void* parameters)
 			ReadBattery(&raw);
 			ShowBattery(NULL);
 		}
-		// Wait for the next cycle.
-		vTaskDelayUntil(&xLastWakeTime, xFrequency);
+		ulTaskNotifyTake(pdTRUE, pdMS_TO_TICKS(60000));
 	}
 }
 
@@ -454,7 +448,7 @@ void setup()
 	// start the transmit and management tasks
 	xTaskCreate(TaskRunTransmit, "XMITFOX", 4000, NULL, 2, &TaskRunTransmitHandle);
 	xTaskCreate(TaskRunRadio, "FOXRADIO", 4000, NULL, 4, &TaskRunRadioHandle);
-	xTaskCreate(TaskShowBattery, "BATTERYLEVEL", 2000, NULL, 1, NULL);
+	xTaskCreate(TaskShowBattery, "BATTERYLEVEL", 2000, NULL, 1, &TaskShowBatteryHandle);
 	ResetDimTimer();
 }
 
@@ -562,6 +556,8 @@ void loop()
 			if (SystemInfo.nDisplayDimValue > SystemInfo.nDisplayBrightness)
 				SystemInfo.nDisplayDimValue = SystemInfo.nDisplayBrightness;
 			SaveLoadSettings(true);
+			// show the battery display by telling the task to run
+			xTaskNotifyGive(TaskShowBatteryHandle);
 		}
 	}
 	bLastSettingsMode = g_bSettingsMode;

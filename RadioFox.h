@@ -414,6 +414,7 @@ TaskHandle_t TaskRunRadioHandle;
 TaskHandle_t TaskRunTransmitHandle;
 TaskHandle_t TaskSendBeaconHandle;
 TaskHandle_t TaskSendMusicHandle;
+TaskHandle_t TaskShowBatteryHandle;
 // a mutex to control access to writing on the display, the TFT driver is not re-entrant
 SemaphoreHandle_t MutexDisplayHandle;
 
