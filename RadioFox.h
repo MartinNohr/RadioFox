@@ -179,7 +179,7 @@ typedef struct SYSTEM_INFO {
 	int nTxTime = 2 * 60;                       // tx time in seconds
 	int nTxPause = 3 * 60;                      // tx pause time in seconds
     bool bRfPowerHi = false;                    // rf power control
-    int nFrequency = 140.000;                   // radio frequency in kHz
+    int nFrequency = 140000;                    // radio frequency in kHz
     char cAudioFile[31] = "";                   // choose the audio file
     int nMorseInterval = 200;                   // mSec morse timer
     bool bXmit = false;                         // if xmit = false, don't transmit
@@ -415,6 +415,7 @@ TaskHandle_t TaskRunTransmitHandle;
 TaskHandle_t TaskSendBeaconHandle;
 TaskHandle_t TaskSendMusicHandle;
 TaskHandle_t TaskShowBatteryHandle;
+TaskHandle_t TaskDTMFHandle;
 // a mutex to control access to writing on the display, the TFT driver is not re-entrant
 SemaphoreHandle_t MutexDisplayHandle;
 

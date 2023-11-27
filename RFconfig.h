@@ -16,9 +16,9 @@
 // battery level
 #define HAS_BATTERY_LEVEL 1
 // battery sensor GPIO
-#define BATTERY_SENSOR_GPIO 36
+#define BATTERY_SENSOR_GPIO 13
 // set the push button GPIO port
-#define DIAL_BTN 39
+#define DIAL_BTN 2
 // default dial direction GPIO ports
 #define DIAL_A 38
 #define DIAL_B 37
@@ -26,5 +26,4 @@
 #define AUDIO_IN_PORT 36
 #define AUDIO_OUT_PORT 32        // send music and cw out this pin
 #define BUZZER_FREQUENCY 700  // cw pitch
-#define HL 2                 // Pin to control TX Power, not conncted -> high power, connect to GND -> Low power
-#define RELAY 15
+#define TXHIPOWER_PORT 15	// Pin to control TX Power, not conncted -> high power, connect to GND -> Low power

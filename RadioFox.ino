@@ -9,11 +9,9 @@
 #include <EEPROM.h>
 #include "RadioFox.h"
 
-int sensorPin = A0;  //Input Pin for DTMF Tones
 PhoneDTMF dtmf = PhoneDTMF();
-float d_mags[8];
 
-int tempo = 145; // Tempo of Melody
+const int tempo = 145; // Tempo of Melody
 
 // notes in the melody:
 int melody[] = {
@@ -267,7 +265,7 @@ void TaskRunRadio(void* parameter)
 			DisplayLine(lineNo++, String(cStatusText) + ": " + (secondsLeft / 60) + " Min " + (secondsLeft % 60) + " Sec");
 			DisplayLine(lineNo++, String("Cycles: ") + cycleCount);
 			DisplayLine(lineNo++, String("Call Sign: ") + SystemInfo.cRadioID, SystemInfo.menuTextColor);
-			DisplayLine(lineNo++, String(SystemInfo.nFrequency % 1000) + "." + SystemInfo.nFrequency / 1000 + " MHz " + (SystemInfo.bRfPowerHi ? "High" : "Low"), SystemInfo.menuTextColor);
+			DisplayLine(lineNo++, String(SystemInfo.nFrequency / 1000) + "." + SystemInfo.nFrequency % 1000 + " MHz " + (SystemInfo.bRfPowerHi ? "High" : "Low"), SystemInfo.menuTextColor);
 			DisplayLine(lineNo++, String("Audio: ") + SystemInfo.cAudioFile, SystemInfo.menuTextColor);
 			UnLockDisplay();
 		}
@@ -298,6 +296,72 @@ void TaskShowBattery(void* parameters)
 	}
 }
 
+// handle DTMF commands, runs every 2 seconds
+void TaskDTMF(void* parameter)
+{
+	// use this to make task run every second
+	TickType_t xLastWakeTime;
+	const TickType_t xFrequency = pdMS_TO_TICKS(2000);
+	// Initialise the xLastWakeTime variable with the current time.
+	xLastWakeTime = xTaskGetTickCount();
+
+	while (true) {
+		uint8_t   tones;
+		char      button;
+		// detect tone
+		tones = dtmf.detect();
+
+		// if valid tone was found, proof for validity
+		button = dtmf.tone2char(tones);
+		//Serial.println(String("tone:") + (int)(dtmf.tone2char(tones)));
+		if (button > 0)
+		{
+			//Serial.print("Detected tone...");
+			// measure 4 times, result of each measurement should be always the same 
+			// time need for this process: 80ms, so the tone must be present at least 100ms to be valid
+			tones |= dtmf.detect() | dtmf.detect() | dtmf.detect();
+			switch (dtmf.tone2char(tones)) {
+			case '1':// Number 1 - Start Loop
+				digitalWrite(TXHIPOWER_PORT, LOW);
+				digitalWrite(PTT_PORT, LOW);
+				delay(1500);
+				sendLetter('R');
+				digitalWrite(PTT_PORT, HIGH);
+				SystemInfo.bXmit = true;        // set the flag to ENABLE transmissions
+				break;
+
+			case '2':// Number 2 - LOW Power Mode - No Loop           
+				digitalWrite(PTT_PORT, LOW);
+				delay(1500);
+				sendLetter('R');
+				digitalWrite(PTT_PORT, HIGH);
+				digitalWrite(TXHIPOWER_PORT, LOW);
+				SystemInfo.bXmit = false;
+				break;
+
+			case '3':// Number 3 - High Power Mode
+				digitalWrite(TXHIPOWER_PORT, HIGH);
+				digitalWrite(PTT_PORT, LOW);
+				delay(1500);
+				sendLetter('R');
+				digitalWrite(PTT_PORT, HIGH);
+				SystemInfo.bXmit = true;
+				break;
+
+			default:     // any other number, turn off transmissions - send a short letter to confirm receive
+				digitalWrite(PTT_PORT, LOW);
+				delay(1500);
+				sendLetter('R');
+				digitalWrite(PTT_PORT, HIGH);
+				SystemInfo.bXmit = false;    // set the flag to DISABLE transmissions
+				break;
+			}
+		}
+		// Wait for the next cycle.
+		vTaskDelayUntil(&xLastWakeTime, xFrequency);
+	}
+}
+
 void setup()
 {
 	// init the display
@@ -313,7 +377,8 @@ void setup()
 	ledcWrite(toneChannel, 127);
 	ledcWriteTone(toneChannel, 0);
 	// start the DTMF detector
-	dtmf.begin(36);
+	dtmf.begin(AUDIO_IN_PORT);
+
 	//Serial.println("flash:" + String(ESP.getFlashChipSize()));
 	//Serial.print("setup() is running on core ");
 	//Serial.println(xPortGetCoreID());
@@ -449,6 +514,7 @@ void setup()
 	xTaskCreate(TaskRunTransmit, "XMITFOX", 4000, NULL, 2, &TaskRunTransmitHandle);
 	xTaskCreate(TaskRunRadio, "FOXRADIO", 4000, NULL, 4, &TaskRunRadioHandle);
 	xTaskCreate(TaskShowBattery, "BATTERYLEVEL", 2000, NULL, 1, &TaskShowBatteryHandle);
+	xTaskCreate(TaskDTMF, "DTMFHANDLER", 2000, NULL, 2, &TaskDTMFHandle);
 	ResetDimTimer();
 }
 
@@ -569,7 +635,6 @@ void loop()
 		didsomething = false;
 		delay(1);
 	}
-//	CheckDTMF();
 }
 
 // do something from the menu depending on the button argument
@@ -2458,139 +2523,6 @@ void GetFileNamesFromSD(std::vector<String>& FileNames, String ext, String dir)
 		bSdCardValid = false;
 	}
 	return;
-}
-
-#if 0
-void loop() {
-	// use this to time the pause
-	static unsigned long endPauseTime = 0;
-	// this times the xmit loop
-	static unsigned long endXmit = 0;
-	// see if the xmit flag was changed
-	static bool bOldXmit = false;
-	if (bOldXmit != bXmit) {
-		bOldXmit = bXmit;
-		if (bXmit)
-			endPauseTime = millis();
-	}
-	CheckDTMF();
-
-	if ((endPauseTime == 0) || (millis() >= endPauseTime)) {
-		//Serial.println("ending pause");
-		// set the end xmit time
-		endXmit = millis() + (unsigned long)txTime * 1000;
-		// keep sending until the time is expired
-		while (bXmit && millis() < endXmit) {
-			// Serial.println(String("Transmitting Pause: ") + String(pauseTime) + " mSec: " + String(endPauseTime) + " millis()=" + String(millis()));
-			//Serial.println("tx on");
-			digitalWrite(PTT, LOW);
-			delay(500);    // Wait 0.5 Sec for RF module to start up
-
-			// iterate over the notes of the melody.
-			// Remember, the array is twice the number of notes (notes + durations)
-			for (int thisNote = 0; thisNote < notes * 2; thisNote = thisNote + 2) {
-				if (millis() >= endXmit)
-					break;
-				// calculates the duration of each note
-				divider = melody[thisNote + 1];
-				if (divider > 0) {
-					// regular note, just proceed
-					noteDuration = (wholenote) / divider;
-				}
-				else if (divider < 0) {
-					// dotted notes are represented with negative durations!!
-					noteDuration = (wholenote) / abs(divider);
-					noteDuration *= 1.5; // increases the duration in half for dotted notes
-				}
-				// we only play the note for 90% of the duration, leaving 10% as a pause
-				ledcWriteTone(1, melody[thisNote]);
-				delay(noteDuration * 0.9);
-				ledcWriteTone(1, 0);
-				delay(noteDuration * 0.1);
-				// Wait for the special duration before playing the next note.
-				//delay(noteDuration);
-				// stop the waveform generation before the next note.
-				//noTone(BUZZER_PIN);
-			}
-			delay(500);  // 0.5 SEC pause between melody and beaconstring for better hearing between melody and morse code
-			for (int i = 0; i < sizeof(SystemInfo.cBeaconString); i++) {
-				if (millis() >= endXmit)
-					break;
-				if (SystemInfo.cBeaconString[i] == '\0')
-					break;
-				sendLetter(SystemInfo.cBeaconString[i]);
-			}
-			for (int i = 0; i < sizeof(SystemInfo.cRadioID); i++) {
-				if (millis() >= endXmit)
-					break;
-				if (SystemInfo.cRadioID[i] == '\0')
-					break;
-				sendLetter(SystemInfo.cRadioID[i]);
-			}
-		}
-		//Serial.println("tx off");
-		digitalWrite(PTT, HIGH);  // Set RF module into RX state
-		//Serial.println("starting pause");
-		// save the time after we ran this so can pause that many seconds
-		endPauseTime = millis() + (unsigned long)1000 * pauseTime;
-	}
-}
-#endif
-
-// check DTMF commands
-void CheckDTMF()
-{
-	uint8_t   tones;
-	char      button;
-	// detect tone
-	tones = dtmf.detect();
-
-	// if valid tone was found, proof for validity
-	button = dtmf.tone2char(tones);
-	if (button > 0)
-	{
-		Serial.print("Detected tone...");
-		// measure 4 times, result of each measurement should be always the same 
-		// time need for this process: 80ms, so the tone must be present at least 100ms to be valid
-		tones |= dtmf.detect() | dtmf.detect() | dtmf.detect();
-
-		switch (dtmf.tone2char(tones)) {
-		case '1':// Number 1 - Start Loop
-			digitalWrite(RELAY, LOW);
-			digitalWrite(PTT_PORT, LOW);
-			delay(1500);
-			sendLetter('R');
-			digitalWrite(PTT_PORT, HIGH);
-			SystemInfo.bXmit = true;        // set the flag to ENABLE transmissions
-			break;
-
-		case '2':// Number 2 - LOW Power Mode - No Loop           
-			digitalWrite(PTT_PORT, LOW);
-			delay(1500);
-			sendLetter('R');
-			digitalWrite(PTT_PORT, HIGH);
-			digitalWrite(RELAY, LOW);
-			SystemInfo.bXmit = false;
-			break;
-
-		case '3':// Number 3 - High Power Mode
-			digitalWrite(RELAY, HIGH);
-			digitalWrite(PTT_PORT, LOW);
-			delay(1500);
-			sendLetter('R');
-			digitalWrite(PTT_PORT, HIGH);
-			SystemInfo.bXmit = true;
-			break;
-
-		default:     // any other number, turn off transmissions - send a short letter to confirm receive
-			digitalWrite(PTT_PORT, LOW);
-			delay(1500);
-			sendLetter('R');
-			digitalWrite(PTT_PORT, HIGH);
-			SystemInfo.bXmit = false;    // set the flag to DISABLE transmissions
-			break;
-		}
-	}
 }
 
 // Functions
