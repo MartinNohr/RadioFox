@@ -173,7 +173,7 @@ void TaskRunTransmit(void* parameter)
 				xTaskNotify(TaskRunRadioHandle, (uint32_t)"BeaconID", eSetValueWithOverwrite);
 				xTaskCreate(TaskSendBeacon, "SendBeaconID", 2000, NULL, 4, &TaskSendBeaconHandle);
 				// wait for task to end
-				while (TaskSendBeaconHandle) {
+				while (!bDone && TaskSendBeaconHandle) {
 					// check for timeout or cancel task
 					if (SystemInfo.bStopImmediately && ulTaskNotifyTake(pdTRUE, 0)) {
 						vTaskDelete(TaskSendBeaconHandle);
@@ -184,6 +184,7 @@ void TaskRunTransmit(void* parameter)
 					vTaskDelay(pdMS_TO_TICKS(1000));
 				}
 				vTaskDelay(pdMS_TO_TICKS(500));
+				Serial.println(String("bDone:") + bDone);
 			}
 			// turn PTT off here
 			gpio_set_level((gpio_num_t)PTT_PORT, 1);
@@ -217,7 +218,7 @@ void TaskRunRadio(void* parameter)
 
 	while (true) {
 		if (bWaitingForStop) {
-			// check if the xmitter us finished
+			// check if the xmitter is finished
 			status = ulTaskNotifyTake(pdTRUE, 0);
 			if (status == 1) {
 				// 1 indicates that the task is stopped
@@ -296,12 +297,12 @@ void TaskShowBattery(void* parameters)
 	}
 }
 
-// handle DTMF commands, runs every 2 seconds
+// handle DTMF commands, runs every second
 void TaskDTMF(void* parameter)
 {
 	// use this to make task run every second
 	TickType_t xLastWakeTime;
-	const TickType_t xFrequency = pdMS_TO_TICKS(2000);
+	const TickType_t xFrequency = pdMS_TO_TICKS(1000);
 	// Initialise the xLastWakeTime variable with the current time.
 	xLastWakeTime = xTaskGetTickCount();
 
@@ -511,8 +512,8 @@ void setup()
 	// create the display mutex
 	MutexDisplayHandle = xSemaphoreCreateMutex();
 	// start the transmit and management tasks
-	xTaskCreate(TaskRunTransmit, "XMITFOX", 4000, NULL, 2, &TaskRunTransmitHandle);
-	xTaskCreate(TaskRunRadio, "FOXRADIO", 4000, NULL, 4, &TaskRunRadioHandle);
+	xTaskCreate(TaskRunTransmit, "XMITFOX", 2000, NULL, 2, &TaskRunTransmitHandle);
+	xTaskCreate(TaskRunRadio, "FOXRADIO", 2000, NULL, 4, &TaskRunRadioHandle);
 	xTaskCreate(TaskShowBattery, "BATTERYLEVEL", 2000, NULL, 1, &TaskShowBatteryHandle);
 	xTaskCreate(TaskDTMF, "DTMFHANDLER", 2000, NULL, 2, &TaskDTMFHandle);
 	ResetDimTimer();
