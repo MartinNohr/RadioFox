@@ -154,13 +154,20 @@ void TaskRunTransmit(void* parameter)
 			xTaskNotify(TaskRunRadioHandle, (uint32_t)"TX Start", eSetValueWithOverwrite);
 			// wait for PTT to take effect
 			vTaskDelay(pdMS_TO_TICKS(500));
-			while (ulTaskNotifyTake(pdTRUE, 0) == 0) {
+			bool bDone = false;
+			while (!bDone && ulTaskNotifyTake(pdTRUE, 0) == 0) {
 				// do all the send operations
 				xTaskNotify(TaskRunRadioHandle, (uint32_t)"Music", eSetValueWithOverwrite);
 				xTaskCreate(TaskSendMusic, "SendMusic", 2000, NULL, 4, &TaskSendMusicHandle);
 				// wait for task to end
 				while (TaskSendMusicHandle) {
-					// TODO: check for timeout and cancel task
+					// check for timeout or cancel task
+					if (SystemInfo.bStopImmediately && ulTaskNotifyTake(pdTRUE, 0)) {
+						vTaskDelete(TaskSendMusicHandle);
+						TaskSendMusicHandle = NULL;
+						bDone = true;
+						break;
+					}
 					vTaskDelay(pdMS_TO_TICKS(1000));
 				}
 				vTaskDelay(pdMS_TO_TICKS(500));
@@ -169,7 +176,13 @@ void TaskRunTransmit(void* parameter)
 				xTaskCreate(TaskSendBeacon, "SendBeaconID", 2000, NULL, 4, &TaskSendBeaconHandle);
 				// wait for task to end
 				while (TaskSendBeaconHandle) {
-					// TODO: check for timeout and cancel task
+					// check for timeout or cancel task
+					if (SystemInfo.bStopImmediately && ulTaskNotifyTake(pdTRUE, 0)) {
+						vTaskDelete(TaskSendBeaconHandle);
+						TaskSendBeaconHandle = NULL;
+						bDone = true;
+						break;
+					}
 					vTaskDelay(pdMS_TO_TICKS(1000));
 				}
 				vTaskDelay(pdMS_TO_TICKS(500));
@@ -194,6 +207,7 @@ void TaskRunRadio(void* parameter)
 	int secondsLeft = 0;
 	int cycleCount;
 	bool bWaitingForStop = false;
+	// use this to make task run every second
 	TickType_t xLastWakeTime;
 	const TickType_t xFrequency = pdMS_TO_TICKS(1000);
 	// Initialise the xLastWakeTime variable with the current time.

@@ -1,6 +1,6 @@
 #pragma once
 
-const char* FOX_Version = "0.02";
+const char* FOX_Version = "0.03";
 
 const char* StartFileName = "START.FOX";
 // some config things
@@ -183,6 +183,7 @@ typedef struct SYSTEM_INFO {
     char cAudioFile[31] = "";                   // choose the audio file
     int nMorseInterval = 200;                   // mSec morse timer
     bool bXmit = false;                         // if xmit = false, don't transmit
+    bool bStopImmediately = false;              // set to true to cancel transmitting without waiting to finish
     //
 };
 RTC_DATA_ATTR SYSTEM_INFO SystemInfo;
@@ -359,6 +360,7 @@ MenuItem EepromMenu[] = {
 MenuItem RadioMenu[] = {
     {eExit,"Radio Settings"},
     {eBool,"XMIT: %s",ToggleBool,&SystemInfo.bXmit,0,0,0,"On","Off"},
+    {eBool,"TX Stop: %s",ToggleBool,&SystemInfo.bStopImmediately,0,0,0,"Immediate","Finish Cycle"},
     {eTextInt,"TX Send Time: %d Sec",GetIntegerValue,&SystemInfo.nTxTime,1,300},
     {eTextInt,"TX Pause Time: %d Sec",GetIntegerValue,&SystemInfo.nTxPause,1,600},
     {eBool,"RF Power: %s",ToggleBool,&SystemInfo.bRfPowerHi,0,0,0,"High","Low"},
