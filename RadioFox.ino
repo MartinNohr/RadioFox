@@ -140,61 +140,50 @@ void TaskSendMusic(void* parameter)
 // this controls the radio sending operations
 void TaskRunTransmit(void* parameter)
 {
-	// perform any initializations here
-	while (true) {
-		// pause this task waiting to be started by TaskRunRadio
-		ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
-		// see if we need to start
-		if (true) {
-			// turn on PTT here if allowed to send
-			if (SystemInfo.bXmit)
-				gpio_set_level((gpio_num_t)PTT_PORT, 0);
-			xTaskNotify(TaskRunRadioHandle, (uint32_t)"TX Start", eSetValueWithOverwrite);
-			// wait for PTT to take effect
-			vTaskDelay(pdMS_TO_TICKS(500));
-			bool bDone = false;
-			while (!bDone && ulTaskNotifyTake(pdTRUE, 0) == 0) {
-				// do all the send operations
-				xTaskNotify(TaskRunRadioHandle, (uint32_t)"Music", eSetValueWithOverwrite);
-				xTaskCreate(TaskSendMusic, "SendMusic", 2000, NULL, 4, &TaskSendMusicHandle);
-				// wait for task to end
-				while (TaskSendMusicHandle) {
-					// check for timeout or cancel task
-					if (SystemInfo.bStopImmediately && ulTaskNotifyTake(pdTRUE, 0)) {
-						vTaskDelete(TaskSendMusicHandle);
-						TaskSendMusicHandle = NULL;
-						bDone = true;
-						break;
-					}
-					vTaskDelay(pdMS_TO_TICKS(1000));
-				}
-				vTaskDelay(pdMS_TO_TICKS(500));
-				// send the new title
-				xTaskNotify(TaskRunRadioHandle, (uint32_t)"BeaconID", eSetValueWithOverwrite);
-				xTaskCreate(TaskSendBeacon, "SendBeaconID", 2000, NULL, 4, &TaskSendBeaconHandle);
-				// wait for task to end
-				while (!bDone && TaskSendBeaconHandle) {
-					// check for timeout or cancel task
-					if (SystemInfo.bStopImmediately && ulTaskNotifyTake(pdTRUE, 0)) {
-						vTaskDelete(TaskSendBeaconHandle);
-						TaskSendBeaconHandle = NULL;
-						bDone = true;
-						break;
-					}
-					vTaskDelay(pdMS_TO_TICKS(1000));
-				}
-				vTaskDelay(pdMS_TO_TICKS(500));
-				Serial.println(String("bDone:") + bDone);
+	gpio_set_level((gpio_num_t)PTT_PORT, 0);
+	xTaskNotify(TaskRunRadioHandle, (uint32_t)"TX Start", eSetValueWithOverwrite);
+	// wait for PTT to take effect
+	vTaskDelay(pdMS_TO_TICKS(500));
+	bool bDone = false;
+	// loop sending until stopped by TaskRunRadio
+	while (!bDone && ulTaskNotifyTake(pdTRUE, 0) == 0) {
+		// do all the send operations
+		xTaskNotify(TaskRunRadioHandle, (uint32_t)"Music", eSetValueWithOverwrite);
+		xTaskCreate(TaskSendMusic, "SendMusic", 2000, NULL, 4, &TaskSendMusicHandle);
+		// wait for task to end
+		while (TaskSendMusicHandle) {
+			// check for timeout or cancel task
+			if (SystemInfo.bStopImmediately && ulTaskNotifyTake(pdTRUE, 0)) {
+				vTaskDelete(TaskSendMusicHandle);
+				TaskSendMusicHandle = NULL;
+				bDone = true;
+				break;
 			}
-			// turn PTT off here
-			gpio_set_level((gpio_num_t)PTT_PORT, 1);
-			// set to 1 (can't be a string pointer) to indicate we're done for now
-			xTaskNotify(TaskRunRadioHandle, 1, eSetValueWithOverwrite);
+			vTaskDelay(pdMS_TO_TICKS(1000));
 		}
-		vTaskDelay(pdMS_TO_TICKS(1000));
-		//int freestack = uxTaskGetStackHighWaterMark(NULL);
-		//Serial.println(String("xmit high water: ") + freestack);
+		vTaskDelay(pdMS_TO_TICKS(500));
+		// send the new title
+		xTaskNotify(TaskRunRadioHandle, (uint32_t)"Beacon", eSetValueWithOverwrite);
+		xTaskCreate(TaskSendBeacon, "SendBeaconID", 2000, NULL, 4, &TaskSendBeaconHandle);
+		// wait for task to end
+		while (!bDone && TaskSendBeaconHandle) {
+			// check for timeout or cancel task
+			if (SystemInfo.bStopImmediately && ulTaskNotifyTake(pdTRUE, 0)) {
+				vTaskDelete(TaskSendBeaconHandle);
+				TaskSendBeaconHandle = NULL;
+				bDone = true;
+				break;
+			}
+			vTaskDelay(pdMS_TO_TICKS(1000));
+		}
+		vTaskDelay(pdMS_TO_TICKS(500));
 	}
+	// turn PTT off here
+	gpio_set_level((gpio_num_t)PTT_PORT, 1);
+	TaskRunTransmitHandle = NULL;
+	vTaskDelete(NULL);
+	//int freestack = uxTaskGetStackHighWaterMark(NULL);
+	//Serial.println(String("xmit high water: ") + freestack);
 }
 
 // all the timing and screen display is done here
@@ -212,74 +201,78 @@ void TaskRunRadio(void* parameter)
 	// Initialise the xLastWakeTime variable with the current time.
 	xLastWakeTime = xTaskGetTickCount();
 
-	// wait for xmit task to start, it must be running...
-	while (!TaskRunTransmitHandle)
-		vTaskDelay(pdMS_TO_TICKS(10));
-
 	while (true) {
-		if (bWaitingForStop) {
-			// check if the xmitter is finished
-			status = ulTaskNotifyTake(pdTRUE, 0);
-			if (status == 1) {
-				// 1 indicates that the task is stopped
-				bWaitingForStop = false;
-				secondsLeft = SystemInfo.nTxPause;
-			}
-			else if (status > 1) {
-				// must be a string pointer if > 1
-				cStatusText = (const char*)status;
-			}
-			else if (status == 0) {
-				// update the running display to show we're waiting
-				if (LockDisplay(false)) {
-					DisplayLine(0, String(cStatusText) + ": Stopping");
-					UnLockDisplay();
+		if (SystemInfo.bXmit || TaskRunTransmitHandle) {
+			if (bWaitingForStop) {
+				// check if the xmitter is finished
+				if (!TaskRunTransmitHandle) {
+					bWaitingForStop = false;
+					secondsLeft = SystemInfo.nTxPause;
+				}
+				// check for strings
+				status = ulTaskNotifyTake(pdTRUE, 0);
+				if (status == 0) {
+					// update the running display to show we're waiting
+					if (LockDisplay(false)) {
+						DisplayLine(0, String(cStatusText) + ": Stopping");
+						UnLockDisplay();
+					}
+				}
+				else {
+					// must be a string pointer
+					cStatusText = (const char*)status;
 				}
 			}
-		}
-		else if (secondsLeft <= 0) {
-			bTransmitting = !bTransmitting;
-			if (bTransmitting) {
-				// tell xmitter to start
-				xTaskNotifyGive(TaskRunTransmitHandle);
-				vTaskDelay(pdMS_TO_TICKS(5));
-				cycleCount++;
-				secondsLeft = SystemInfo.nTxTime;
+			// see if the timer has run out and we need to change state
+			else if (secondsLeft <= 0) {
+				bTransmitting = !bTransmitting;
+				if (bTransmitting) {
+					// start the xmitter task
+					xTaskCreate(TaskRunTransmit, "XMITFOX", 2000, NULL, 2, &TaskRunTransmitHandle);
+					vTaskDelay(pdMS_TO_TICKS(5));
+					cycleCount++;
+					secondsLeft = SystemInfo.nTxTime;
+				}
+				else {
+					// tell the xmitter to stop
+					if (TaskRunTransmitHandle)
+						xTaskNotify(TaskRunTransmitHandle, 1, eSetValueWithOverwrite);
+					bWaitingForStop = true;
+				}
 			}
-			else {
-				// tell the xmitter to stop
-				xTaskNotify(TaskRunTransmitHandle, 1, eSetValueWithOverwrite);
-				bWaitingForStop = true;
+			// see if the task sent us anything
+			status = ulTaskNotifyTake(pdTRUE, 0);
+			// check if this is a string pointer
+			if (status > 1) {
+				cStatusText = (const char*)status;
 			}
+			if (!bTransmitting && !bWaitingForStop) {
+				cStatusText = "Pause";
+			}
+			if (!bWaitingForStop && LockDisplay(false)) {
+				int lineNo = 0;
+				DisplayLine(lineNo++, String(cStatusText) + ": " + (secondsLeft / 60) + " Min " + (secondsLeft % 60) + " Sec");
+				DisplayLine(lineNo++, String("Cycles: ") + cycleCount);
+				DisplayLine(lineNo++, String("Call Sign: ") + SystemInfo.cRadioID, SystemInfo.menuTextColor);
+				DisplayLine(lineNo++, String(SystemInfo.nFrequency / 1000) + "." + SystemInfo.nFrequency % 1000 + " MHz " + (SystemInfo.bRfPowerHi ? "High" : "Low"), SystemInfo.menuTextColor);
+				DisplayLine(lineNo++, String("Audio: ") + SystemInfo.cAudioFile, SystemInfo.menuTextColor);
+				UnLockDisplay();
+			}
+			if (secondsLeft)
+				--secondsLeft;
+
+			//int freestack = uxTaskGetStackHighWaterMark(NULL);
+			//Serial.println(String("radio high water: ") + freestack);
 		}
-		// see if the task sent us anything
-		status = ulTaskNotifyTake(pdTRUE, 0);
-		// check if this is a string pointer
-		if (status > 1) {
-			cStatusText = (const char*)status;
-		}
-		if (!bTransmitting && !bWaitingForStop) {
-			cStatusText = "Pause";
-		}
-		if (!bWaitingForStop && LockDisplay(false)) {
-			int lineNo = 0;
-			DisplayLine(lineNo++, String(cStatusText) + ": " + (secondsLeft / 60) + " Min " + (secondsLeft % 60) + " Sec");
-			DisplayLine(lineNo++, String("Cycles: ") + cycleCount);
-			DisplayLine(lineNo++, String("Call Sign: ") + SystemInfo.cRadioID, SystemInfo.menuTextColor);
-			DisplayLine(lineNo++, String(SystemInfo.nFrequency / 1000) + "." + SystemInfo.nFrequency % 1000 + " MHz " + (SystemInfo.bRfPowerHi ? "High" : "Low"), SystemInfo.menuTextColor);
-			DisplayLine(lineNo++, String("Audio: ") + SystemInfo.cAudioFile, SystemInfo.menuTextColor);
+		if (!SystemInfo.bXmit && !TaskRunTransmitHandle && LockDisplay(false)) {
+			DisplayLine(0, "Not Transmitting");
 			UnLockDisplay();
+			bTransmitting = false;
+			bWaitingForStop = false;
+			secondsLeft = 0;
 		}
-		//else {
-		//	Serial.println("failed lockdisplay");
-		//}
-		if (secondsLeft)
-			--secondsLeft;
 		// Wait for the next cycle.
 		vTaskDelayUntil(&xLastWakeTime, xFrequency);
-
-		//int freestack = uxTaskGetStackHighWaterMark(NULL);
-		//Serial.println(String("radio high water: ") + freestack);
 	}
 }
 
@@ -317,6 +310,8 @@ void TaskDTMF(void* parameter)
 		//Serial.println(String("tone:") + (int)(dtmf.tone2char(tones)));
 		if (button > 0)
 		{
+			// TODO: suspend transmitting here?
+
 			//Serial.print("Detected tone...");
 			// measure 4 times, result of each measurement should be always the same 
 			// time need for this process: 80ms, so the tone must be present at least 100ms to be valid
@@ -512,7 +507,6 @@ void setup()
 	// create the display mutex
 	MutexDisplayHandle = xSemaphoreCreateMutex();
 	// start the transmit and management tasks
-	xTaskCreate(TaskRunTransmit, "XMITFOX", 2000, NULL, 2, &TaskRunTransmitHandle);
 	xTaskCreate(TaskRunRadio, "FOXRADIO", 2000, NULL, 4, &TaskRunRadioHandle);
 	xTaskCreate(TaskShowBattery, "BATTERYLEVEL", 2000, NULL, 1, &TaskShowBatteryHandle);
 	xTaskCreate(TaskDTMF, "DTMFHANDLER", 2000, NULL, 2, &TaskDTMFHandle);
@@ -607,6 +601,7 @@ void MenuTextScrollSideways()
 	}
 }
 
+// the main loop
 void loop()
 {
 	static SYSTEM_INFO SystemInfoSaved;
@@ -624,7 +619,11 @@ void loop()
 			// make sure that the lcd dim is less than the bright
 			if (SystemInfo.nDisplayDimValue > SystemInfo.nDisplayBrightness)
 				SystemInfo.nDisplayDimValue = SystemInfo.nDisplayBrightness;
-			SaveLoadSettings(true);
+			if (LockDisplay(true)) {
+				ClearScreen();
+				SaveLoadSettings(true, false);
+				UnLockDisplay();
+			}
 		}
 	}
 	bLastSettingsMode = g_bSettingsMode;
