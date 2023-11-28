@@ -195,6 +195,7 @@ void TaskRunRadio(void* parameter)
 	int secondsLeft = 0;
 	int cycleCount;
 	bool bWaitingForStop = false;
+	bool bWasXmit = SystemInfo.bXmit;
 	// use this to make task run every second
 	TickType_t xLastWakeTime;
 	const TickType_t xFrequency = pdMS_TO_TICKS(1000);
@@ -203,6 +204,13 @@ void TaskRunRadio(void* parameter)
 
 	while (true) {
 		if (SystemInfo.bXmit || TaskRunTransmitHandle) {
+			if (bWasXmit != SystemInfo.bXmit) {
+				// tell the xmitter to stop
+				if (TaskRunTransmitHandle && bWasXmit)
+					xTaskNotify(TaskRunTransmitHandle, 1, eSetValueWithOverwrite);
+				bWaitingForStop = true;
+				bWasXmit = SystemInfo.bXmit;
+			}
 			if (bWaitingForStop) {
 				// check if the xmitter is finished
 				if (!TaskRunTransmitHandle) {
@@ -1448,6 +1456,7 @@ void WriteMessage(String txt, bool error, int wait, bool process)
 		delay(wait);
 	}
 	tft.setTextColor(TFT_WHITE);
+	ClearScreen();
 }
 
 // compare strings for sort ignoring case
