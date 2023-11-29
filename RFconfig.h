@@ -27,3 +27,6 @@
 #define AUDIO_OUT_PORT 32        // send music and cw out this pin
 #define BUZZER_FREQUENCY 700  // cw pitch
 #define TXHIPOWER_PORT 15	// Pin to control TX Power, not conncted -> high power, connect to GND -> Low power
+// the radio serial ports
+#define RADIO_SERIAL_RX 21
+#define RADIO_SERIAL_TX 12

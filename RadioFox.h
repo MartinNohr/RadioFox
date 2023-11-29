@@ -89,6 +89,9 @@ String file_size(int bytes) {
 #include "fonts.h"
 #include <stack>
 
+// serial port for the 818 radio module
+HardwareSerial RadioSerial(1);
+
 // definitions for preferences
 const char* prefsName = "FOX";
 const char* prefsVars = "vars";

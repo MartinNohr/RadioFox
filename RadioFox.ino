@@ -375,6 +375,8 @@ void setup()
 	while (!Serial.availableForWrite()) {
 		delay(10);
 	}
+	// start the radio serial port
+	RadioSerial.begin(9600, SERIAL_8N1, RADIO_SERIAL_RX, RADIO_SERIAL_TX);
 	// start the tone generator
 	ledcSetup(toneChannel, 0, 8);
 	ledcAttachPin(AUDIO_OUT_PORT, toneChannel);
@@ -643,6 +645,9 @@ void loop()
 		didsomething = false;
 		delay(1);
 	}
+	// testing...
+	RadioSerial.print("AT+BAUD");
+	delay(10);
 }
 
 // do something from the menu depending on the button argument
