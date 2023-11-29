@@ -402,8 +402,6 @@ void setup()
 	// init the onboard buttons
 	gpio_set_direction(GPIO_NUM_0, GPIO_MODE_INPUT);
 	gpio_set_pull_mode(GPIO_NUM_0, GPIO_PULLUP_ONLY);
-	// enable the onboard LED
-	gpio_set_direction((gpio_num_t)LED_BUILTIN, GPIO_MODE_OUTPUT);
 
 	periodic_Second_timer_args = {
 				periodic_Second_timer_callback,
@@ -2616,46 +2614,28 @@ void sendMorseCode(const char* tokens) {
 			break;
 		}
 	}
-	morseOutputOff(2);
+	vTaskDelay(pdMS_TO_TICKS(2 * SystemInfo.nMorseInterval));
 	//   Serial.print(" ");
 }
 
 void sendEndOfWord() {
-	morseOutputOff(4);
+	vTaskDelay(pdMS_TO_TICKS(4 * SystemInfo.nMorseInterval));
 	//   Serial.print("  ");
 }
 
 // basic functions - Morse code concepts
 void sendDot() {
 	ledcWriteTone(toneChannel, BUZZER_FREQUENCY);
-	morseOutputOn(1);
+	vTaskDelay(pdMS_TO_TICKS(1 * SystemInfo.nMorseInterval));
 	ledcWriteTone(toneChannel, 0);
-	morseOutputOff(1);
+	vTaskDelay(pdMS_TO_TICKS(1 * SystemInfo.nMorseInterval));
 	//   Serial.print(".");
 }
 
 void sendDash() {
 	ledcWriteTone(toneChannel, BUZZER_FREQUENCY);
-	morseOutputOn(3);
+	vTaskDelay(pdMS_TO_TICKS(3 * SystemInfo.nMorseInterval));
 	ledcWriteTone(toneChannel, 0);
-	morseOutputOff(1);
+	vTaskDelay(pdMS_TO_TICKS(1 * SystemInfo.nMorseInterval));
 	//   Serial.print("-");
-}
-
-// Low level functions - how the actions are accomplished
-// n = number of intervals
-// SystemInfo.nMorseInterval is a fixed length of time determined at start, for example 200 milliseconds
-void morseOutputOn(int n) {
-	digitalWrite(LED_BUILTIN, HIGH);
-	//   example: morseOutputOn(1) means turn output on and keep it on for 1 interval
-	//            morseOutputOn(3) means turn output on and keep it on for 3 intervals
-	//
-	//   digitalWrite(morseOutput, HIGH);
-	vTaskDelay(pdMS_TO_TICKS(n * SystemInfo.nMorseInterval));
-}
-
-void morseOutputOff(int n) {
-	digitalWrite(LED_BUILTIN, LOW);
-	//   digitalWrite(morseOutput, LOW);
-	vTaskDelay(pdMS_TO_TICKS(n * SystemInfo.nMorseInterval));
 }

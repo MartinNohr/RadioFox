@@ -29,4 +29,4 @@
 #define TXHIPOWER_PORT 15	// Pin to control TX Power, not conncted -> high power, connect to GND -> Low power
 // the radio serial ports
 #define RADIO_SERIAL_RX 21
-#define RADIO_SERIAL_TX 12
+#define RADIO_SERIAL_TX 22	// NOTE: do not use the LED_BUILTIN which is also 22, the TTGO T-Display does not an LED
