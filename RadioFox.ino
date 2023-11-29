@@ -187,6 +187,7 @@ void TaskRunTransmit(void* parameter)
 		vTaskDelete(TaskSendBeaconHandle);
 		TaskSendBeaconHandle = NULL;
 	}
+	ledcWriteTone(toneChannel, 0);
 	// turn PTT off here
 	gpio_set_level((gpio_num_t)PTT_PORT, 1);
 	TaskRunTransmitHandle = NULL;
