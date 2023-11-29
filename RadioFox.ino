@@ -178,6 +178,15 @@ void TaskRunTransmit(void* parameter)
 		}
 		vTaskDelay(pdMS_TO_TICKS(500));
 	}
+	// make sure everybody is stopped
+	if (TaskSendMusicHandle) {
+		vTaskDelete(TaskSendMusicHandle);
+		TaskSendMusicHandle = NULL;
+	}
+	if (TaskSendBeaconHandle) {
+		vTaskDelete(TaskSendBeaconHandle);
+		TaskSendBeaconHandle = NULL;
+	}
 	// turn PTT off here
 	gpio_set_level((gpio_num_t)PTT_PORT, 1);
 	TaskRunTransmitHandle = NULL;
@@ -644,8 +653,8 @@ void loop()
 		delay(1);
 	}
 	// testing...
-	RadioSerial.print("AT+BAUD");
-	delay(10);
+	RadioSerial.print("AT+140.000");
+	delay(100);
 }
 
 // do something from the menu depending on the button argument
