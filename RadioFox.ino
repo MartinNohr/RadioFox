@@ -144,7 +144,43 @@ void TaskRunTransmit(void* parameter)
 	xTaskNotify(TaskRunRadioHandle, (uint32_t)"TX Start", eSetValueWithOverwrite);
 	// wait for PTT to take effect
 	vTaskDelay(pdMS_TO_TICKS(500));
+	// a list of our tasks to run
+	//static const struct RFTaskEntry {
+	//	char* name;
+	//	void (*task)(void* pArgs);
+	//	TaskHandle_t* pTaskHandle;
+	//} RFTaskList[] = {
+	//	{"SendMusic",TaskSendMusic,&TaskSendMusicHandle},
+	//	{"SendBeacon",TaskSendBeacon,&TaskSendBeaconHandle},
+	//};
 	bool bDone = false;
+	//while (!bDone && ulTaskNotifyTake(pdTRUE, 0) == 0) {
+	//	for (const struct RFTaskEntry& pte : RFTaskList) {
+	//		Serial.println(pte.name);
+	//		// send the name for display
+	//		xTaskNotify(TaskRunRadioHandle, (uint32_t)pte.name, eSetValueWithOverwrite);
+	//		// start the task
+	//		xTaskCreate(pte.task, pte.name, 2000, NULL, 4, pte.pTaskHandle);
+	//		// wait for it to complete or be cancelled
+	//		while (*pte.pTaskHandle) {
+	//			Serial.println("checking task");
+	//			// check for timeout or cancel task
+	//			if (SystemInfo.bStopImmediately && ulTaskNotifyTake(pdTRUE, 0)) {
+	//				Serial.println("deleting task");
+	//				if (*pte.pTaskHandle)
+	//					vTaskDelete(*pte.pTaskHandle);
+	//				*pte.pTaskHandle = NULL;
+	//				bDone = true;
+	//				break;
+	//			}
+	//			vTaskDelay(pdMS_TO_TICKS(1000));
+	//		}
+	//		if (bDone)
+	//			break;
+	//	}
+	//	vTaskDelay(pdMS_TO_TICKS(500));
+	//}
+
 	// loop sending until stopped by TaskRunRadio
 	while (!bDone && ulTaskNotifyTake(pdTRUE, 0) == 0) {
 		// do all the send operations
@@ -154,7 +190,8 @@ void TaskRunTransmit(void* parameter)
 		while (TaskSendMusicHandle) {
 			// check for timeout or cancel task
 			if (SystemInfo.bStopImmediately && ulTaskNotifyTake(pdTRUE, 0)) {
-				vTaskDelete(TaskSendMusicHandle);
+				if (TaskSendMusicHandle)
+					vTaskDelete(TaskSendMusicHandle);
 				TaskSendMusicHandle = NULL;
 				bDone = true;
 				break;
@@ -163,13 +200,16 @@ void TaskRunTransmit(void* parameter)
 		}
 		vTaskDelay(pdMS_TO_TICKS(500));
 		// send the new title
-		xTaskNotify(TaskRunRadioHandle, (uint32_t)"Beacon", eSetValueWithOverwrite);
-		xTaskCreate(TaskSendBeacon, "SendBeaconID", 2000, NULL, 4, &TaskSendBeaconHandle);
+		if (!bDone) {
+			xTaskNotify(TaskRunRadioHandle, (uint32_t)"Beacon", eSetValueWithOverwrite);
+			xTaskCreate(TaskSendBeacon, "SendBeaconID", 2000, NULL, 4, &TaskSendBeaconHandle);
+		}
 		// wait for task to end
 		while (!bDone && TaskSendBeaconHandle) {
 			// check for timeout or cancel task
 			if (SystemInfo.bStopImmediately && ulTaskNotifyTake(pdTRUE, 0)) {
-				vTaskDelete(TaskSendBeaconHandle);
+				if (TaskSendBeaconHandle)
+					vTaskDelete(TaskSendBeaconHandle);
 				TaskSendBeaconHandle = NULL;
 				bDone = true;
 				break;
@@ -178,15 +218,7 @@ void TaskRunTransmit(void* parameter)
 		}
 		vTaskDelay(pdMS_TO_TICKS(500));
 	}
-	// make sure everybody is stopped
-	if (TaskSendMusicHandle) {
-		vTaskDelete(TaskSendMusicHandle);
-		TaskSendMusicHandle = NULL;
-	}
-	if (TaskSendBeaconHandle) {
-		vTaskDelete(TaskSendBeaconHandle);
-		TaskSendBeaconHandle = NULL;
-	}
+	// Turn off the output tone also
 	ledcWriteTone(toneChannel, 0);
 	// turn PTT off here
 	gpio_set_level((gpio_num_t)PTT_PORT, 1);
@@ -218,7 +250,9 @@ void TaskRunRadio(void* parameter)
 				// tell the xmitter to stop
 				if (TaskRunTransmitHandle && bWasXmit)
 					xTaskNotify(TaskRunTransmitHandle, 1, eSetValueWithOverwrite);
-				bWaitingForStop = true;
+				// set if we were xmitting
+				bWaitingForStop = bWasXmit;
+				// don't do this code again until the bXmit flag actually changes
 				bWasXmit = SystemInfo.bXmit;
 			}
 			if (bWaitingForStop) {
@@ -654,8 +688,8 @@ void loop()
 		delay(1);
 	}
 	// testing...
-	RadioSerial.print("AT+140.000");
-	delay(100);
+	//RadioSerial.print("AT+140.000");
+	//delay(100);
 }
 
 // do something from the menu depending on the button argument
