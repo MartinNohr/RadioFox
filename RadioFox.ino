@@ -145,76 +145,36 @@ void TaskRunTransmit(void* parameter)
 	// wait for PTT to take effect
 	vTaskDelay(pdMS_TO_TICKS(500));
 	// a list of our tasks to run
-	//static const struct RFTaskEntry {
-	//	char* name;
-	//	void (*task)(void* pArgs);
-	//	TaskHandle_t* pTaskHandle;
-	//} RFTaskList[] = {
-	//	{"SendMusic",TaskSendMusic,&TaskSendMusicHandle},
-	//	{"SendBeacon",TaskSendBeacon,&TaskSendBeaconHandle},
-	//};
+	static const struct RFTaskEntry {
+		char* name;
+		void (*task)(void* pArgs);
+		TaskHandle_t* pTaskHandle;
+	} RFTaskList[] = {
+		{"Music",TaskSendMusic,&TaskSendMusicHandle},
+		{"Beacon",TaskSendBeacon,&TaskSendBeaconHandle},
+	};
 	bool bDone = false;
-	//while (!bDone && ulTaskNotifyTake(pdTRUE, 0) == 0) {
-	//	for (const struct RFTaskEntry& pte : RFTaskList) {
-	//		Serial.println(pte.name);
-	//		// send the name for display
-	//		xTaskNotify(TaskRunRadioHandle, (uint32_t)pte.name, eSetValueWithOverwrite);
-	//		// start the task
-	//		xTaskCreate(pte.task, pte.name, 2000, NULL, 4, pte.pTaskHandle);
-	//		// wait for it to complete or be cancelled
-	//		while (*pte.pTaskHandle) {
-	//			Serial.println("checking task");
-	//			// check for timeout or cancel task
-	//			if (SystemInfo.bStopImmediately && ulTaskNotifyTake(pdTRUE, 0)) {
-	//				Serial.println("deleting task");
-	//				if (*pte.pTaskHandle)
-	//					vTaskDelete(*pte.pTaskHandle);
-	//				*pte.pTaskHandle = NULL;
-	//				bDone = true;
-	//				break;
-	//			}
-	//			vTaskDelay(pdMS_TO_TICKS(1000));
-	//		}
-	//		if (bDone)
-	//			break;
-	//	}
-	//	vTaskDelay(pdMS_TO_TICKS(500));
-	//}
-
-	// loop sending until stopped by TaskRunRadio
 	while (!bDone && ulTaskNotifyTake(pdTRUE, 0) == 0) {
-		// do all the send operations
-		xTaskNotify(TaskRunRadioHandle, (uint32_t)"Music", eSetValueWithOverwrite);
-		xTaskCreate(TaskSendMusic, "SendMusic", 2000, NULL, 4, &TaskSendMusicHandle);
-		// wait for task to end
-		while (TaskSendMusicHandle) {
-			// check for timeout or cancel task
-			if (SystemInfo.bStopImmediately && ulTaskNotifyTake(pdTRUE, 0)) {
-				if (TaskSendMusicHandle)
-					vTaskDelete(TaskSendMusicHandle);
-				TaskSendMusicHandle = NULL;
-				bDone = true;
-				break;
+		for (const struct RFTaskEntry& pte : RFTaskList) {
+			Serial.println(pte.name);
+			// send the name for display
+			xTaskNotify(TaskRunRadioHandle, (uint32_t)pte.name, eSetValueWithOverwrite);
+			// start the task
+			xTaskCreate(pte.task, pte.name, 2000, NULL, 4, pte.pTaskHandle);
+			// wait for it to complete or be cancelled
+			while (*pte.pTaskHandle) {
+				// check for timeout or cancel task
+				if (SystemInfo.bStopImmediately && ulTaskNotifyTake(pdTRUE, 0)) {
+					if (*pte.pTaskHandle)
+						vTaskDelete(*pte.pTaskHandle);
+					*pte.pTaskHandle = NULL;
+					bDone = true;
+					break;
+				}
+				vTaskDelay(pdMS_TO_TICKS(1000));
 			}
-			vTaskDelay(pdMS_TO_TICKS(1000));
-		}
-		vTaskDelay(pdMS_TO_TICKS(500));
-		// send the new title
-		if (!bDone) {
-			xTaskNotify(TaskRunRadioHandle, (uint32_t)"Beacon", eSetValueWithOverwrite);
-			xTaskCreate(TaskSendBeacon, "SendBeaconID", 2000, NULL, 4, &TaskSendBeaconHandle);
-		}
-		// wait for task to end
-		while (!bDone && TaskSendBeaconHandle) {
-			// check for timeout or cancel task
-			if (SystemInfo.bStopImmediately && ulTaskNotifyTake(pdTRUE, 0)) {
-				if (TaskSendBeaconHandle)
-					vTaskDelete(TaskSendBeaconHandle);
-				TaskSendBeaconHandle = NULL;
-				bDone = true;
+			if (bDone)
 				break;
-			}
-			vTaskDelay(pdMS_TO_TICKS(1000));
 		}
 		vTaskDelay(pdMS_TO_TICKS(500));
 	}
@@ -613,6 +573,7 @@ void ResetDimTimer() {
 // scroll the long menu lines
 void MenuTextScrollSideways()
 {
+	return;	// ***** until we figure why this crashes from the radio task
 	static unsigned long menuUpdateTime = 0;
 	static unsigned long ledUpdateTime = 0;
 	if (millis() > menuUpdateTime + SystemInfo.nSidewayScrollSpeed) {
