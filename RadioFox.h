@@ -407,7 +407,7 @@ struct TEXTLINES {
     int nRollOffset;
     // colors
     uint16_t foreColor, backColor;
-    // whether we are going up or down
+    // whether we are going right or left
     int nRollDirection;
 };
 std::vector<struct TEXTLINES> TextLines;

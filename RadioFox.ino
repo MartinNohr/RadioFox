@@ -505,13 +505,14 @@ void setup()
 	}
 	// clear the button buffer
 	CRotaryDialButton::clear();
-	// leave the intro screen up for 4 seconds or until a button is pressed or dial rotated
-	for (int cnt = 0; cnt < 400; ++cnt) {
-		if (ReadButton() != BTN_NONE) {
-			break;
-		}
-		vTaskDelay(pdMS_TO_TICKS(10));
-	}
+	delay(3000);
+	//// leave the intro screen up for 4 seconds or until a button is pressed or dial rotated
+	//for (int cnt = 0; cnt < 400; ++cnt) {
+	//	if (ReadButton() != BTN_NONE) {
+	//		break;
+	//	}
+	//	vTaskDelay(pdMS_TO_TICKS(10));
+	//}
 	// set the PTT port
 	gpio_set_direction((gpio_num_t)PTT_PORT, GPIO_MODE_OUTPUT);
 	gpio_set_level((gpio_num_t)PTT_PORT, 1);
@@ -544,7 +545,8 @@ void CheckRotaryDialType()
 		SystemInfo.DialSettings.m_bToggleDial = true;
 	}
 	else {
-		WriteMessage("Rotate dial 1 click", false, 10);
+		CRotaryDialButton::clear();
+		WriteMessage("Rotate dial 1 click", false, -1);
 		// wait for rotate, they were both high before if we got this far, so just look at A
 		while (gpio_get_level((gpio_num_t)DIAL_A))
 			delay(10);
@@ -560,7 +562,7 @@ void CheckRotaryDialType()
 	}
 	if (!SystemInfo.DialSettings.m_bToggleDial)
 		SystemInfo.DialSettings.m_nDialPulseCount = 2;
-	WriteMessage(String("Dial Type: ") + (SystemInfo.DialSettings.m_bToggleDial ? "Toggle" : "Pulse"), false, 1000);
+	WriteMessage(String("Dial Type: ") + (SystemInfo.DialSettings.m_bToggleDial ? "Toggle" : "Pulse"), false, 2000);
 }
 
 void ResetDimTimer() {
@@ -2442,22 +2444,6 @@ void EraseStartFile(MenuItem* menu)
 {
 	//if (GetYesNo("Erase START.MIW?"))
 	//	WriteOrDeleteConfigFile("", true, true, false);
-}
-
-void SaveStartFile(MenuItem* menu)
-{
-	//WriteOrDeleteConfigFile("", false, true, false);
-}
-
-void LoadStartFile(MenuItem* menu)
-{
-	//String name = StartFileName;
-	//if (ProcessConfigFile(name)) {
-	//	WriteMessage(String("Processed:\n") + name);
-	//}
-	//else {
-	//	WriteMessage("Failed reading:\n" + name, true);
-	//}
 }
 
 // read the files from the card
