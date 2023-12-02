@@ -156,7 +156,6 @@ void TaskRunTransmit(void* parameter)
 	bool bDone = false;
 	while (!bDone && ulTaskNotifyTake(pdTRUE, 0) == 0) {
 		for (const struct RFTaskEntry& pte : RFTaskList) {
-			Serial.println(pte.name);
 			// send the name for display
 			xTaskNotify(TaskRunRadioHandle, (uint32_t)pte.name, eSetValueWithOverwrite);
 			// start the task
@@ -575,7 +574,6 @@ void ResetDimTimer() {
 // scroll the long menu lines
 void MenuTextScrollSideways()
 {
-	return;	// ***** until we figure why this crashes from the radio task
 	static unsigned long menuUpdateTime = 0;
 	static unsigned long ledUpdateTime = 0;
 	if (millis() > menuUpdateTime + SystemInfo.nSidewayScrollSpeed) {
@@ -1341,7 +1339,7 @@ void setupSDcard()
 }
 
 // display a line in selected colors and clear to the end of the line
-void DisplayLine(int lineNum, String text, int16_t color, int16_t backColor)
+void DisplayLine(int lineNum, String text, uint16_t color, uint16_t backColor)
 {
 	if (lineNum >= 0 && lineNum < nMenuLineCount) {
 		if (TextLines[lineNum].Line != text || TextLines[lineNum].backColor != backColor || TextLines[lineNum].foreColor != color) {

@@ -129,7 +129,7 @@ TFT_eSPI tft = TFT_eSPI();       // Invoke custom library
 
 // functions
 void SetDisplayBrightness(int val);
-void DisplayLine(int lineNum, String text, int16_t color = TFT_WHITE, int16_t backColor = TFT_BLACK);
+void DisplayLine(int lineNum, String text, uint16_t color = TFT_WHITE, uint16_t backColor = TFT_BLACK);
 void DisplayMenuLine(int lineNum, int displine, String text);
 void WriteMessage(String txt, bool error = false, int wait = 2000, bool process = false);
 void append_page_header();
