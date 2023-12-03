@@ -288,9 +288,9 @@ MenuItem BatteryMenu[] = {
 };
 MenuItem SidewaysScrollMenu[] = {
     {eExit,"Sideways Scrolling"},
-    {eTextInt,"Sideways Scroll Speed: %d mS",GetIntegerValue,&SystemInfo.nSidewayScrollSpeed,1,1000},
-    {eTextInt,"Sideways Scroll Pause: %d",GetIntegerValue,&SystemInfo.nSidewaysScrollPause,1,100},
-    {eTextInt,"Sideways Scroll Reverse: %dx",GetIntegerValue,&SystemInfo.nSidewaysScrollReverse,1,20},
+    {eTextInt,"Speed: %d mS",GetIntegerValue,&SystemInfo.nSidewayScrollSpeed,1,1000},
+    {eTextInt,"Pause: %d",GetIntegerValue,&SystemInfo.nSidewaysScrollPause,1,100},
+    {eTextInt,"Reverse Speed: %dx",GetIntegerValue,&SystemInfo.nSidewaysScrollReverse,1,20},
     {eExit,PreviousMenu},
     // make sure this one is last
     {eTerminate}
@@ -367,7 +367,7 @@ MenuItem RadioMenu[] = {
     {eTextInt,"TX Send Time: %d Sec",GetIntegerValue,&SystemInfo.nTxTime,1,300},
     {eTextInt,"TX Pause Time: %d Sec",GetIntegerValue,&SystemInfo.nTxPause,1,600},
     {eBool,"RF Power: %s",ToggleBool,&SystemInfo.bRfPowerHi,0,0,0,"High","Low"},
-    {eTextInt,"Frequency: %d.%d MHz",GetIntegerValue,&SystemInfo.nFrequency,137000,174000,3},
+    {eTextInt,"TX: %d.%03d MHz",GetIntegerValue,&SystemInfo.nFrequency,137000,174000,3},
 	{eEditText,"Call Sign: %s",GetText,SystemInfo.cRadioID,1,sizeof(SystemInfo.cRadioID) - 1},
     {eEditText,"Audio: %s",GetAudioFile,SystemInfo.cAudioFile,1,sizeof(SystemInfo.cAudioFile) - 1},
     {eTextInt,"Morse Interval: %d mS",GetIntegerValue,&SystemInfo.nMorseInterval,10,500},
@@ -419,6 +419,8 @@ TaskHandle_t TaskSendBeaconHandle;
 TaskHandle_t TaskSendMusicHandle;
 TaskHandle_t TaskShowBatteryHandle;
 TaskHandle_t TaskDTMFHandle;
+TaskHandle_t TaskScrollSidewaysHandle;
+TaskHandle_t TaskMenuHandle;
 // a mutex to control access to writing on the display, the TFT driver is not re-entrant
 SemaphoreHandle_t MutexDisplayHandle;
 

@@ -88,6 +88,54 @@ void UnLockDisplay()
 	}
 }
 
+void TaskScrollSideways(void* params)
+{
+	// use this to make task run every second
+	TickType_t xLastWakeTime;
+	const TickType_t xFrequency = pdMS_TO_TICKS(SystemInfo.nSidewayScrollSpeed);
+	// Initialise the xLastWakeTime variable with the current time.
+	xLastWakeTime = xTaskGetTickCount();
+	for (;;) {
+		for (int ix = 0; ix < nMenuLineCount; ++ix) {
+			int offset = TextLines[ix].nRollOffset;
+			if (TextLines[ix].nRollLength) {
+				if (TextLines[ix].nRollOffset == 0 && TextLines[ix].nRollDirection == 0) {
+					TextLines[ix].nRollDirection = SystemInfo.nSidewaysScrollPause;
+					continue;
+				}
+				if (TextLines[ix].nRollDirection > 1) {
+					--TextLines[ix].nRollDirection;
+				}
+				if (TextLines[ix].nRollDirection == 1) {
+					++TextLines[ix].nRollOffset;
+				}
+				if (TextLines[ix].nRollOffset >= (TextLines[ix].nRollLength - tft.width()) && TextLines[ix].nRollDirection > 0) {
+					TextLines[ix].nRollDirection = -SystemInfo.nSidewaysScrollPause;
+				}
+				if (TextLines[ix].nRollDirection < -1) {
+					++TextLines[ix].nRollDirection;
+				}
+				if (TextLines[ix].nRollDirection == -1) {
+					TextLines[ix].nRollOffset -= SystemInfo.nSidewaysScrollReverse;
+					if (TextLines[ix].nRollOffset < 0) {
+						TextLines[ix].nRollOffset = 0;
+					}
+					if (TextLines[ix].nRollOffset == 0) {
+						TextLines[ix].nRollDirection = 0;
+					}
+				}
+				if (offset != TextLines[ix].nRollOffset) {
+					LockDisplay(true);
+					DisplayLine(ix, TextLines[ix].Line, TextLines[ix].foreColor, TextLines[ix].backColor);
+					UnLockDisplay();
+				}
+			}
+		}
+		// Wait for the next cycle.
+		vTaskDelayUntil(&xLastWakeTime, xFrequency);
+	}
+}
+
 void TaskSendBeacon(void* parameter)
 {
 	for (int i = 0; i < sizeof(SystemInfo.cBeaconString); i++) {
@@ -224,7 +272,7 @@ void TaskRunRadio(void* parameter)
 				status = ulTaskNotifyTake(pdTRUE, 0);
 				if (status == 0) {
 					// update the running display to show we're waiting
-					if (LockDisplay(false)) {
+					if (!g_bSettingsMode && LockDisplay(false)) {
 						DisplayLine(0, String(cStatusText) + ": Stopping");
 						UnLockDisplay();
 					}
@@ -260,7 +308,7 @@ void TaskRunRadio(void* parameter)
 			if (!bTransmitting && !bWaitingForStop) {
 				cStatusText = "Pause";
 			}
-			if (!bWaitingForStop && LockDisplay(false)) {
+			if (!g_bSettingsMode && !bWaitingForStop && LockDisplay(false)) {
 				int lineNo = 0;
 				DisplayLine(lineNo++, String(cStatusText) + ": " + (secondsLeft / 60) + " Min " + (secondsLeft % 60) + " Sec");
 				DisplayLine(lineNo++, String("Cycles: ") + cycleCount);
@@ -275,9 +323,11 @@ void TaskRunRadio(void* parameter)
 			//int freestack = uxTaskGetStackHighWaterMark(NULL);
 			//Serial.println(String("radio high water: ") + freestack);
 		}
-		if (!SystemInfo.bXmit && !TaskRunTransmitHandle && LockDisplay(false)) {
-			DisplayLine(0, "Not Transmitting");
-			UnLockDisplay();
+		if (!SystemInfo.bXmit && !TaskRunTransmitHandle) {
+			if (!g_bSettingsMode && LockDisplay(false)) {
+				DisplayLine(0, "Not Transmitting");
+				UnLockDisplay();
+			}
 			bTransmitting = false;
 			bWaitingForStop = false;
 			secondsLeft = 0;
@@ -366,6 +416,48 @@ void TaskDTMF(void* parameter)
 		}
 		// Wait for the next cycle.
 		vTaskDelayUntil(&xLastWakeTime, xFrequency);
+	}
+}
+
+// handle the dial and menu system
+void TaskMenu(void* params)
+{
+	static SYSTEM_INFO SystemInfoSaved;
+	static bool didsomething = false;
+	static bool bLastSettingsMode = false;
+	for (;;) {
+		if (g_bSettingsMode) {
+			LockDisplay(true);
+			didsomething = HandleMenus();
+			UnLockDisplay();
+		}
+		else {
+			didsomething = HandleRunMode();
+		}
+		// did settings mode just turn on?
+		if (g_bSettingsMode && !bLastSettingsMode) {
+			memcpy(&SystemInfoSaved, &SystemInfo, sizeof(SystemInfo));
+			LockDisplay(true);
+			ClearScreen();
+			UnLockDisplay();
+		}
+		// did settings mode just turn off?
+		if (!g_bSettingsMode && bLastSettingsMode) {
+			// show the battery display by telling the task to run
+			xTaskNotifyGive(TaskShowBatteryHandle);
+			if (memcmp(&SystemInfoSaved, &SystemInfo, sizeof(SystemInfo))) {
+				// make sure that the lcd dim is less than the bright
+				if (SystemInfo.nDisplayDimValue > SystemInfo.nDisplayBrightness)
+					SystemInfo.nDisplayDimValue = SystemInfo.nDisplayBrightness;
+				if (LockDisplay(true)) {
+					ClearScreen();
+					SaveLoadSettings(true, false);
+					UnLockDisplay();
+				}
+			}
+		}
+		bLastSettingsMode = g_bSettingsMode;
+		vTaskDelay(2);
 	}
 }
 
@@ -522,6 +614,8 @@ void setup()
 	xTaskCreate(TaskRunRadio, "FOXRADIO", 2000, NULL, 4, &TaskRunRadioHandle);
 	xTaskCreate(TaskShowBattery, "BATTERYLEVEL", 2000, NULL, 1, &TaskShowBatteryHandle);
 	xTaskCreate(TaskDTMF, "DTMFHANDLER", 2000, NULL, 2, &TaskDTMFHandle);
+	xTaskCreate(TaskScrollSideways, "SCROLLSIDEWAYS", 2000, NULL, 3, &TaskScrollSidewaysHandle);
+	xTaskCreate(TaskMenu, "MENU", 2000, NULL, 2, &TaskMenuHandle);
 	ResetDimTimer();
 }
 
@@ -571,86 +665,15 @@ void ResetDimTimer() {
 	}
 }
 
-// scroll the long menu lines
-void MenuTextScrollSideways()
-{
-	static unsigned long menuUpdateTime = 0;
-	static unsigned long ledUpdateTime = 0;
-	if (millis() > menuUpdateTime + SystemInfo.nSidewayScrollSpeed) {
-		menuUpdateTime = millis();
-		for (int ix = 0; ix < nMenuLineCount; ++ix) {
-			int offset = TextLines[ix].nRollOffset;
-			if (TextLines[ix].nRollLength) {
-				if (TextLines[ix].nRollOffset == 0 && TextLines[ix].nRollDirection == 0) {
-					TextLines[ix].nRollDirection = SystemInfo.nSidewaysScrollPause;
-					continue;
-				}
-				if (TextLines[ix].nRollDirection > 1) {
-					--TextLines[ix].nRollDirection;
-				}
-				if (TextLines[ix].nRollDirection == 1) {
-					++TextLines[ix].nRollOffset;
-				}
-				if (TextLines[ix].nRollOffset >= (TextLines[ix].nRollLength - tft.width()) && TextLines[ix].nRollDirection > 0) {
-					TextLines[ix].nRollDirection = -SystemInfo.nSidewaysScrollPause;
-				}
-				if (TextLines[ix].nRollDirection < -1) {
-					++TextLines[ix].nRollDirection;
-				}
-				if (TextLines[ix].nRollDirection == -1) {
-					TextLines[ix].nRollOffset -= SystemInfo.nSidewaysScrollReverse;
-					if (TextLines[ix].nRollOffset < 0) {
-						TextLines[ix].nRollOffset = 0;
-					}
-					if (TextLines[ix].nRollOffset == 0) {
-						TextLines[ix].nRollDirection = 0;
-					}
-				}
-				if (offset != TextLines[ix].nRollOffset) {
-					DisplayLine(ix, TextLines[ix].Line, TextLines[ix].foreColor, TextLines[ix].backColor);
-				}
-			}
-		}
-	}
-}
-
 // the main loop
 void loop()
 {
-	static SYSTEM_INFO SystemInfoSaved;
-	static bool didsomething = false;
-	static bool bLastSettingsMode = false;
-
-	didsomething = g_bSettingsMode ? HandleMenus() : HandleRunMode();
-	if (g_bSettingsMode && !bLastSettingsMode) {
-		memcpy(&SystemInfoSaved, &SystemInfo, sizeof(SystemInfo));
-	}
-	if (!g_bSettingsMode && bLastSettingsMode) {
-		// show the battery display by telling the task to run
-		xTaskNotifyGive(TaskShowBatteryHandle);
-		if (memcmp(&SystemInfoSaved, &SystemInfo, sizeof(SystemInfo))) {
-			// make sure that the lcd dim is less than the bright
-			if (SystemInfo.nDisplayDimValue > SystemInfo.nDisplayBrightness)
-				SystemInfo.nDisplayDimValue = SystemInfo.nDisplayBrightness;
-			if (LockDisplay(true)) {
-				ClearScreen();
-				SaveLoadSettings(true, false);
-				UnLockDisplay();
-			}
-		}
-	}
-	bLastSettingsMode = g_bSettingsMode;
 	if (SystemInfo.bRunWebServer) {
 		server.handleClient();
 	}
-	// wait for no keys
-	if (didsomething) {
-		didsomething = false;
-		delay(1);
-	}
 	// testing...
 	//RadioSerial.print("AT+140.000");
-	//delay(100);
+	delay(100);
 }
 
 // do something from the menu depending on the button argument
@@ -927,16 +950,49 @@ void GetIntegerValueHelper(MenuItem * menu, bool bShowHue)
 	char line[50];
 	CRotaryDialButton::Button button = BTN_NONE;
 	bool done = false;
-	const char* fmt = menu->decimals ? "%ld.%ld" : "%ld";
+	const char* fmt;
+	if (menu->decimals) {
+		static char fmtInfo[30];
+		//String st = String("%ld.%0") + menu->decimals + "ld";
+		sprintf(fmtInfo,"%%ld.%%0%dld",menu->decimals);
+		fmt = fmtInfo;
+	}
+	else {
+		fmt = "%ld";
+	}
 	char minstr[20], maxstr[20], valstr[20];
+	sprintf(line, menu->text, *(int*)menu->value / (int)pow10(menu->decimals), *(int*)menu->value % (int)pow10(menu->decimals));
+	DisplayLine(0, line, SystemInfo.menuTextColor);
 	sprintf(minstr, fmt, menu->min / (int)pow10(menu->decimals), menu->min % (int)pow10(menu->decimals));
 	sprintf(maxstr, fmt, menu->max / (int)pow10(menu->decimals), menu->max % (int)pow10(menu->decimals));
-	DisplayLine(1, String("Range: ") + String(minstr) + " to " + String(maxstr), SystemInfo.menuTextColor);
+	DisplayLine(1, String(minstr) + " to " + String(maxstr), SystemInfo.menuTextColor);
 	DisplayLine(5, "Long Press B0 to reset", SystemInfo.menuTextColor);
 	DisplayLine(6, "Long Press to Accept", SystemInfo.menuTextColor);
 	int oldVal = *(int*)menu->value;
+	bool bChange = true;
 	do {
-		//Serial.println("button: " + String(button));
+		if (bChange) {
+			// make sure within limits
+			*(int*)menu->value = constrain(*(int*)menu->value, menu->min, menu->max);
+			// show slider bar
+			tft.fillRect(0, 2 * tft.fontHeight(), tft.width() - 1, 6, TFT_BLACK);
+			DrawProgressBar(0, 2 * tft.fontHeight() + 4, tft.width() - 1, 12, map(*(int*)menu->value, menu->min, menu->max, 0, 100), true);
+			sprintf(valstr, fmt, *(int*)menu->value / (int)pow10(menu->decimals), *(int*)menu->value % (int)pow10(menu->decimals));
+			DisplayLine(3, String("Value: ") + valstr, SystemInfo.menuTextColor);
+			sprintf(valstr, fmt, stepSize / (int)pow10(menu->decimals), stepSize % (int)pow10(menu->decimals));
+			DisplayLine(4, stepSize == -1 ? "Reset: long press (Click +)" : "Step: " + String(valstr) + " (Click +)", SystemInfo.menuTextColor);
+			if (menu->change != NULL && oldVal != *(int*)menu->value) {
+				(*menu->change)(menu, 0);
+				oldVal = *(int*)menu->value;
+			}
+			bChange = false;
+		}
+		// let the sideways scroll task work, we were locked at this point
+		UnLockDisplay();
+		// let other people run for a moment so the watchdog doesn't time out and reboot
+		vTaskDelay(2);
+		LockDisplay(true);
+		button = ReadButton();
 		switch (button) {
 		case BTN_LEFT:
 			if (stepSize != -1)
@@ -972,22 +1028,7 @@ void GetIntegerValueHelper(MenuItem * menu, bool bShowHue)
 			}
 			break;
 		}
-		// make sure within limits
-		*(int*)menu->value = constrain(*(int*)menu->value, menu->min, menu->max);
-		// show slider bar
-		tft.fillRect(0, 2 * tft.fontHeight(), tft.width() - 1, 6, TFT_BLACK);
-		DrawProgressBar(0, 2 * tft.fontHeight() + 4, tft.width() - 1, 12, map(*(int*)menu->value, menu->min, menu->max, 0, 100), true);
-		sprintf(line, menu->text, *(int*)menu->value / (int)pow10(menu->decimals), *(int*)menu->value % (int)pow10(menu->decimals));
-		DisplayLine(0, line, SystemInfo.menuTextColor);
-		sprintf(valstr, fmt, *(int*)menu->value / (int)pow10(menu->decimals), *(int*)menu->value % (int)pow10(menu->decimals));
-		DisplayLine(3, String("Value: ") + valstr, SystemInfo.menuTextColor);
-		sprintf(valstr, fmt, stepSize / (int)pow10(menu->decimals), stepSize % (int)pow10(menu->decimals));
-		DisplayLine(4, stepSize == -1 ? "Reset: long press (Click +)" : "Step: " + String(valstr) + " (Click +)", SystemInfo.menuTextColor);
-		if (menu->change != NULL && oldVal != *(int*)menu->value) {
-			(*menu->change)(menu, 0);
-			oldVal = *(int*)menu->value;
-		}
-		button = ReadButton();
+		bChange = (button != BTN_NONE);
 	} while (!done);
 }
 
@@ -1196,7 +1237,6 @@ bool HandleMenus()
 	case BTN_LONG:
 		ClearScreen();
 		g_bSettingsMode = false;
-		UnLockDisplay();
 		bMenuChanged = true;
 		break;
 	default:
@@ -1228,8 +1268,6 @@ bool HandleRunMode()
 		break;
 	case BTN_LONG:
 		g_bSettingsMode = true;
-		LockDisplay(true);
-		ClearScreen();
 		break;
 	case BTN_B0_CLICK:
 		// handle on board button 0
@@ -1256,7 +1294,6 @@ enum CRotaryDialButton::Button ReadButton()
 	if (SystemInfo.bRunWebServer) {
 		server.handleClient();
 	}
-	MenuTextScrollSideways();
 	enum CRotaryDialButton::Button retValue = BTN_NONE;
 	// read the next button, or NONE if none there
 	retValue = CRotaryDialButton::dequeue();
@@ -1523,7 +1560,6 @@ bool GetYesNo(String msg)
 			tft.drawString(retval ? "Yes" : "No", 72, 46);
 			change = false;
 		}
-		MenuTextScrollSideways();
 	}
 	tft.setTextPadding(pad);
 	return retval;
