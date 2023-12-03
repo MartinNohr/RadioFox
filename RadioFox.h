@@ -1,6 +1,6 @@
 #pragma once
 
-const char* FOX_Version = "0.03";
+const char* FOX_Version = "0.04";
 
 const char* StartFileName = "START.FOX";
 // some config things
@@ -176,17 +176,18 @@ typedef struct SYSTEM_INFO {
     int nPreviewAutoScroll = 0;                 // mSec for preview autoscroll, 0 means no scroll
     bool bRunWebServer = false;                 // run the web server
     // radio settings
-    char cRadioID[21] = "KK7JTE";               // ID to transmit
+    char cRadioID[21] = "CALLSIGN";             // ID to transmit
     char cBeaconString[31] = "BEACON";          // beacon string to send
     char cSerialNumber[13] = "G2023XX";         // fox serial number
 	int nTxTime = 2 * 60;                       // tx time in seconds
 	int nTxPause = 3 * 60;                      // tx pause time in seconds
     bool bRfPowerHi = false;                    // rf power control
     int nFrequency = 140000;                    // radio frequency in kHz
+    int nRfOffset = 1;                          // RX frequeny offset 0=-600 1=0 2=+600 kHz
     char cAudioFile[31] = "";                   // choose the audio file
     int nMorseInterval = 200;                   // mSec morse timer
     bool bXmit = false;                         // if xmit = false, don't transmit
-    bool bStopImmediately = false;              // set to true to cancel transmitting without waiting to finish
+    bool bStopImmediately = true;               // set to true to cancel transmitting without waiting to finish
     //
 };
 RTC_DATA_ATTR SYSTEM_INFO SystemInfo;
@@ -360,6 +361,7 @@ MenuItem EepromMenu[] = {
     // make sure this one is last
     {eTerminate}
 };
+const char* RxOffsetModeText[] = { "-600","0","+600" };
 MenuItem RadioMenu[] = {
     {eExit,"Radio Settings"},
     {eBool,"XMIT: %s",ToggleBool,&SystemInfo.bXmit,0,0,0,"On","Off"},
@@ -367,7 +369,8 @@ MenuItem RadioMenu[] = {
     {eTextInt,"TX Send Time: %d Sec",GetIntegerValue,&SystemInfo.nTxTime,1,300},
     {eTextInt,"TX Pause Time: %d Sec",GetIntegerValue,&SystemInfo.nTxPause,1,600},
     {eBool,"RF Power: %s",ToggleBool,&SystemInfo.bRfPowerHi,0,0,0,"High","Low"},
-    {eTextInt,"TX: %d.%03d MHz",GetIntegerValue,&SystemInfo.nFrequency,137000,174000,3},
+    {eTextInt,"TX: %d.%03d MHz",GetIntegerValue,&SystemInfo.nFrequency,134000,174000,3},
+    {eList,"RX Offset: %s kHz",GetSelectChoice,&SystemInfo.nRfOffset,0,sizeof(RxOffsetModeText) / sizeof(*RxOffsetModeText) - 1,0,NULL,NULL,NULL,RxOffsetModeText},
 	{eEditText,"Call Sign: %s",GetText,SystemInfo.cRadioID,1,sizeof(SystemInfo.cRadioID) - 1},
     {eEditText,"Audio: %s",GetAudioFile,SystemInfo.cAudioFile,1,sizeof(SystemInfo.cAudioFile) - 1},
     {eTextInt,"Morse Interval: %d mS",GetIntegerValue,&SystemInfo.nMorseInterval,10,500},

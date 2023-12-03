@@ -283,6 +283,7 @@ void TaskRunRadio(void* parameter)
 				DisplayLine(lineNo++, String("Call Sign: ") + SystemInfo.cRadioID, SystemInfo.menuTextColor);
 				sprintf(fmt, "%03d MHz ", SystemInfo.nFrequency % 1000);
 				DisplayLine(lineNo++, String(SystemInfo.nFrequency / 1000) + "." + fmt + (SystemInfo.bRfPowerHi ? "High" : "Low"), SystemInfo.menuTextColor);
+				DisplayLine(lineNo++, String("RX Offset: ") + RxOffsetModeText[SystemInfo.nRfOffset] + " kHz", SystemInfo.menuTextColor);
 				DisplayLine(lineNo++, String("Audio: ") + SystemInfo.cAudioFile, SystemInfo.menuTextColor);
 			}
 			if (secondsLeft)
@@ -577,6 +578,13 @@ void setup()
 	xTaskCreate(TaskScrollSideways, "SCROLLSIDEWAYS", 2000, NULL, 3, &TaskScrollSidewaysHandle);
 	xTaskCreate(TaskMenu, "MENU", 2000, NULL, 2, &TaskMenuHandle);
 	ResetDimTimer();
+	// test radio
+	RadioSerial.println("AT+DMOCONNECT");
+	delay(100);
+	if (RadioSerial.available()) {
+		String str = RadioSerial.readString();
+		Serial.println("Radio:" + str);
+	}
 }
 
 // check and handle the rotary dial type
