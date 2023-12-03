@@ -58,36 +58,6 @@ TFT_eSprite LineSprite = TFT_eSprite(&tft);  // Create Sprite object "LineSprite
 #define BATTERY_BAR_HEIGHT 5
 TFT_eSprite BatterySprite = TFT_eSprite(&tft);  // Create Sprite object "BatterySprite" with pointer to "tft" object
 
-// lock the display to prevent others from using it, if busy it will wait
-// bWait true to wait for free
-// returns lock status
-bool LockDisplay(bool bWait)
-{
-	// take the mutex
-	if (MutexDisplayHandle) {
-		if (bWait) {
-			if (xSemaphoreTake(MutexDisplayHandle, portMAX_DELAY) != pdTRUE) {
-				return true;
-			}
-		}
-		else {
-			return xSemaphoreTake(MutexDisplayHandle, 0);
-		}
-	}
-	else {
-		return false;
-	}
-}
-
-// unlock the display when you're done
-void UnLockDisplay()
-{
-	if (MutexDisplayHandle) {
-		// return the mutex so others can use the display
-		xSemaphoreGive(MutexDisplayHandle);
-	}
-}
-
 void TaskScrollSideways(void* params)
 {
 	// use this to make task run every second
@@ -125,9 +95,7 @@ void TaskScrollSideways(void* params)
 					}
 				}
 				if (offset != TextLines[ix].nRollOffset) {
-					LockDisplay(true);
 					DisplayLine(ix, TextLines[ix].Line, TextLines[ix].foreColor, TextLines[ix].backColor);
-					UnLockDisplay();
 				}
 			}
 		}
@@ -272,9 +240,8 @@ void TaskRunRadio(void* parameter)
 				status = ulTaskNotifyTake(pdTRUE, 0);
 				if (status == 0) {
 					// update the running display to show we're waiting
-					if (!g_bSettingsMode && LockDisplay(false)) {
+					if (!g_bSettingsMode) {
 						DisplayLine(0, String(cStatusText) + ": Stopping");
-						UnLockDisplay();
 					}
 				}
 				else {
@@ -308,14 +275,15 @@ void TaskRunRadio(void* parameter)
 			if (!bTransmitting && !bWaitingForStop) {
 				cStatusText = "Pause";
 			}
-			if (!g_bSettingsMode && !bWaitingForStop && LockDisplay(false)) {
+			if (!g_bSettingsMode && !bWaitingForStop) {
 				int lineNo = 0;
+				char fmt[20];
 				DisplayLine(lineNo++, String(cStatusText) + ": " + (secondsLeft / 60) + " Min " + (secondsLeft % 60) + " Sec");
 				DisplayLine(lineNo++, String("Cycles: ") + cycleCount);
 				DisplayLine(lineNo++, String("Call Sign: ") + SystemInfo.cRadioID, SystemInfo.menuTextColor);
-				DisplayLine(lineNo++, String(SystemInfo.nFrequency / 1000) + "." + SystemInfo.nFrequency % 1000 + " MHz " + (SystemInfo.bRfPowerHi ? "High" : "Low"), SystemInfo.menuTextColor);
+				sprintf(fmt, "%03d MHz ", SystemInfo.nFrequency % 1000);
+				DisplayLine(lineNo++, String(SystemInfo.nFrequency / 1000) + "." + fmt + (SystemInfo.bRfPowerHi ? "High" : "Low"), SystemInfo.menuTextColor);
 				DisplayLine(lineNo++, String("Audio: ") + SystemInfo.cAudioFile, SystemInfo.menuTextColor);
-				UnLockDisplay();
 			}
 			if (secondsLeft)
 				--secondsLeft;
@@ -324,9 +292,8 @@ void TaskRunRadio(void* parameter)
 			//Serial.println(String("radio high water: ") + freestack);
 		}
 		if (!SystemInfo.bXmit && !TaskRunTransmitHandle) {
-			if (!g_bSettingsMode && LockDisplay(false)) {
+			if (!g_bSettingsMode) {
 				DisplayLine(0, "Not Transmitting");
-				UnLockDisplay();
 			}
 			bTransmitting = false;
 			bWaitingForStop = false;
@@ -427,9 +394,7 @@ void TaskMenu(void* params)
 	static bool bLastSettingsMode = false;
 	for (;;) {
 		if (g_bSettingsMode) {
-			LockDisplay(true);
 			didsomething = HandleMenus();
-			UnLockDisplay();
 		}
 		else {
 			didsomething = HandleRunMode();
@@ -437,9 +402,7 @@ void TaskMenu(void* params)
 		// did settings mode just turn on?
 		if (g_bSettingsMode && !bLastSettingsMode) {
 			memcpy(&SystemInfoSaved, &SystemInfo, sizeof(SystemInfo));
-			LockDisplay(true);
 			ClearScreen();
-			UnLockDisplay();
 		}
 		// did settings mode just turn off?
 		if (!g_bSettingsMode && bLastSettingsMode) {
@@ -449,11 +412,8 @@ void TaskMenu(void* params)
 				// make sure that the lcd dim is less than the bright
 				if (SystemInfo.nDisplayDimValue > SystemInfo.nDisplayBrightness)
 					SystemInfo.nDisplayDimValue = SystemInfo.nDisplayBrightness;
-				if (LockDisplay(true)) {
-					ClearScreen();
-					SaveLoadSettings(true, false);
-					UnLockDisplay();
-				}
+				ClearScreen();
+				SaveLoadSettings(true, false);
 			}
 		}
 		bLastSettingsMode = g_bSettingsMode;
@@ -463,6 +423,8 @@ void TaskMenu(void* params)
 
 void setup()
 {
+	// create the display mutex
+	MutexDisplayHandle = xSemaphoreCreateMutex();
 	// init the display
 	tft.init();
 	tft.fillScreen(TFT_BLACK);
@@ -608,8 +570,6 @@ void setup()
 	gpio_set_direction((gpio_num_t)PTT_PORT, GPIO_MODE_OUTPUT);
 	gpio_set_level((gpio_num_t)PTT_PORT, 1);
 	ClearScreen();
-	// create the display mutex
-	MutexDisplayHandle = xSemaphoreCreateMutex();
 	// start the transmit and management tasks
 	xTaskCreate(TaskRunRadio, "FOXRADIO", 2000, NULL, 4, &TaskRunRadioHandle);
 	xTaskCreate(TaskShowBattery, "BATTERYLEVEL", 2000, NULL, 1, &TaskShowBatteryHandle);
@@ -987,11 +947,8 @@ void GetIntegerValueHelper(MenuItem * menu, bool bShowHue)
 			}
 			bChange = false;
 		}
-		// let the sideways scroll task work, we were locked at this point
-		UnLockDisplay();
 		// let other people run for a moment so the watchdog doesn't time out and reboot
 		vTaskDelay(2);
-		LockDisplay(true);
 		button = ReadButton();
 		switch (button) {
 		case BTN_LEFT:
@@ -1378,33 +1335,39 @@ void setupSDcard()
 // display a line in selected colors and clear to the end of the line
 void DisplayLine(int lineNum, String text, uint16_t color, uint16_t backColor)
 {
-	if (lineNum >= 0 && lineNum < nMenuLineCount) {
-		if (TextLines[lineNum].Line != text || TextLines[lineNum].backColor != backColor || TextLines[lineNum].foreColor != color) {
-			int pixels = tft.textWidth(text);
-			if (pixels > tft.width()) {
-				TextLines[lineNum].nRollLength = pixels;
-				TextLines[lineNum].nRollOffset = 0;
+	if (xSemaphoreTake(MutexDisplayHandle, portMAX_DELAY) == pdTRUE) {
+		if (lineNum >= 0 && lineNum < nMenuLineCount) {
+			if (TextLines[lineNum].Line != text || TextLines[lineNum].backColor != backColor || TextLines[lineNum].foreColor != color) {
+				int pixels = tft.textWidth(text);
+				if (pixels > tft.width()) {
+					TextLines[lineNum].nRollLength = pixels;
+					TextLines[lineNum].nRollOffset = 0;
+				}
+				else {
+					TextLines[lineNum].nRollOffset = TextLines[lineNum].nRollLength = 0;
+				}
+				// save the line for scrolling purposes
+				TextLines[lineNum].Line = text;
+				TextLines[lineNum].foreColor = color;
+				TextLines[lineNum].backColor = backColor;
 			}
-			else {
-				TextLines[lineNum].nRollOffset = TextLines[lineNum].nRollLength = 0;
-			}
-			// save the line for scrolling purposes
-			TextLines[lineNum].Line = text;
-			TextLines[lineNum].foreColor = color;
-			TextLines[lineNum].backColor = backColor;
+			// push the sprite text to the display
+			int y = lineNum * tft.fontHeight();
+			LineSprite.setTextColor(color, backColor);
+			LineSprite.drawString(text, -TextLines[lineNum].nRollOffset, 0);
+			LineSprite.pushSprite(0, y);
 		}
-		// push the sprite text to the display
-		int y = lineNum * tft.fontHeight();
-		LineSprite.setTextColor(color, backColor);
-		LineSprite.drawString(text, -TextLines[lineNum].nRollOffset, 0);
-		LineSprite.pushSprite(0, y);
+		xSemaphoreGive(MutexDisplayHandle);
 	}
 }
 
 void ClearScreen()
 {
-	tft.fillScreen(TFT_BLACK);
-	ResetTextLines();
+	if (xSemaphoreTake(MutexDisplayHandle, portMAX_DELAY) == pdTRUE) {
+		tft.fillScreen(TFT_BLACK);
+		ResetTextLines();
+		xSemaphoreGive(MutexDisplayHandle);
+	}
 }
 
 void ResetTextLines()
@@ -1489,18 +1452,21 @@ void WriteMessage(String txt, bool error, int wait, bool process)
 	else {
 		tft.setTextColor(SystemInfo.menuTextColor);
 	}
-	tft.setCursor(0, tft.fontHeight());
-	tft.setTextWrap(true);
-	tft.print(txt);
-	if (wait == -1) {
-		// wait for a key
-		while (ReadButton() == BTN_NONE)
-			delay(10);
+	if (xSemaphoreTake(MutexDisplayHandle, portMAX_DELAY) == pdTRUE) {
+		tft.setCursor(0, tft.fontHeight());
+		tft.setTextWrap(true);
+		tft.print(txt);
+		if (wait == -1) {
+			// wait for a key
+			while (ReadButton() == BTN_NONE)
+				delay(10);
+		}
+		else {
+			delay(wait);
+		}
+		tft.setTextColor(TFT_WHITE);
+		xSemaphoreGive(MutexDisplayHandle);
 	}
-	else {
-		delay(wait);
-	}
-	tft.setTextColor(TFT_WHITE);
 	ClearScreen();
 }
 
@@ -2072,8 +2038,6 @@ void ShowBattery(MenuItem * menu)
 	static int percent = 0, raw = 0;
 	if (menu)
 		ClearScreen();
-	else
-		LockDisplay(true);
 	static unsigned long showtime = 0;
 	while (!menu || ReadButton() != BTN_LONG) {
 		percent = ReadBattery(&raw);
@@ -2084,19 +2048,22 @@ void ShowBattery(MenuItem * menu)
 				DisplayLine(3, "Long Press to Cancel", SystemInfo.menuTextColor);
 			}
 			else {
-				// TODO: fix this so it works for a sprite that is not 100 pixels wide
-				int sh = BatterySprite.height();
-				BatterySprite.fillSprite(TFT_BLACK);
-				BatterySprite.setTextColor(SystemInfo.menuTextColor);
-				// show % full
-				BatterySprite.fillRect(0, sh - BATTERY_BAR_HEIGHT - 2, percent, BATTERY_BAR_HEIGHT, SystemInfo.menuTextColor);
-				// thin line rest of line
-				BatterySprite.fillRect(percent, sh - 4, 100 - percent, 2, SystemInfo.menuTextColor);
-				// show the text above the bar
-				String pc = "Bat: " + String(percent) + "%";
-				BatterySprite.drawString(pc, 100 - tft.textWidth(pc) - 2, 0);
-				// push the sprite to the display
-				BatterySprite.pushSprite(tft.width() - 101, tft.height() - sh + 2);
+				if (xSemaphoreTake(MutexDisplayHandle, portMAX_DELAY) == pdTRUE) {
+					// TODO: fix this so it works for a sprite that is not 100 pixels wide
+					int sh = BatterySprite.height();
+					BatterySprite.fillSprite(TFT_BLACK);
+					BatterySprite.setTextColor(SystemInfo.menuTextColor);
+					// show % full
+					BatterySprite.fillRect(0, sh - BATTERY_BAR_HEIGHT - 2, percent, BATTERY_BAR_HEIGHT, SystemInfo.menuTextColor);
+					// thin line rest of line
+					BatterySprite.fillRect(percent, sh - 4, 100 - percent, 2, SystemInfo.menuTextColor);
+					// show the text above the bar
+					String pc = "Bat: " + String(percent) + "%";
+					BatterySprite.drawString(pc, 100 - tft.textWidth(pc) - 2, 0);
+					// push the sprite to the display
+					BatterySprite.pushSprite(tft.width() - 101, tft.height() - sh + 2);
+					xSemaphoreGive(MutexDisplayHandle);
+				}
 			}
 			showtime = millis();
 		}
@@ -2105,8 +2072,6 @@ void ShowBattery(MenuItem * menu)
 		else
 			break;
 	}
-	if (!menu)
-		UnLockDisplay();
 }
 
 // set the screen rotation to the correct value, 0-3, allocate the screen memory
