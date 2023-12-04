@@ -904,12 +904,6 @@ void GetSelectChoice(MenuItem * menu)
 // get integer values
 void GetIntegerValue(MenuItem * menu)
 {
-	GetIntegerValueHelper(menu, false);
-}
-
-// get integer values and sometimes show other values like hue
-void GetIntegerValueHelper(MenuItem * menu, bool bShowHue)
-{
 	ClearScreen();
 	// -1 means to reset to original
 	int stepSize = 1;
