@@ -10,38 +10,6 @@ const char* StartFileName = "START.FOX";
 // use one of these in that file
 //#include <User_Setups/Setup25_TTGO_T_Display.h>    // Setup file for ESP32 and TTGO T-Display ST7789V SPI bus TFT
 
-// 1 for standard SD library, 0 for the new exFat library which allows > 32GB SD cards
-#define USE_STANDARD_SD 0
-// The push button setting, set to 1 for onboard PS version 1.4
-#define PUSH_BUTTON_PORT 0
-
-// SD details
-#define SDcsPin    33  // GPIO33
-#define SDSckPin   25  // GIPO25
-#define SDMisoPin  27  // GPIO27
-#define SDMosiPin  26  // GPIO26
-// LED controller pins
-#define DATA_PIN1 2
-#define DATA_PIN2 17
-// battery level
-#define HAS_BATTERY_LEVEL 1
-// battery sensor GPIO
-#define BATTERY_SENSOR_GPIO 36
-// set the push button GPIO port
-#if PUSH_BUTTON_PORT
-    #define DIAL_BTN 37
-#else
-    #define DIAL_BTN 15
-#endif
-// default dial direction GPIO ports
-#if ROTARY_DIAL_REVERSE
-    #define DIAL_A 12
-    #define DIAL_B 13
-#else
-    #define DIAL_A 13
-    #define DIAL_B 12
-#endif
-
 #include <Update.h>
 
 #include <time.h>
@@ -182,7 +150,11 @@ typedef struct SYSTEM_INFO {
 	int nTxTime = 2 * 60;                       // tx time in seconds
 	int nTxPause = 3 * 60;                      // tx pause time in seconds
     bool bRfPowerHi = false;                    // rf power control
-    int nFrequency = 140000;                    // radio frequency in kHz
+#if RADIO_UHF
+    int nFrequency = 400000;                    // UHF radio frequency in kHz
+#else
+    int nFrequency = 140000;                    // VHF radio frequency in kHz
+#endif
     int nRfOffset = 1;                          // RX frequeny offset 0=-600 1=0 2=+600 kHz
     char cAudioFile[31] = "";                   // choose the audio file
     int nMorseInterval = 200;                   // mSec morse timer
@@ -363,13 +335,21 @@ MenuItem EepromMenu[] = {
 };
 const char* RxOffsetModeText[] = { "-600","0","+600" };
 MenuItem RadioMenu[] = {
-    {eExit,"Radio Settings"},
+#if RADIO_UHF
+    {eExit,"UHF Radio Settings"},
+#else
+    {eExit,"VHF Radio Settings"},
+#endif
     {eBool,"XMIT: %s",ToggleBool,&SystemInfo.bXmit,0,0,0,"On","Off"},
     {eBool,"TX Stop: %s",ToggleBool,&SystemInfo.bStopImmediately,0,0,0,"Immediate","Finish Cycle"},
     {eTextInt,"TX Send Time: %d Sec",GetIntegerValue,&SystemInfo.nTxTime,1,300},
     {eTextInt,"TX Pause Time: %d Sec",GetIntegerValue,&SystemInfo.nTxPause,1,600},
     {eBool,"RF Power: %s",ToggleBool,&SystemInfo.bRfPowerHi,0,0,0,"High","Low"},
+#if RADIO_UHF
+    {eTextInt,"TX: %d.%03d MHz",GetIntegerValue,&SystemInfo.nFrequency,400000,480000,3},
+#else
     {eTextInt,"TX: %d.%03d MHz",GetIntegerValue,&SystemInfo.nFrequency,134000,174000,3},
+#endif
     {eList,"RX Offset: %s kHz",GetSelectChoice,&SystemInfo.nRfOffset,0,sizeof(RxOffsetModeText) / sizeof(*RxOffsetModeText) - 1,0,NULL,NULL,NULL,RxOffsetModeText},
 	{eEditText,"Call Sign: %s",GetText,SystemInfo.cRadioID,1,sizeof(SystemInfo.cRadioID) - 1},
     {eEditText,"Audio: %s",GetAudioFile,SystemInfo.cAudioFile,1,sizeof(SystemInfo.cAudioFile) - 1},
