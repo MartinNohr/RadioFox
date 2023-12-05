@@ -155,7 +155,7 @@ typedef struct SYSTEM_INFO {
 #else
     int nFrequency = 140000;                    // VHF radio frequency in kHz
 #endif
-    int nRfOffset = 1;                          // RX frequeny offset 0=-600 1=0 2=+600 kHz
+    int nRfOffset = 1;                          // RX frequeny offset 0=-600 1=0 2=+600 kHz, 1200 for UHF
     char cAudioFile[31] = "";                   // choose the audio file
     int nMorseInterval = 200;                   // mSec morse timer
     bool bXmit = false;                         // if xmit = false, don't transmit
@@ -333,7 +333,12 @@ MenuItem EepromMenu[] = {
     // make sure this one is last
     {eTerminate}
 };
-const char* RxOffsetModeText[] = { "-600","0","+600" };
+#if RADIO_UHF
+    const char* RxOffsetModeText[] = { "-1200","0","+1200" };
+#else
+    const char* RxOffsetModeText[] = { "-600","0","+600" };
+#endif
+
 MenuItem RadioMenu[] = {
 #if RADIO_UHF
     {eExit,"UHF Radio Settings"},
