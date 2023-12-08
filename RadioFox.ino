@@ -280,7 +280,7 @@ void TaskRunRadio(void* parameter)
 				char fmt[20];
 				DisplayLine(lineNo++, String(cStatusText) + ": " + (secondsLeft / 60) + " Min " + (secondsLeft % 60) + " Sec");
 				DisplayLine(lineNo++, String("Cycles: ") + cycleCount);
-				DisplayLine(lineNo++, String("Call Sign: ") + SystemInfo.cRadioID, SystemInfo.menuTextColor);
+				DisplayLine(lineNo++, String(SystemInfo.cBeaconString) + " " + SystemInfo.cRadioID, SystemInfo.menuTextColor);
 				sprintf(fmt, "%03d MHz ", SystemInfo.nFrequency % 1000);
 				DisplayLine(lineNo++, String(SystemInfo.nFrequency / 1000) + "." + fmt + (SystemInfo.bRfPowerHi ? "High" : "Low"), SystemInfo.menuTextColor);
 				DisplayLine(lineNo++, String("RX Offset: ") + RxOffsetModeText[SystemInfo.nRfOffset] + " kHz", SystemInfo.menuTextColor);
