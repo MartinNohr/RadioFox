@@ -969,7 +969,7 @@ void GetIntegerValue(MenuItem * menu)
 			else {
 				stepSize *= 10;
 			}
-			if (stepSize > (menu->max / 10)) {
+			if (stepSize > (menu->max / 2)) {
 				stepSize = -1;
 			}
 			break;
@@ -2363,7 +2363,7 @@ void GetAudioFile(MenuItem* menu)
 			++foundIx;
 		}
 		ClearScreen();
-		DisplayLine(nMenuLineCount - 1, "Long=OK Select=Cancel", SystemInfo.menuTextColor);
+		DisplayLine(nMenuLineCount - 1, "Long=OK Click=Cancel", SystemInfo.menuTextColor);
 		CRotaryDialButton::Button button = BTN_NONE;
 		bool done = false;
 		// redraw screen only when necessary
