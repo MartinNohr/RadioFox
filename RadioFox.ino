@@ -387,7 +387,30 @@ void TaskDTMF(void* parameter)
 	}
 }
 
+// load the radio settings
+bool RadioSetup()
+{
+	bool retval = false;
+	Serial.println("radio setup");
+	RadioSerial.println("AT+DMOCONNECT");
+	delay(100);
+	// see if the radio answers
+	if (RadioSerial.available()) {
+		String str = RadioSerial.readString();
+		Serial.println("Radio:" + str);
+		// check the return value
+		retval = true;
+	}
+	else {
+		WriteMessage("Radio Not Found", true);
+		Serial.println("radio did not respond");
+	}
+	Serial.println("leaving radio setup");
+	return retval;
+}
+
 // handle the dial and menu system
+// also check for some system settings changes and deal with them, e.g. radio settings
 void TaskMenu(void* params)
 {
 	static SYSTEM_INFO SystemInfoSaved;
@@ -413,8 +436,20 @@ void TaskMenu(void* params)
 				// make sure that the lcd dim is less than the bright
 				if (SystemInfo.nDisplayDimValue > SystemInfo.nDisplayBrightness)
 					SystemInfo.nDisplayDimValue = SystemInfo.nDisplayBrightness;
+				// see if any radio settings changed
+				if (SystemInfo.nFrequency != SystemInfoSaved.nFrequency || SystemInfo.nRfOffset != SystemInfoSaved.nRfOffset) {
+					// tell the radio
+					if (RadioSetup()) {
+						// worked
+					}
+					else {
+						// failed
+					}
+				}
 				ClearScreen();
 				SaveLoadSettings(true, false);
+				// copy so we know we updated things
+				memcpy(&SystemInfoSaved, &SystemInfo, sizeof(SystemInfo));
 			}
 		}
 		bLastSettingsMode = g_bSettingsMode;
@@ -578,13 +613,8 @@ void setup()
 	xTaskCreate(TaskScrollSideways, "SCROLLSIDEWAYS", 2000, NULL, 3, &TaskScrollSidewaysHandle);
 	xTaskCreate(TaskMenu, "MENU", 2000, NULL, 2, &TaskMenuHandle);
 	ResetDimTimer();
-	// test radio
-	RadioSerial.println("AT+DMOCONNECT");
-	delay(100);
-	if (RadioSerial.available()) {
-		String str = RadioSerial.readString();
-		Serial.println("Radio:" + str);
-	}
+	// init the radio
+	RadioSetup();
 }
 
 // check and handle the rotary dial type
