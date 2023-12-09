@@ -403,8 +403,8 @@ bool RadioSetup()
 		if (str.indexOf(":0") > 0) {
 			// set the radio data, e.g. AT+DMOSETGROUP=0,415.1250,415.1250,0012,4, 0013
 			char line[200];
-			double fRX = SystemInfo.nFrequency * 1000.0;
-			double fTX = (SystemInfo.nFrequency + SystemInfo.nRfOffset) * 1000.0;
+			double fRX = SystemInfo.nFrequency / 1000.0;
+			double fTX = (SystemInfo.nFrequency + SystemInfo.nRfOffset) / 1000.0;
 			sprintf(line, "AT+DMOSETGROUP=0,%f,%f,0012,4,0013", fTX, fRX);
 			Serial.println(line);
 			RadioSerial.println(line);
@@ -435,14 +435,13 @@ bool RadioSetup()
 void TaskMenu(void* params)
 {
 	static SYSTEM_INFO SystemInfoSaved;
-	static bool didsomething = false;
 	static bool bLastSettingsMode = false;
 	for (;;) {
 		if (g_bSettingsMode) {
-			didsomething = HandleMenus();
+			HandleMenus();
 		}
 		else {
-			didsomething = HandleRunMode();
+			HandleRunMode();
 		}
 		// did settings mode just turn on?
 		if (g_bSettingsMode && !bLastSettingsMode) {
