@@ -419,13 +419,13 @@ bool RadioSetup()
 				}
 			}
 		}
-		// set the radio power control output
-		digitalWrite(TXHIPOWER_PORT, SystemInfo.bTxPowerHi);
 	}
 	else {
 		WriteMessage("Radio Not Found", true);
 		Serial.println("radio did not respond");
 	}
+	// set the radio power control output
+	digitalWrite(TXHIPOWER_PORT, SystemInfo.bTxPowerHi);
 	Serial.println("leaving radio setup");
 	return retval;
 }
@@ -518,6 +518,9 @@ void setup()
 	// init the onboard buttons
 	gpio_set_direction(GPIO_NUM_0, GPIO_MODE_INPUT);
 	gpio_set_pull_mode(GPIO_NUM_0, GPIO_PULLUP_ONLY);
+
+	// set the power control to output
+	pinMode(TXHIPOWER_PORT, OUTPUT);
 
 	periodic_Second_timer_args = {
 				periodic_Second_timer_callback,
