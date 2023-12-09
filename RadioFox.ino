@@ -403,9 +403,9 @@ bool RadioSetup()
 		if (str.indexOf(":0") > 0) {
 			// set the radio data, e.g. AT+DMOSETGROUP=0,415.1250,415.1250,0012,4, 0013
 			char line[200];
-			double fRX = SystemInfo.nFrequency / 1000.0;
-			double fTX = (SystemInfo.nFrequency + SystemInfo.nRfOffset) / 1000.0;
-			sprintf(line, "AT+DMOSETGROUP=0,%f,%f,0012,4,0013", fTX, fRX);
+			float fRX = SystemInfo.nFrequency / 1000.0;
+			float fTX = (SystemInfo.nFrequency + SystemInfo.nRfOffset) / 1000.0;
+			sprintf(line, "AT+DMOSETGROUP=0,%3.4f,%3.4f,0012,4,0013", fTX, fRX);
 			Serial.println(line);
 			RadioSerial.println(line);
 			delay(100);
