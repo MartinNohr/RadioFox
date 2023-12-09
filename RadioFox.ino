@@ -282,7 +282,7 @@ void TaskRunRadio(void* parameter)
 				DisplayLine(lineNo++, String("Cycles: ") + cycleCount);
 				DisplayLine(lineNo++, String(SystemInfo.cBeaconString) + " " + SystemInfo.cRadioID, SystemInfo.menuTextColor);
 				sprintf(fmt, "%03d MHz ", SystemInfo.nFrequency % 1000);
-				DisplayLine(lineNo++, String(SystemInfo.nFrequency / 1000) + "." + fmt + (SystemInfo.bRfPowerHi ? "High" : "Low"), SystemInfo.menuTextColor);
+				DisplayLine(lineNo++, String(SystemInfo.nFrequency / 1000) + "." + fmt + (SystemInfo.bTxPowerHi ? "High" : "Low"), SystemInfo.menuTextColor);
 				DisplayLine(lineNo++, String("RX Offset: ") + RxOffsetModeText[SystemInfo.nRfOffset] + " kHz", SystemInfo.menuTextColor);
 				DisplayLine(lineNo++, String("Audio: ") + SystemInfo.cAudioFile, SystemInfo.menuTextColor);
 			}
@@ -388,6 +388,7 @@ void TaskDTMF(void* parameter)
 }
 
 // load the radio settings
+// TODO: do we need to wait for radio not transmitting?
 bool RadioSetup()
 {
 	bool retval = false;
@@ -399,7 +400,27 @@ bool RadioSetup()
 		String str = RadioSerial.readString();
 		Serial.println("Radio:" + str);
 		// check the return value
-		retval = true;
+		if (str.indexOf(":0") > 0) {
+			// set the radio data, e.g. AT+DMOSETGROUP=0,415.1250,415.1250,0012,4, 0013
+			char line[200];
+			double fRX = SystemInfo.nFrequency * 1000.0;
+			double fTX = (SystemInfo.nFrequency + SystemInfo.nRfOffset) * 1000.0;
+			sprintf(line, "AT+DMOSETGROUP=0,%f,%f,0012,4,0013", fTX, fRX);
+			Serial.println(line);
+			RadioSerial.println(line);
+			delay(100);
+			if (RadioSerial.available()) {
+				str = RadioSerial.readString();
+				Serial.println("Radio Group Reply:" + str);
+				if (str.indexOf(":0") > 0) {
+					Serial.println("Radio Ready");
+					// it worked
+					retval = true;
+				}
+			}
+		}
+		// set the radio power control output
+		digitalWrite(TXHIPOWER_PORT, SystemInfo.bTxPowerHi);
 	}
 	else {
 		WriteMessage("Radio Not Found", true);
@@ -437,13 +458,16 @@ void TaskMenu(void* params)
 				if (SystemInfo.nDisplayDimValue > SystemInfo.nDisplayBrightness)
 					SystemInfo.nDisplayDimValue = SystemInfo.nDisplayBrightness;
 				// see if any radio settings changed
-				if (SystemInfo.nFrequency != SystemInfoSaved.nFrequency || SystemInfo.nRfOffset != SystemInfoSaved.nRfOffset) {
+				if (SystemInfo.nFrequency != SystemInfoSaved.nFrequency
+					|| SystemInfo.nRfOffset != SystemInfoSaved.nRfOffset
+					|| SystemInfo.bTxPowerHi != SystemInfoSaved.bTxPowerHi) {
 					// tell the radio
 					if (RadioSetup()) {
 						// worked
 					}
 					else {
-						// failed
+						// failed, turn of transmit
+						//SystemInfo.bXmit = false;
 					}
 				}
 				ClearScreen();
@@ -970,7 +994,7 @@ void GetIntegerValue(MenuItem * menu)
 			tft.fillRect(0, 2 * tft.fontHeight(), tft.width() - 1, 6, TFT_BLACK);
 			DrawProgressBar(0, 2 * tft.fontHeight() + 4, tft.width() - 1, 12, map(*(int*)menu->value, menu->min, menu->max, 0, 100), true);
 			sprintf(valstr, fmt, *(int*)menu->value / (int)pow10(menu->decimals), *(int*)menu->value % (int)pow10(menu->decimals));
-			DisplayLine(3, String("Value: ") + valstr, SystemInfo.menuTextColor);
+			DisplayLine(3, String("New Value: ") + valstr, SystemInfo.menuTextColor);
 			sprintf(valstr, fmt, stepSize / (int)pow10(menu->decimals), stepSize % (int)pow10(menu->decimals));
 			DisplayLine(4, stepSize == -1 ? "Reset: long press (Click +)" : "Step: " + String(valstr) + " (Click +)", SystemInfo.menuTextColor);
 			if (menu->change != NULL && oldVal != *(int*)menu->value) {
