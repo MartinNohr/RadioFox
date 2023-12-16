@@ -215,7 +215,7 @@ void TaskRunRadio(void* parameter)
 	uint32_t status = 0;
 	bool bTransmitting = false;
 	int secondsLeft = 0;
-	int cycleCount;
+	int txCount;
 	bool bWaitingForStop = false;
 	bool bWasXmit = SystemInfo.bXmit;
 	// use this to make task run every second
@@ -261,7 +261,7 @@ void TaskRunRadio(void* parameter)
 					// start the xmitter task
 					xTaskCreate(TaskRunTransmit, "XMITFOX", 2000, NULL, 2, &TaskRunTransmitHandle);
 					vTaskDelay(pdMS_TO_TICKS(5));
-					cycleCount++;
+					txCount++;
 					secondsLeft = SystemInfo.nTxTime;
 				}
 				else {
@@ -284,7 +284,7 @@ void TaskRunRadio(void* parameter)
 				int lineNo = 0;
 				char fmt[20];
 				DisplayLine(lineNo++, String(cStatusText) + ": " + (secondsLeft / 60) + " Min " + (secondsLeft % 60) + " Sec");
-				DisplayLine(lineNo++, String("Cycles: ") + cycleCount);
+				DisplayLine(lineNo++, String("TX Count: ") + txCount);
 				DisplayLine(lineNo++, String(SystemInfo.cBeaconString) + " " + SystemInfo.cRadioID, SystemInfo.menuTextColor);
 				sprintf(fmt, "%03d MHz ", SystemInfo.nFrequency % 1000);
 				DisplayLine(lineNo++, String(SystemInfo.nFrequency / 1000) + "." + fmt + (SystemInfo.bTxPowerHi ? "High" : "Low"), SystemInfo.menuTextColor);

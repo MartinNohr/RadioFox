@@ -133,7 +133,7 @@ typedef struct SYSTEM_INFO {
     int bShowBatteryLevel = HAS_BATTERY_LEVEL;  // display the battery level on the bottom line
     int bCriticalBatteryLevel = false;          // set true if battery too low
     //int bShowBatteryLevel = 0;  // display the battery level on the bottom line
-    int nBatteries = 2;                         // how many batteries
+    int nBatteries = 1;                         // how many batteries
     CRotaryDialButton::ROTARY_DIAL_SETTINGS DialSettings;
     int eDisplayDimMode = DISPLAY_DIM_MODE_NONE;// 0 is none, 1 is dimtime, 2 is light sensor
     int nDisplayDimTime = 0;                    // seconds before lcd is dimmed
