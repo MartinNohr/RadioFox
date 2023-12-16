@@ -58,6 +58,7 @@ TFT_eSprite LineSprite = TFT_eSprite(&tft);  // Create Sprite object "LineSprite
 #define BATTERY_BAR_HEIGHT 5
 TFT_eSprite BatterySprite = TFT_eSprite(&tft);  // Create Sprite object "BatterySprite" with pointer to "tft" object
 
+// handle the sideways scrolling of long lines
 void TaskScrollSideways(void* params)
 {
 	// use this to make task run every second
@@ -67,6 +68,10 @@ void TaskScrollSideways(void* params)
 	xLastWakeTime = xTaskGetTickCount();
 	for (;;) {
 		for (int ix = 0; ix < nMenuLineCount; ++ix) {
+			// see if we need to restart because the screen was cleared
+			if (ulTaskNotifyTake(pdTRUE, 0) != 0) {
+				break;
+			}
 			int offset = TextLines[ix].nRollOffset;
 			if (TextLines[ix].nRollLength) {
 				if (TextLines[ix].nRollOffset == 0 && TextLines[ix].nRollDirection == 0) {
@@ -638,7 +643,7 @@ void setup()
 	xTaskCreate(TaskShowBattery, "BATTERYLEVEL", 2000, NULL, 0, &TaskShowBatteryHandle);
 	xTaskCreate(TaskDTMF, "DTMFHANDLER", 2000, NULL, 2, &TaskDTMFHandle);
 	xTaskCreate(TaskScrollSideways, "SCROLLSIDEWAYS", 2000, NULL, 0, &TaskScrollSidewaysHandle);
-	xTaskCreate(TaskMenu, "MENU", 2000, NULL, 0, &TaskMenuHandle);
+	xTaskCreate(TaskMenu, "MENU", 2000, NULL, 1, &TaskMenuHandle);
 	ResetDimTimer();
 	// init the radio
 	RadioSetup();
@@ -784,6 +789,9 @@ void RunMenus(int button)
 // remember that we only have room for MENU_LINES lines
 void ShowMenu(struct MenuItem* menu)
 {
+	// let the sideways scroller know that we changed the screen
+	if (TaskScrollSidewaysHandle)
+		xTaskNotifyGive(TaskScrollSidewaysHandle);
 	MenuStack.top()->menucount = 0;
 	int y = 0;
 	int x = 0;
@@ -1420,9 +1428,13 @@ void DisplayLine(int lineNum, String text, uint16_t color, uint16_t backColor)
 	}
 }
 
+// clear the screen and reset the scrolling lines
 void ClearScreen()
 {
 	if (xSemaphoreTake(MutexDisplayHandle, portMAX_DELAY) == pdTRUE) {
+		// let the sideways scroller know that we cleared the screen
+		if (TaskScrollSidewaysHandle)
+			xTaskNotifyGive(TaskScrollSidewaysHandle);
 		tft.fillScreen(TFT_BLACK);
 		ResetTextLines();
 		xSemaphoreGive(MutexDisplayHandle);
