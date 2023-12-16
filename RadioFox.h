@@ -1,6 +1,6 @@
 #pragma once
 
-const char* FOX_Version = "0.04";
+const char* FOX_Version = "0.05";
 
 const char* StartFileName = "START.FOX";
 // some config things
@@ -117,8 +117,6 @@ bool bWebRunning = false;                 // set while running from web
 enum DISPLAY_DIM_MODES { DISPLAY_DIM_MODE_NONE, DISPLAY_DIM_MODE_TIME};
 const char* DisplayDimModeText[] = { "None","Timer"};
 
-const char* DisplayRotationText[] = { "90","180","270","0" };
-
 typedef struct SYSTEM_INFO {
     uint16_t menuTextColor = TFT_WHITE;
     bool bMenuStar = false;
@@ -138,9 +136,6 @@ typedef struct SYSTEM_INFO {
     int eDisplayDimMode = DISPLAY_DIM_MODE_NONE;// 0 is none, 1 is dimtime, 2 is light sensor
     int nDisplayDimTime = 0;                    // seconds before lcd is dimmed
     int nDisplayDimValue = 10;                  // the value to dim to
-    int nDisplayRotation = 1;                   // rotates display 0, 180, 90, 270
-    int nLightSensorDim = 4000;                 // value for the dimmest setting
-    int nLightSensorBright = 100;               // value for the brightest setting
     int nPreviewAutoScroll = 0;                 // mSec for preview autoscroll, 0 means no scroll
     bool bRunWebServer = false;                 // run the web server
     // radio settings
@@ -238,7 +233,6 @@ void ToggleBool(MenuItem* menu);
 void ToggleWebServer(MenuItem* menu);
 void UpdateDisplayBrightness(MenuItem* menu, int flag);
 void UpdateBatteries(MenuItem* menu, int flag);
-void UpdateDisplayRotation(MenuItem* menu, int flag);
 void UpdateDisplayDimMode(MenuItem* menu, int flag);
 void SetMenuColor(MenuItem* menu);
 void ShowBattery(MenuItem* menu);
@@ -282,7 +276,6 @@ MenuItem DialMenu[] = {
 #define MAX_DIM_MODE (sizeof(DisplayDimModeText) / sizeof(*DisplayDimModeText) - 1)
 MenuItem DisplayMenu[] = {
     {eExit,"Display Settings"},
-    {eList, "Display Rotation: %s", GetSelectChoice, &SystemInfo.nDisplayRotation, 0, sizeof(DisplayRotationText) / sizeof(*DisplayRotationText) - 1, 0, NULL, NULL, UpdateDisplayRotation, DisplayRotationText},
     {eList, "Dimming Mode: %s", GetSelectChoice, &SystemInfo.eDisplayDimMode, 0, MAX_DIM_MODE, 0, NULL, NULL, UpdateDisplayDimMode, DisplayDimModeText},
     {eTextInt,"Bright Value: %d%%",GetIntegerValue,&SystemInfo.nDisplayBrightness,1,100,0,NULL,NULL,UpdateDisplayBrightness},
     {eIfIntEqual,"",NULL,&SystemInfo.eDisplayDimMode,DISPLAY_DIM_MODE_NONE},

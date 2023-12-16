@@ -486,6 +486,10 @@ void TaskMenu(void* params)
 
 void setup()
 {
+	Serial.begin(115200);
+	while (!Serial.availableForWrite()) {
+		delay(10);
+	}
 	// create the display mutex
 	MutexDisplayHandle = xSemaphoreCreateMutex();
 	// and the settingsmode one
@@ -493,10 +497,12 @@ void setup()
 	// init the display
 	tft.init();
 	tft.fillScreen(TFT_BLACK);
-	Serial.begin(115200);
-	while (!Serial.availableForWrite()) {
-		delay(10);
-	}
+	tft.setRotation(3);
+	tft.setFreeFont(&Dialog_bold_16);
+	tft.setTextSize(1);
+	tft.setTextPadding(tft.width());
+	nMenuLineCount = tft.height() / tft.fontHeight();
+	TextLines.resize(nMenuLineCount);
 	// start the radio serial port
 	RadioSerial.begin(9600, SERIAL_8N1, RADIO_SERIAL_RX, RADIO_SERIAL_TX);
 	// start the tone generator
@@ -539,11 +545,6 @@ void setup()
 	esp_timer_start_periodic(periodic_Second_timer, (int64_t)1000 * 1000);
 
 	SystemInfo.bCriticalBatteryLevel = false;
-	tft.setFreeFont(&Dialog_bold_16);
-	SystemInfo.nDisplayRotation = 3;
-	tft.setTextSize(1);
-	tft.setTextPadding(tft.width());
-	SetScreenRotation(SystemInfo.nDisplayRotation);
 	SetDisplayBrightness(SystemInfo.nDisplayBrightness);
 	// see if the button is down, if so clear all settings
 	if (gpio_get_level((gpio_num_t)DIAL_BTN) == 0) {
@@ -564,8 +565,6 @@ void setup()
 		// must not be anything there, so save it
 		SaveLoadSettings(true);
 	}
-	// in case the saved ones were different
-	SetScreenRotation(SystemInfo.nDisplayRotation);
 	//ClearScreen();
 	SetDisplayBrightness(SystemInfo.nDisplayBrightness);
 	//WiFi
@@ -1077,12 +1076,6 @@ void UpdateDisplayBrightness(MenuItem * menu, int flag)
 {
 	// control LCD brightness
 	SetDisplayBrightness(*(int*)menu->value);
-}
-
-void UpdateDisplayRotation(MenuItem * menu, int flag)
-{
-	SetScreenRotation(SystemInfo.nDisplayRotation);
-	tft.fillScreen(TFT_BLACK);
 }
 
 void UpdateDisplayDimMode(MenuItem * menu, int flag)
@@ -2143,22 +2136,6 @@ void ShowBattery(MenuItem * menu)
 		else
 			break;
 	}
-}
-
-// set the screen rotation to the correct value, 0-3, allocate the screen memory
-// -1 goes to the next one
-void SetScreenRotation(int rot)
-{
-	if (rot == -1) {
-		++SystemInfo.nDisplayRotation;
-	}
-	else {
-		SystemInfo.nDisplayRotation = rot;
-	}
-	SystemInfo.nDisplayRotation %= 4;
-	tft.setRotation(SystemInfo.nDisplayRotation);
-	nMenuLineCount = tft.height() / tft.fontHeight();
-	TextLines.resize(nMenuLineCount);
 }
 
 void ShowProgressBar(int percent)
