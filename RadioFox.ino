@@ -288,7 +288,6 @@ void TaskRunRadio(void* parameter)
 			}
 			if (secondsLeft)
 				--secondsLeft;
-
 			//int freestack = uxTaskGetStackHighWaterMark(NULL);
 			//Serial.println(String("radio high water: ") + freestack);
 		}
@@ -422,11 +421,9 @@ bool RadioSetup()
 	}
 	else {
 		WriteMessage("Radio Not Found", true);
-		Serial.println("radio did not respond");
 	}
 	// set the radio power control output
 	digitalWrite(TXHIPOWER_PORT, SystemInfo.bTxPowerHi);
-	Serial.println("leaving radio setup");
 	return retval;
 }
 
@@ -477,6 +474,8 @@ void TaskMenu(void* params)
 		}
 		bLastSettingsMode = g_bSettingsMode;
 		vTaskDelay(2);
+		//int freestack = uxTaskGetStackHighWaterMark(NULL);
+		//Serial.println(String("menu high water: ") + freestack);
 	}
 }
 
@@ -484,6 +483,8 @@ void setup()
 {
 	// create the display mutex
 	MutexDisplayHandle = xSemaphoreCreateMutex();
+	// and the settingsmode one
+	MutexSettingsMode = xSemaphoreCreateBinary();
 	// init the display
 	tft.init();
 	tft.fillScreen(TFT_BLACK);
@@ -634,10 +635,10 @@ void setup()
 	ClearScreen();
 	// start the transmit and management tasks
 	xTaskCreate(TaskRunRadio, "FOXRADIO", 2000, NULL, 4, &TaskRunRadioHandle);
-	xTaskCreate(TaskShowBattery, "BATTERYLEVEL", 2000, NULL, 1, &TaskShowBatteryHandle);
+	xTaskCreate(TaskShowBattery, "BATTERYLEVEL", 2000, NULL, 0, &TaskShowBatteryHandle);
 	xTaskCreate(TaskDTMF, "DTMFHANDLER", 2000, NULL, 2, &TaskDTMFHandle);
-	xTaskCreate(TaskScrollSideways, "SCROLLSIDEWAYS", 2000, NULL, 3, &TaskScrollSidewaysHandle);
-	xTaskCreate(TaskMenu, "MENU", 2000, NULL, 2, &TaskMenuHandle);
+	xTaskCreate(TaskScrollSideways, "SCROLLSIDEWAYS", 2000, NULL, 0, &TaskScrollSidewaysHandle);
+	xTaskCreate(TaskMenu, "MENU", 2000, NULL, 0, &TaskMenuHandle);
 	ResetDimTimer();
 	// init the radio
 	RadioSetup();
