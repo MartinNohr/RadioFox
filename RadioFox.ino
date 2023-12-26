@@ -396,13 +396,20 @@ void TaskDTMF(void* parameter)
 bool RadioSetup()
 {
 	bool retval = false;
-	Serial.println("radio setup");
+	//Serial.println("radio setup");
 	RadioSerial.println("AT+DMOCONNECT");
-	delay(1000);
 	// see if the radio answers
-	if (RadioSerial.available()) {
+	for (int i = 100; i > 0; --i) {
+		if (RadioSerial.available()) {
+			retval = true;
+			break;
+		}
+		delay(5);
+	}
+	if (retval) {
+		retval = false;
 		String str = RadioSerial.readString();
-		Serial.println("Radio:" + str);
+		//Serial.println("Radio Connect:" + str);
 		// check the return value
 		if (str.indexOf(":0") > 0) {
 			// set the radio data, e.g. AT+DMOSETGROUP=0,415.1250,415.1250,0012,4, 0013
@@ -410,14 +417,14 @@ bool RadioSetup()
 			float fRX = SystemInfo.nFrequency / 1000.0;
 			float fTX = (SystemInfo.nFrequency + atof(RxOffsetModeText[SystemInfo.nRfOffset])) / 1000.0;
 			sprintf(line, "AT+DMOSETGROUP=0,%.4f,%.4f,0012,4,0013", fTX, fRX);
-			Serial.println(line);
+			//Serial.println(line);
 			RadioSerial.println(line);
 			delay(100);
 			if (RadioSerial.available()) {
 				str = RadioSerial.readString();
-				Serial.println("Radio Group Reply:" + str);
+				//Serial.println("Radio Group Reply:" + str);
 				if (str.indexOf(":0") > 0) {
-					Serial.println("Radio Ready");
+					//Serial.println("Radio Ready");
 					// it worked
 					retval = true;
 				}
@@ -425,11 +432,11 @@ bool RadioSetup()
 		}
 	}
 	else {
-		Serial.println("Radio did not respond");
+		//Serial.println("Radio did not respond");
 		WriteMessage("Radio Not Found", true);
 	}
 	if (retval) {
-		Serial.println("Radio init successful");
+		//Serial.println("Radio init successful");
 		WriteMessage("Radio Initialized");
 	}
 	// set the radio power control output
@@ -1661,7 +1668,7 @@ void FactorySettings(MenuItem * menu)
 
 void EraseFlash(MenuItem * menu)
 {
-	if (GetYesNo("Format EEPROM? (factory reset)")) {
+	if (GetYesNo("Format EEPROM? (factory)")) {
 		nvs_flash_erase(); // erase the NVS partition and...
 		nvs_flash_init(); // initialize the NVS partition.
 	}

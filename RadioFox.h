@@ -342,7 +342,7 @@ MenuItem RadioMenu[] = {
     {eBool,"XMIT: %s",ToggleBool,&SystemInfo.bXmit,0,0,0,"On","Off"},
     {eBool,"TX Stop: %s",ToggleBool,&SystemInfo.bStopImmediately,0,0,0,"Immediate","Finish Cycle"},
     {eTextInt,"TX Send Time: %d Sec",GetIntegerValue,&SystemInfo.nTxTime,1,300},
-    {eTextInt,"TX Pause Time: %d Sec",GetIntegerValue,&SystemInfo.nTxPause,1,600},
+    {eTextInt,"TX Off Time: %d Sec",GetIntegerValue,&SystemInfo.nTxPause,1,600},
     {eBool,"TX Power: %s",ToggleBool,&SystemInfo.bTxPowerHi,0,0,0,"High","Low"},
 #if RADIO_UHF
     {eTextInt,"TX: %d.%03d MHz",GetIntegerValue,&SystemInfo.nFrequency,400000,480000,3},
