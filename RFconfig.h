@@ -23,10 +23,12 @@
 #define DIAL_A 38
 #define DIAL_B 37
 #define PTT_PORT 17
+#define PTT_TALK 0
+#define PTT_LISTEN 1
 #define AUDIO_IN_PORT 36
 #define AUDIO_OUT_PORT 32        // send music and cw out this pin
 #define BUZZER_FREQUENCY 700  // cw pitch
-#define TXHIPOWER_PORT 15	// Pin to control TX Power, not conncted -> high power, connect to GND -> Low power
+#define TXPOWER_PORT 15	// Pin to control TX Power, not conncted -> high power, connect to GND -> Low power
 // the radio serial ports
 #define RADIO_SERIAL_RX 21
 #define RADIO_SERIAL_TX 22	// NOTE: do not use the LED_BUILTIN which is also 22, the TTGO T-Display does not an LED

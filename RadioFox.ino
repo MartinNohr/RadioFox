@@ -161,7 +161,7 @@ void TaskSendMusic(void* parameter)
 // this controls the radio sending operations
 void TaskRunTransmit(void* parameter)
 {
-	gpio_set_level((gpio_num_t)PTT_PORT, 0);
+	gpio_set_level((gpio_num_t)PTT_PORT, PTT_TALK);
 	xTaskNotify(TaskRunRadioHandle, (uint32_t)"TX Start", eSetValueWithOverwrite);
 	// wait for PTT to take effect
 	vTaskDelay(pdMS_TO_TICKS(500));
@@ -201,7 +201,7 @@ void TaskRunTransmit(void* parameter)
 	// Turn off the output tone also
 	ledcWriteTone(toneChannel, 0);
 	// turn PTT off here
-	gpio_set_level((gpio_num_t)PTT_PORT, 1);
+	gpio_set_level((gpio_num_t)PTT_PORT, PTT_LISTEN);
 	TaskRunTransmitHandle = NULL;
 	vTaskDelete(NULL);
 	//int freestack = uxTaskGetStackHighWaterMark(NULL);
@@ -287,7 +287,7 @@ void TaskRunRadio(void* parameter)
 				DisplayLine(lineNo++, String("TX Count: ") + txCount);
 				DisplayLine(lineNo++, String(SystemInfo.cBeaconString) + " " + SystemInfo.cRadioID, SystemInfo.menuTextColor);
 				sprintf(fmt, "%03d MHz ", SystemInfo.nFrequency % 1000);
-				DisplayLine(lineNo++, String(SystemInfo.nFrequency / 1000) + "." + fmt + (SystemInfo.bTxPowerHi ? "High" : "Low"), SystemInfo.menuTextColor);
+				DisplayLine(lineNo++, String(SystemInfo.nFrequency / 1000) + "." + fmt + (SystemInfo.bTxPowerLow ? "High" : "Low"), SystemInfo.menuTextColor);
 				DisplayLine(lineNo++, String("RX Offset: ") + RxOffsetModeText[SystemInfo.nRfOffset] + " kHz", SystemInfo.menuTextColor);
 				DisplayLine(lineNo++, String("Audio: ") + SystemInfo.cAudioFile, SystemInfo.menuTextColor);
 			}
@@ -351,37 +351,36 @@ void TaskDTMF(void* parameter)
 			tones |= dtmf.detect() | dtmf.detect() | dtmf.detect();
 			switch (dtmf.tone2char(tones)) {
 			case '1':// Number 1 - Start Loop
-				digitalWrite(TXHIPOWER_PORT, LOW);
-				digitalWrite(PTT_PORT, LOW);
+				digitalWrite(PTT_PORT, PTT_TALK);
 				delay(1500);
 				sendLetter('R');
-				digitalWrite(PTT_PORT, HIGH);
+				digitalWrite(PTT_PORT, PTT_LISTEN);
 				SystemInfo.bXmit = true;        // set the flag to ENABLE transmissions
 				break;
 
 			case '2':// Number 2 - LOW Power Mode - No Loop           
-				digitalWrite(PTT_PORT, LOW);
+				digitalWrite(PTT_PORT, PTT_TALK);
 				delay(1500);
 				sendLetter('R');
-				digitalWrite(PTT_PORT, HIGH);
-				digitalWrite(TXHIPOWER_PORT, LOW);
+				digitalWrite(PTT_PORT, PTT_LISTEN);
+				digitalWrite(TXPOWER_PORT, SystemInfo.bTxPowerLow = true);
 				SystemInfo.bXmit = false;
 				break;
 
 			case '3':// Number 3 - High Power Mode
-				digitalWrite(TXHIPOWER_PORT, HIGH);
-				digitalWrite(PTT_PORT, LOW);
+				digitalWrite(TXPOWER_PORT, SystemInfo.bTxPowerLow = false);
+				digitalWrite(PTT_PORT, PTT_TALK);
 				delay(1500);
 				sendLetter('R');
-				digitalWrite(PTT_PORT, HIGH);
+				digitalWrite(PTT_PORT, PTT_LISTEN);
 				SystemInfo.bXmit = true;
 				break;
 
 			default:     // any other number, turn off transmissions - send a short letter to confirm receive
-				digitalWrite(PTT_PORT, LOW);
+				digitalWrite(PTT_PORT, PTT_TALK);
 				delay(1500);
 				sendLetter('R');
-				digitalWrite(PTT_PORT, HIGH);
+				digitalWrite(PTT_PORT, PTT_LISTEN);
 				SystemInfo.bXmit = false;    // set the flag to DISABLE transmissions
 				break;
 			}
@@ -440,7 +439,7 @@ bool RadioSetup()
 		WriteMessage("Radio Initialized");
 	}
 	// set the radio power control output
-	digitalWrite(TXHIPOWER_PORT, SystemInfo.bTxPowerHi);
+	digitalWrite(TXPOWER_PORT, SystemInfo.bTxPowerLow);
 	return retval;
 }
 
@@ -473,7 +472,7 @@ void TaskMenu(void* params)
 				// see if any radio settings changed
 				if (SystemInfo.nFrequency != SystemInfoSaved.nFrequency
 					|| SystemInfo.nRfOffset != SystemInfoSaved.nRfOffset
-					|| SystemInfo.bTxPowerHi != SystemInfoSaved.bTxPowerHi) {
+					|| SystemInfo.bTxPowerLow != SystemInfoSaved.bTxPowerLow) {
 					// tell the radio
 					if (RadioSetup()) {
 						// worked
@@ -543,7 +542,7 @@ void setup()
 	gpio_set_pull_mode(GPIO_NUM_0, GPIO_PULLUP_ONLY);
 
 	// set the power control to output
-	pinMode(TXHIPOWER_PORT, OUTPUT);
+	pinMode(TXPOWER_PORT, OUTPUT);
 
 	periodic_Second_timer_args = {
 				periodic_Second_timer_callback,
@@ -646,7 +645,7 @@ void setup()
 	//}
 	// set the PTT port
 	gpio_set_direction((gpio_num_t)PTT_PORT, GPIO_MODE_OUTPUT);
-	gpio_set_level((gpio_num_t)PTT_PORT, 1);
+	gpio_set_level((gpio_num_t)PTT_PORT, PTT_LISTEN);
 	ClearScreen();
 	// start the transmit and management tasks
 	xTaskCreate(TaskRunRadio, "FOXRADIO", 2000, NULL, 3, &TaskRunRadioHandle);

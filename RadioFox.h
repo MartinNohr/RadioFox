@@ -144,7 +144,7 @@ typedef struct SYSTEM_INFO {
     char cSerialNumber[13] = "G2023XX";         // fox serial number
 	int nTxTime = 2 * 60;                       // tx time in seconds
 	int nTxPause = 3 * 60;                      // tx pause time in seconds
-    bool bTxPowerHi = false;                    // tx power control
+    bool bTxPowerLow = false;                   // tx power control
 #if RADIO_UHF
     int nFrequency = 400000;                    // UHF radio frequency in kHz
 #else
@@ -341,9 +341,9 @@ MenuItem RadioMenu[] = {
 #endif
     {eBool,"XMIT: %s",ToggleBool,&SystemInfo.bXmit,0,0,0,"On","Off"},
     {eBool,"TX Stop: %s",ToggleBool,&SystemInfo.bStopImmediately,0,0,0,"Immediate","Finish Cycle"},
-    {eTextInt,"TX Send Time: %d Sec",GetIntegerValue,&SystemInfo.nTxTime,1,300},
-    {eTextInt,"TX Off Time: %d Sec",GetIntegerValue,&SystemInfo.nTxPause,1,600},
-    {eBool,"TX Power: %s",ToggleBool,&SystemInfo.bTxPowerHi,0,0,0,"High","Low"},
+    {eTextInt,"TX Send: %d Sec",GetIntegerValue,&SystemInfo.nTxTime,1,300},
+    {eTextInt,"TX Pause: %d Sec",GetIntegerValue,&SystemInfo.nTxPause,1,600},
+    {eBool,"TX Power: %s",ToggleBool,&SystemInfo.bTxPowerLow,0,0,0,"Low","High"},
 #if RADIO_UHF
     {eTextInt,"TX: %d.%03d MHz",GetIntegerValue,&SystemInfo.nFrequency,400000,480000,3},
 #else
