@@ -483,7 +483,6 @@ void TaskMenu(void* params)
 						//SystemInfo.bXmit = false;
 					}
 				}
-				ClearScreen();
 				SaveLoadSettings(true, false);
 				// copy so we know we updated things
 				memcpy(&SystemInfoSaved, &SystemInfo, sizeof(SystemInfo));
@@ -650,11 +649,11 @@ void setup()
 	gpio_set_level((gpio_num_t)PTT_PORT, 1);
 	ClearScreen();
 	// start the transmit and management tasks
-	xTaskCreate(TaskRunRadio, "FOXRADIO", 2000, NULL, 4, &TaskRunRadioHandle);
+	xTaskCreate(TaskRunRadio, "FOXRADIO", 2000, NULL, 3, &TaskRunRadioHandle);
 	xTaskCreate(TaskShowBattery, "BATTERYLEVEL", 2000, NULL, 0, &TaskShowBatteryHandle);
 	xTaskCreate(TaskDTMF, "DTMFHANDLER", 2000, NULL, 2, &TaskDTMFHandle);
 	xTaskCreate(TaskScrollSideways, "SCROLLSIDEWAYS", 2000, NULL, 0, &TaskScrollSidewaysHandle);
-	xTaskCreate(TaskMenu, "MENU", 2000, NULL, 1, &TaskMenuHandle);
+	xTaskCreate(TaskMenu, "MENU", 2000, NULL, 4, &TaskMenuHandle);
 	ResetDimTimer();
 	// init the radio
 	RadioSetup();
@@ -1629,8 +1628,10 @@ bool SaveLoadSettings(bool save, bool nodisplay)
 		prefs.putString(prefsVersion, FOX_Version);
 		prefs.putBytes(prefsSystemInfo, &SystemInfo, sizeof(SystemInfo));
 		// save things
-		if (!nodisplay)
-			WriteMessage("Settings Saved", false, 500);
+		if (!nodisplay) {
+			ClearScreen();
+			WriteMessage("Settings Saved", false, 1000);
+		}
 	}
 	else {
 		// load things
@@ -1639,8 +1640,10 @@ bool SaveLoadSettings(bool save, bool nodisplay)
 			setupSDcard();
 			// set the brightness values since they might have changed
 			SetDisplayBrightness(SystemInfo.nDisplayBrightness);
-			if (!nodisplay)
-				WriteMessage("Settings Loaded", false, 500);
+			if (!nodisplay) {
+				ClearScreen();
+				WriteMessage("Settings Loaded", false, 1000);
+			}
 			// these are always done
 			prefs.getBytes(prefsSystemInfo, &SystemInfo, sizeof(SystemInfo));
 		}
