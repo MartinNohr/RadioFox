@@ -1,6 +1,6 @@
 #pragma once
 
-const char* FOX_Version = "0.05";
+const char* FOX_Version = "0.07";
 
 const char* StartFileName = "START.FOX";
 // some config things
@@ -151,6 +151,9 @@ typedef struct SYSTEM_INFO {
     int nFrequency = 140000;                    // VHF radio frequency in kHz
 #endif
     int nRfOffset = 1;                          // RX frequeny offset 0=-600 1=0 2=+600 kHz, 1200 for UHF
+    int nSquelch = 1;                           // squelch setting, 0 to 8, 0 is monitor mode
+    int nRxCTSS = 12;                           // RX CSS 0 to 38, 12 is 100Hz, 0 is none, see SubToneText[] below
+    int nTxCTSS = 12;                           // TX CSS 0 to 38
     char cAudioFile[31] = "";                   // choose the audio file
     int nMorseInterval = 200;                   // mSec morse timer
     bool bXmit = false;                         // if xmit = false, don't transmit
@@ -229,6 +232,7 @@ void SaveEepromSettings(MenuItem* menu);
 void LoadEepromSettings(MenuItem* menu);
 void GetIntegerValue(MenuItem* menu);
 void GetSelectChoice(MenuItem* menu);
+void GetSelectChoiceList(MenuItem* menu);
 void ToggleBool(MenuItem* menu);
 void ToggleWebServer(MenuItem* menu);
 void UpdateDisplayBrightness(MenuItem* menu, int flag);
@@ -332,6 +336,13 @@ MenuItem EepromMenu[] = {
 #else
     const char* RxOffsetModeText[] = { "-600","0","+600" };
 #endif
+// the CTSS subtone list
+const char* SubToneText[] = {
+    "0","67","71.9","74.4","77","79.7","82.5","85.4","88.5","91.5","94.8",
+    "97.4","100","103.5","107.2","110.9","114.8","118.8","123","127.3","131.8",
+    "136.5","141.3","146.2","151.4","156.7","162.2","167.9","173.8","179.9","186.2",
+    "192.8","203.5","210.7","218.1","225.7","233.6","241.8","250.3",
+};
 
 MenuItem RadioMenu[] = {
 #if RADIO_UHF
@@ -350,6 +361,9 @@ MenuItem RadioMenu[] = {
     {eTextInt,"TX: %d.%03d MHz",GetIntegerValue,&SystemInfo.nFrequency,134000,174000,3},
 #endif
     {eList,"RX Offset: %s kHz",GetSelectChoice,&SystemInfo.nRfOffset,0,sizeof(RxOffsetModeText) / sizeof(*RxOffsetModeText) - 1,0,NULL,NULL,NULL,RxOffsetModeText},
+    {eList,"RX CTSS: %s Hz",GetSelectChoiceList,&SystemInfo.nRxCTSS,0,sizeof(SubToneText) / sizeof(*SubToneText) - 1,0,NULL,NULL,NULL,SubToneText},
+    {eList,"TX CTSS: %s Hz",GetSelectChoiceList,&SystemInfo.nTxCTSS,0,sizeof(SubToneText) / sizeof(*SubToneText) - 1,0,NULL,NULL,NULL,SubToneText},
+    {eTextInt,"RX Squelch: %d",GetIntegerValue,&SystemInfo.nSquelch,0,8},
     {eEditText,"Call Sign: %s",GetText,SystemInfo.cRadioID,1,sizeof(SystemInfo.cRadioID) - 1},
     {eEditText,"Beacon: %s",GetText,SystemInfo.cBeaconString,1,sizeof(SystemInfo.cBeaconString) - 1},
     {eEditText,"Audio: %s",GetAudioFile,SystemInfo.cAudioFile,1,sizeof(SystemInfo.cAudioFile) - 1},

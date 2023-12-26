@@ -417,7 +417,7 @@ bool RadioSetup()
 			char line[200];
 			float fRX = SystemInfo.nFrequency / 1000.0;
 			float fTX = (SystemInfo.nFrequency + atof(RxOffsetModeText[SystemInfo.nRfOffset])) / 1000.0;
-			sprintf(line, "AT+DMOSETGROUP=0,%.4f,%.4f,0012,4,0013", fTX, fRX);
+			sprintf(line, "AT+DMOSETGROUP=0,%.4f,%.4f,%d,%d,%d", fTX, fRX, SystemInfo.nTxCTSS, SystemInfo.nSquelch, SystemInfo.nRxCTSS);
 			//Serial.println(line);
 			RadioSerial.println(line);
 			delay(100);
@@ -469,10 +469,11 @@ void TaskMenu(void* params)
 				// make sure that the lcd dim is less than the bright
 				if (SystemInfo.nDisplayDimValue > SystemInfo.nDisplayBrightness)
 					SystemInfo.nDisplayDimValue = SystemInfo.nDisplayBrightness;
-				// see if any radio settings changed
-				if (SystemInfo.nFrequency != SystemInfoSaved.nFrequency
-					|| SystemInfo.nRfOffset != SystemInfoSaved.nRfOffset
-					|| SystemInfo.bTxPowerLow != SystemInfoSaved.bTxPowerLow) {
+				//// see if any radio settings changed
+				//if (SystemInfo.nFrequency != SystemInfoSaved.nFrequency
+				//	|| SystemInfo.nRfOffset != SystemInfoSaved.nRfOffset
+				//	|| SystemInfo.bTxPowerLow != SystemInfoSaved.bTxPowerLow
+				//	|| SystemInfo.nSquelch != SystemInfoSaved.nSquelch) {
 					// tell the radio
 					if (RadioSetup()) {
 						// worked
@@ -481,7 +482,7 @@ void TaskMenu(void* params)
 						// failed, turn off transmit
 						//SystemInfo.bXmit = false;
 					}
-				}
+				//}
 				SaveLoadSettings(true, false);
 				// copy so we know we updated things
 				memcpy(&SystemInfoSaved, &SystemInfo, sizeof(SystemInfo));
@@ -970,6 +971,86 @@ void GetSelectChoice(MenuItem * menu)
 	if (menu->change != NULL) {
 		(*menu->change)(menu, 0);
 	}
+	ResetTextLines();
+}
+
+// make a selection from the supplied text list in the menu
+void GetSelectChoiceList(MenuItem* menu)
+{
+	// holds the current selection
+	int nTextIndex = *(int*)menu->value;
+	// holds the list starting index
+	int nStartIndex = nTextIndex;
+	// see if we need adjust the start
+	if (nTextIndex >= nMenuLineCount - 1) {
+		nStartIndex = nTextIndex - nMenuLineCount + 2;
+	}
+	ClearScreen();
+	DisplayLine(nMenuLineCount - 1, "Long=OK Click=Cancel", SystemInfo.menuTextColor);
+	CRotaryDialButton::Button button = BTN_NONE;
+	bool done = false;
+	// redraw screen only when necessary
+	bool bRedraw = true;
+	do {
+		if (bRedraw) {
+			String line;
+			bool hilite;
+			for (int ix = 0; ix < menu->max && ix < nMenuLineCount - 1; ++ix) {
+				// high light the current selection
+				hilite = (nTextIndex - nStartIndex) == ix;
+				line = menu->nameList[ix + nStartIndex];
+				if (SystemInfo.bMenuStar) {
+					line = (hilite ? "*" : " ") + line;
+					DisplayLine(ix, line, SystemInfo.menuTextColor);
+				}
+				else {
+					DisplayLine(ix, line, hilite ? TFT_BLACK : SystemInfo.menuTextColor, hilite ? SystemInfo.menuTextColor : TFT_BLACK);
+				}
+			}
+			bRedraw = false;
+		}
+		// let other people run for a moment so the watchdog doesn't time out and reboot
+		vTaskDelay(2);
+		button = ReadButton();
+		switch (button) {
+		case BTN_NONE:
+		case BTN_B1_CLICK:
+		case BTN_B2_LONG:
+		case BTN_B1_LONG:
+		case BTN_B0_CLICK:
+		case BTN_B0_LONG:
+			break;
+		case BTN_LEFT:	// previous line
+			if (nTextIndex > 0) {
+				// select the previous one
+				--nTextIndex;
+				// check if we need to scroll
+				if (nTextIndex - nStartIndex < 0) {
+					--nStartIndex;
+				}
+				bRedraw = true;
+			}
+			break;
+		case BTN_RIGHT:	// next line
+			// check if more available
+			if (nTextIndex < menu->max) {
+				++nTextIndex;
+				// check if we need to scroll
+				if (nTextIndex - nStartIndex >= nMenuLineCount - 1) {
+					++nStartIndex;
+				}
+				bRedraw = true;
+			}
+			break;
+		case BTN_LONG:	// set the new index
+			*(int*)menu->value = nTextIndex;
+			done = true;
+			break;
+		case BTN_SELECT:	// use this to cancel
+			done = true;
+			break;
+		}
+	} while (!done);
 	ResetTextLines();
 }
 
