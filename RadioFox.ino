@@ -398,7 +398,7 @@ bool RadioSetup()
 	bool retval = false;
 	Serial.println("radio setup");
 	RadioSerial.println("AT+DMOCONNECT");
-	delay(100);
+	delay(1000);
 	// see if the radio answers
 	if (RadioSerial.available()) {
 		String str = RadioSerial.readString();
@@ -408,7 +408,7 @@ bool RadioSetup()
 			// set the radio data, e.g. AT+DMOSETGROUP=0,415.1250,415.1250,0012,4, 0013
 			char line[200];
 			float fRX = SystemInfo.nFrequency / 1000.0;
-			float fTX = (SystemInfo.nFrequency + SystemInfo.nRfOffset) / 1000.0;
+			float fTX = (SystemInfo.nFrequency + atof(RxOffsetModeText[SystemInfo.nRfOffset])) / 1000.0;
 			sprintf(line, "AT+DMOSETGROUP=0,%.4f,%.4f,0012,4,0013", fTX, fRX);
 			Serial.println(line);
 			RadioSerial.println(line);
@@ -425,7 +425,12 @@ bool RadioSetup()
 		}
 	}
 	else {
+		Serial.println("Radio did not respond");
 		WriteMessage("Radio Not Found", true);
+	}
+	if (retval) {
+		Serial.println("Radio init successful");
+		WriteMessage("Radio Initialized");
 	}
 	// set the radio power control output
 	digitalWrite(TXHIPOWER_PORT, SystemInfo.bTxPowerHi);
@@ -467,7 +472,7 @@ void TaskMenu(void* params)
 						// worked
 					}
 					else {
-						// failed, turn of transmit
+						// failed, turn off transmit
 						//SystemInfo.bXmit = false;
 					}
 				}
@@ -504,7 +509,7 @@ void setup()
 	nMenuLineCount = tft.height() / tft.fontHeight();
 	TextLines.resize(nMenuLineCount);
 	// start the radio serial port
-	RadioSerial.begin(9600, SERIAL_8N1, RADIO_SERIAL_RX, RADIO_SERIAL_TX);
+	RadioSerial.begin(9600, SERIAL_8N1, RADIO_SERIAL_RX, RADIO_SERIAL_TX, false);
 	// start the tone generator
 	ledcSetup(toneChannel, 0, 8);
 	ledcAttachPin(AUDIO_OUT_PORT, toneChannel);
@@ -700,8 +705,6 @@ void loop()
 	if (SystemInfo.bRunWebServer) {
 		server.handleClient();
 	}
-	// testing...
-	//RadioSerial.print("AT+140.000");
 	delay(100);
 }
 
