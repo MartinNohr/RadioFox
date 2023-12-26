@@ -394,6 +394,8 @@ void TaskDTMF(void* parameter)
 // TODO: do we need to wait for radio not transmitting?
 bool RadioSetup()
 {
+	// set the radio power control output
+	digitalWrite(TXPOWER_PORT, SystemInfo.bTxPowerLow);
 	bool retval = false;
 	//Serial.println("radio setup");
 	RadioSerial.println("AT+DMOCONNECT");
@@ -438,8 +440,6 @@ bool RadioSetup()
 		//Serial.println("Radio init successful");
 		WriteMessage("Radio Initialized");
 	}
-	// set the radio power control output
-	digitalWrite(TXPOWER_PORT, SystemInfo.bTxPowerLow);
 	return retval;
 }
 
