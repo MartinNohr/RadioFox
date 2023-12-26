@@ -1,6 +1,6 @@
 #pragma once
 
-const char* FOX_Version = "0.07";
+const char* FOX_Version = "0.09";
 
 const char* StartFileName = "START.FOX";
 // some config things
@@ -145,12 +145,14 @@ typedef struct SYSTEM_INFO {
 	int nTxTime = 2 * 60;                       // tx time in seconds
 	int nTxPause = 3 * 60;                      // tx pause time in seconds
     bool bTxPowerLow = false;                   // tx power control
+    int nBandWidth = 0;                         // 0 for 12.5k and 1 for 25k
 #if RADIO_UHF
     int nFrequency = 400000;                    // UHF radio frequency in kHz
 #else
     int nFrequency = 140000;                    // VHF radio frequency in kHz
 #endif
     int nRfOffset = 1;                          // RX frequeny offset 0=-600 1=0 2=+600 kHz, 1200 for UHF
+    int nRxVolume = 4;                          // volume from 1 to 8
     int nSquelch = 1;                           // squelch setting, 0 to 8, 0 is monitor mode
     int nRxCTSS = 12;                           // RX CSS 0 to 38, 12 is 100Hz, 0 is none, see SubToneText[] below
     int nTxCTSS = 12;                           // TX CSS 0 to 38
@@ -343,6 +345,8 @@ const char* SubToneText[] = {
     "136.5","141.3","146.2","151.4","156.7","162.2","167.9","173.8","179.9","186.2",
     "192.8","203.5","210.7","218.1","225.7","233.6","241.8","250.3",
 };
+// the bandwidth
+const char* BandWidthText[] = { "12.5","25" };
 
 MenuItem RadioMenu[] = {
 #if RADIO_UHF
@@ -361,8 +365,10 @@ MenuItem RadioMenu[] = {
     {eTextInt,"TX: %d.%03d MHz",GetIntegerValue,&SystemInfo.nFrequency,134000,174000,3},
 #endif
     {eList,"RX Offset: %s kHz",GetSelectChoice,&SystemInfo.nRfOffset,0,sizeof(RxOffsetModeText) / sizeof(*RxOffsetModeText) - 1,0,NULL,NULL,NULL,RxOffsetModeText},
+    {eList,"BandWidth: %s kHz",GetSelectChoice,&SystemInfo.nBandWidth,0,sizeof(BandWidthText) / sizeof(*BandWidthText) - 1,0,NULL,NULL,NULL,BandWidthText},
     {eList,"RX CTSS: %s Hz",GetSelectChoiceList,&SystemInfo.nRxCTSS,0,sizeof(SubToneText) / sizeof(*SubToneText) - 1,0,NULL,NULL,NULL,SubToneText},
     {eList,"TX CTSS: %s Hz",GetSelectChoiceList,&SystemInfo.nTxCTSS,0,sizeof(SubToneText) / sizeof(*SubToneText) - 1,0,NULL,NULL,NULL,SubToneText},
+    {eTextInt,"RX Volume: %d",GetIntegerValue,&SystemInfo.nRxVolume,1,8},
     {eTextInt,"RX Squelch: %d",GetIntegerValue,&SystemInfo.nSquelch,0,8},
     {eEditText,"Call Sign: %s",GetText,SystemInfo.cRadioID,1,sizeof(SystemInfo.cRadioID) - 1},
     {eEditText,"Beacon: %s",GetText,SystemInfo.cBeaconString,1,sizeof(SystemInfo.cBeaconString) - 1},

@@ -417,7 +417,8 @@ bool RadioSetup()
 			char line[200];
 			float fRX = SystemInfo.nFrequency / 1000.0;
 			float fTX = (SystemInfo.nFrequency + atof(RxOffsetModeText[SystemInfo.nRfOffset])) / 1000.0;
-			sprintf(line, "AT+DMOSETGROUP=0,%.4f,%.4f,%d,%d,%d", fTX, fRX, SystemInfo.nTxCTSS, SystemInfo.nSquelch, SystemInfo.nRxCTSS);
+			sprintf(line, "AT+DMOSETGROUP=%d,%.4f,%.4f,%d,%d,%d",
+				SystemInfo.nBandWidth, fTX, fRX, SystemInfo.nTxCTSS, SystemInfo.nSquelch, SystemInfo.nRxCTSS);
 			//Serial.println(line);
 			RadioSerial.println(line);
 			delay(100);
@@ -426,6 +427,17 @@ bool RadioSetup()
 				//Serial.println("Radio Group Reply:" + str);
 				if (str.indexOf(":0") > 0) {
 					//Serial.println("Radio Ready");
+					// it worked
+					retval = true;
+				}
+			}
+			// set the volume level
+			sprintf(line, "AT+DMOSETVOLUME=%d", SystemInfo.nRxVolume);
+			RadioSerial.println(line);
+			delay(100);
+			if (RadioSerial.available()) {
+				str = RadioSerial.readString();
+				if (str.indexOf(":0") > 0) {
 					// it worked
 					retval = true;
 				}
