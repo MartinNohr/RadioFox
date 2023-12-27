@@ -325,7 +325,7 @@ void TaskShowBattery(void* parameters)
 // handle DTMF commands, runs every second
 void TaskDTMF(void* parameter)
 {
-	// use this to make task run every second
+	// use this to make task run periodically, every second
 	TickType_t xLastWakeTime;
 	const TickType_t xFrequency = pdMS_TO_TICKS(1000);
 	// Initialise the xLastWakeTime variable with the current time.
@@ -339,12 +339,10 @@ void TaskDTMF(void* parameter)
 
 		// if valid tone was found, proof for validity
 		button = dtmf.tone2char(tones);
-		//Serial.println(String("tone:") + (int)(dtmf.tone2char(tones)));
-		if (button > 0)
-		{
+		if (button > 0) {
 			// TODO: suspend transmitting here?
 
-			//Serial.print("Detected tone...");
+			//Serial.print(String("Detected tone:") + tones);
 			// measure 4 times, result of each measurement should be always the same 
 			// time need for this process: 80ms, so the tone must be present at least 100ms to be valid
 			tones |= dtmf.detect() | dtmf.detect() | dtmf.detect();
@@ -533,7 +531,7 @@ void setup()
 	ledcWrite(toneChannel, 127);
 	ledcWriteTone(toneChannel, 0);
 	// start the DTMF detector
-	dtmf.begin(AUDIO_IN_PORT);
+	dtmf.begin(AUDIO_IN_PORT, 2000);
 
 	//Serial.println("flash:" + String(ESP.getFlashChipSize()));
 	//Serial.print("setup() is running on core ");

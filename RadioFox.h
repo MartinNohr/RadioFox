@@ -152,8 +152,8 @@ typedef struct SYSTEM_INFO {
     int nFrequency = 140000;                    // VHF radio frequency in kHz
 #endif
     int nRfOffset = 1;                          // RX frequeny offset 0=-600 1=0 2=+600 kHz, 1200 for UHF
-    int nRxVolume = 4;                          // volume from 1 to 8
-    int nSquelch = 1;                           // squelch setting, 0 to 8, 0 is monitor mode
+    int nRxVolume = 6;                          // volume from 1 to 8
+    int nSquelch = 2;                           // squelch setting, 0 to 8, 0 is monitor mode
     int nRxCTSS = 12;                           // RX CSS 0 to 38, 12 is 100Hz, 0 is none, see SubToneText[] below
     int nTxCTSS = 12;                           // TX CSS 0 to 38
     char cAudioFile[31] = "";                   // choose the audio file
