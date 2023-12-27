@@ -139,7 +139,7 @@ typedef struct SYSTEM_INFO {
     int nPreviewAutoScroll = 0;                 // mSec for preview autoscroll, 0 means no scroll
     bool bRunWebServer = false;                 // run the web server
     // radio settings
-    char cRadioID[21] = "CALLSIGN";             // ID to transmit
+    char cRadioCallSign[21] = "CALLSIGN";       // ID to transmit
     char cBeaconString[31] = "BEACON";          // beacon string to send
     char cSerialNumber[13] = "G2023XX";         // fox serial number
 	int nTxTime = 2 * 60;                       // tx time in seconds
@@ -370,7 +370,7 @@ MenuItem RadioMenu[] = {
     {eList,"TX CTSS: %s Hz",GetSelectChoiceList,&SystemInfo.nTxCTSS,0,sizeof(SubToneText) / sizeof(*SubToneText) - 1,0,NULL,NULL,NULL,SubToneText},
     {eTextInt,"RX Volume: %d",GetIntegerValue,&SystemInfo.nRxVolume,1,8},
     {eTextInt,"RX Squelch: %d",GetIntegerValue,&SystemInfo.nSquelch,0,8},
-    {eEditText,"Call Sign: %s",GetText,SystemInfo.cRadioID,1,sizeof(SystemInfo.cRadioID) - 1},
+    {eEditText,"Call Sign: %s",GetText,SystemInfo.cRadioCallSign,1,sizeof(SystemInfo.cRadioCallSign) - 1},
     {eEditText,"Beacon: %s",GetText,SystemInfo.cBeaconString,1,sizeof(SystemInfo.cBeaconString) - 1},
     {eEditText,"Audio: %s",GetAudioFile,SystemInfo.cAudioFile,1,sizeof(SystemInfo.cAudioFile) - 1},
     {eTextInt,"Morse Interval: %d mS",GetIntegerValue,&SystemInfo.nMorseInterval,10,500},

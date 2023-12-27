@@ -111,15 +111,14 @@ void TaskScrollSideways(void* params)
 
 void TaskSendBeacon(void* parameter)
 {
-	for (int i = 0; i < sizeof(SystemInfo.cBeaconString); i++) {
-		if (SystemInfo.cBeaconString[i] == '\0')
-			break;
-		sendLetter(SystemInfo.cBeaconString[i]);
-	}
-	for (int i = 0; i < sizeof(SystemInfo.cRadioID); i++) {
-		if (SystemInfo.cRadioID[i] == '\0')
-			break;
-		sendLetter(SystemInfo.cRadioID[i]);
+	// take copies in case they get changed while we are here
+	String sendThese[2];
+	sendThese[0] = SystemInfo.cBeaconString;
+	sendThese[1] = SystemInfo.cRadioCallSign;
+	for (String str : sendThese) {
+		for (char ch : str) {
+			sendLetter(ch);
+		}
 	}
 	// terminate this task
 	TaskSendBeaconHandle = NULL;
@@ -172,7 +171,7 @@ void TaskRunTransmit(void* parameter)
 		TaskHandle_t* pTaskHandle;
 	} RFTaskList[] = {
 		{"Music",TaskSendMusic,&TaskSendMusicHandle},
-		{"Beacon",TaskSendBeacon,&TaskSendBeaconHandle},
+		{"ID",TaskSendBeacon,&TaskSendBeaconHandle},
 	};
 	bool bDone = false;
 	while (!bDone && ulTaskNotifyTake(pdTRUE, 0) == 0) {
@@ -285,7 +284,7 @@ void TaskRunRadio(void* parameter)
 				char fmt[20];
 				DisplayLine(lineNo++, String(cStatusText) + ": " + (secondsLeft / 60) + " Min " + (secondsLeft % 60) + " Sec");
 				DisplayLine(lineNo++, String("TX Count: ") + txCount);
-				DisplayLine(lineNo++, String(SystemInfo.cBeaconString) + " " + SystemInfo.cRadioID, SystemInfo.menuTextColor);
+				DisplayLine(lineNo++, "ID: " + String(SystemInfo.cBeaconString) + " " + SystemInfo.cRadioCallSign, SystemInfo.menuTextColor);
 				sprintf(fmt, "%03d MHz ", SystemInfo.nFrequency % 1000);
 				DisplayLine(lineNo++, String(SystemInfo.nFrequency / 1000) + "." + fmt + (SystemInfo.bTxPowerLow ? "High" : "Low"), SystemInfo.menuTextColor);
 				DisplayLine(lineNo++, String("RX Offset: ") + RxOffsetModeText[SystemInfo.nRfOffset] + " kHz", SystemInfo.menuTextColor);
@@ -501,7 +500,7 @@ void TaskMenu(void* params)
 			}
 		}
 		bLastSettingsMode = g_bSettingsMode;
-		vTaskDelay(2);
+		vTaskDelay(pdMS_TO_TICKS(2));
 		//int freestack = uxTaskGetStackHighWaterMark(NULL);
 		//Serial.println(String("menu high water: ") + freestack);
 	}
@@ -665,7 +664,7 @@ void setup()
 	xTaskCreate(TaskShowBattery, "BATTERYLEVEL", 2000, NULL, 0, &TaskShowBatteryHandle);
 	xTaskCreate(TaskDTMF, "DTMFHANDLER", 2000, NULL, 2, &TaskDTMFHandle);
 	xTaskCreate(TaskScrollSideways, "SCROLLSIDEWAYS", 2000, NULL, 0, &TaskScrollSidewaysHandle);
-	xTaskCreate(TaskMenu, "MENU", 2000, NULL, 4, &TaskMenuHandle);
+	xTaskCreate(TaskMenu, "MENU", 3000, NULL, 4, &TaskMenuHandle);
 	ResetDimTimer();
 	// init the radio
 	RadioSetup();
@@ -1021,8 +1020,6 @@ void GetSelectChoiceList(MenuItem* menu)
 			}
 			bRedraw = false;
 		}
-		// let other people run for a moment so the watchdog doesn't time out and reboot
-		vTaskDelay(2);
 		button = ReadButton();
 		switch (button) {
 		case BTN_NONE:
@@ -1114,8 +1111,6 @@ void GetIntegerValue(MenuItem * menu)
 			}
 			bChange = false;
 		}
-		// let other people run for a moment so the watchdog doesn't time out and reboot
-		vTaskDelay(2);
 		button = ReadButton();
 		switch (button) {
 		case BTN_LEFT:
@@ -1418,6 +1413,9 @@ enum CRotaryDialButton::Button ReadButton()
 	// reboot?
 	if (retValue == BTN_B2_LONG)
 		ESP.restart();
+	// if no buttons, yield so other tasks get to run
+	if (retValue == BTN_NONE)
+		vTaskDelay(pdMS_TO_TICKS(2));
 	// turn the b1 button into a dial long click
 	if (retValue == BTN_B1_CLICK)
 		retValue = BTN_LONG;
