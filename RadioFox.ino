@@ -179,7 +179,7 @@ void TaskRunTransmit(void* parameter)
 			// send the name for display
 			xTaskNotify(TaskRunRadioHandle, (uint32_t)pte.name, eSetValueWithOverwrite);
 			// start the task
-			xTaskCreate(pte.task, pte.name, 2000, NULL, 4, pte.pTaskHandle);
+			xTaskCreate(pte.task, pte.name, 2000, NULL, 6, pte.pTaskHandle);
 			// wait for it to complete or be cancelled
 			while (*pte.pTaskHandle) {
 				// check for timeout or cancel task
@@ -190,7 +190,7 @@ void TaskRunTransmit(void* parameter)
 					bDone = true;
 					break;
 				}
-				vTaskDelay(pdMS_TO_TICKS(1000));
+				vTaskDelay(pdMS_TO_TICKS(100));
 			}
 			if (bDone)
 				break;
@@ -201,6 +201,7 @@ void TaskRunTransmit(void* parameter)
 	ledcWriteTone(toneChannel, 0);
 	// turn PTT off here
 	gpio_set_level((gpio_num_t)PTT_PORT, PTT_LISTEN);
+	// stop this task after clearing the handle
 	TaskRunTransmitHandle = NULL;
 	vTaskDelete(NULL);
 	//int freestack = uxTaskGetStackHighWaterMark(NULL);
@@ -214,7 +215,7 @@ void TaskRunRadio(void* parameter)
 	uint32_t status = 0;
 	bool bTransmitting = false;
 	int secondsLeft = 0;
-	int txCount;
+	int txCount = 0;
 	bool bWaitingForStop = false;
 	bool bWasXmit = SystemInfo.bXmit;
 	// use this to make task run every second
@@ -233,33 +234,23 @@ void TaskRunRadio(void* parameter)
 				bWaitingForStop = bWasXmit;
 				// don't do this code again until the bXmit flag actually changes
 				bWasXmit = SystemInfo.bXmit;
-			}
-			if (bWaitingForStop) {
-				// check if the xmitter is finished
-				if (!TaskRunTransmitHandle) {
-					bWaitingForStop = false;
-					secondsLeft = SystemInfo.nTxPause;
-				}
-				// check for strings
-				status = ulTaskNotifyTake(pdTRUE, 0);
-				if (status == 0) {
-					// update the running display to show we're waiting
-					if (!g_bSettingsMode) {
-						DisplayLine(0, String(cStatusText) + ": Stopping");
-					}
-				}
-				else {
-					// must be a string pointer
-					cStatusText = (const char*)status;
-				}
+				// make sure we start right away
+				secondsLeft = 0;
 			}
 			// see if the timer has run out and we need to change state
-			else if (secondsLeft <= 0) {
+			if (secondsLeft == 0) {
 				bTransmitting = !bTransmitting;
 				if (bTransmitting) {
-					// start the xmitter task
-					xTaskCreate(TaskRunTransmit, "XMITFOX", 2000, NULL, 2, &TaskRunTransmitHandle);
-					vTaskDelay(pdMS_TO_TICKS(5));
+					bWaitingForStop = false;
+					// start the xmitter task, only one copy to be safe
+					if (TaskRunTransmitHandle == NULL)
+						xTaskCreate(TaskRunTransmit, "XMITFOX", 2000, NULL, 2, &TaskRunTransmitHandle);
+					// wait for it to start and let us know
+					while ((status = ulTaskNotifyTake(pdTRUE, 0)) == 0) {
+						vTaskDelay(pdMS_TO_TICKS(10));
+					}
+					// it must be a string they sent us
+					cStatusText = (const char*)status;
 					txCount++;
 					secondsLeft = SystemInfo.nTxTime;
 				}
@@ -267,42 +258,56 @@ void TaskRunRadio(void* parameter)
 					// tell the xmitter to stop
 					if (TaskRunTransmitHandle)
 						xTaskNotify(TaskRunTransmitHandle, 1, eSetValueWithOverwrite);
+					vTaskDelay(pdMS_TO_TICKS(2));
 					bWaitingForStop = true;
+					// -1 keeps us waiting
+					secondsLeft = -1;
 				}
 			}
 			// see if the task sent us anything
 			status = ulTaskNotifyTake(pdTRUE, 0);
 			// check if this is a string pointer
-			if (status > 1) {
+			if (status) {
 				cStatusText = (const char*)status;
 			}
-			if (!bTransmitting && !bWaitingForStop) {
-				cStatusText = "Pause";
-			}
-			if (!g_bSettingsMode && !bWaitingForStop) {
-				int lineNo = 0;
-				char fmt[20];
-				DisplayLine(lineNo++, String(cStatusText) + ": " + (secondsLeft / 60) + " Min " + (secondsLeft % 60) + " Sec");
-				DisplayLine(lineNo++, String("TX Count: ") + txCount);
-				DisplayLine(lineNo++, "ID: " + String(SystemInfo.cBeaconString) + " " + SystemInfo.cRadioCallSign, SystemInfo.menuTextColor);
-				sprintf(fmt, "%03d MHz ", SystemInfo.nFrequency % 1000);
-				DisplayLine(lineNo++, String(SystemInfo.nFrequency / 1000) + "." + fmt + (SystemInfo.bTxPowerLow ? "High" : "Low"), SystemInfo.menuTextColor);
-				DisplayLine(lineNo++, String("RX Offset: ") + RxOffsetModeText[SystemInfo.nRfOffset] + " kHz", SystemInfo.menuTextColor);
-				DisplayLine(lineNo++, String("Audio: ") + SystemInfo.cAudioFile, SystemInfo.menuTextColor);
-			}
-			if (secondsLeft)
-				--secondsLeft;
-			//int freestack = uxTaskGetStackHighWaterMark(NULL);
-			//Serial.println(String("radio high water: ") + freestack);
 		}
-		if (!SystemInfo.bXmit && !TaskRunTransmitHandle) {
-			if (!g_bSettingsMode) {
-				DisplayLine(0, "Not Transmitting");
+		if (bWaitingForStop) {
+			// check if the xmitter is finished
+			if (!TaskRunTransmitHandle) {
+				bWaitingForStop = false;
+				secondsLeft = SystemInfo.nTxPause;
 			}
-			bTransmitting = false;
-			bWaitingForStop = false;
+		}
+		if (!bTransmitting && !bWaitingForStop) {
+			cStatusText = "Pause";
+		}
+		// set string if not transmitting
+		if (!SystemInfo.bXmit && !bWaitingForStop) {
+			cStatusText = "Not Transmitting";
 			secondsLeft = 0;
 		}
+		if (!g_bSettingsMode) {
+			int lineNo = 0;
+			char fmt[20];
+			String str = cStatusText;
+			if (bWaitingForStop) {
+				str = cStatusText + String(": Stopping");
+			}
+			else {
+				if (secondsLeft) {
+					str += String(": ") + (secondsLeft / 60) + " Min " + (secondsLeft % 60) + " Sec";
+				}
+			}
+			DisplayLine(lineNo++, str);
+			DisplayLine(lineNo++, String("TX Count: ") + txCount);
+			DisplayLine(lineNo++, "ID: " + String(SystemInfo.cBeaconString) + " " + SystemInfo.cRadioCallSign, SystemInfo.menuTextColor);
+			sprintf(fmt, "%03d MHz ", SystemInfo.nFrequency % 1000);
+			DisplayLine(lineNo++, String(SystemInfo.nFrequency / 1000) + "." + fmt + (SystemInfo.bTxPowerLow ? "High" : "Low"), SystemInfo.menuTextColor);
+			DisplayLine(lineNo++, String("RX Offset: ") + RxOffsetModeText[SystemInfo.nRfOffset] + " kHz", SystemInfo.menuTextColor);
+			DisplayLine(lineNo++, String("Audio: ") + SystemInfo.cAudioFile, SystemInfo.menuTextColor);
+		}
+		if (secondsLeft > 0)
+			--secondsLeft;
 		// Wait for the next cycle.
 		vTaskDelayUntil(&xLastWakeTime, xFrequency);
 	}
@@ -658,7 +663,7 @@ void setup()
 	gpio_set_level((gpio_num_t)PTT_PORT, PTT_LISTEN);
 	ClearScreen();
 	// start the transmit and management tasks
-	xTaskCreate(TaskRunRadio, "FOXRADIO", 2000, NULL, 3, &TaskRunRadioHandle);
+	xTaskCreate(TaskRunRadio, "FOXRADIO", 2000, NULL, 5, &TaskRunRadioHandle);
 	xTaskCreate(TaskShowBattery, "BATTERYLEVEL", 2000, NULL, 0, &TaskShowBatteryHandle);
 	xTaskCreate(TaskDTMF, "DTMFHANDLER", 2000, NULL, 2, &TaskDTMFHandle);
 	xTaskCreate(TaskScrollSideways, "SCROLLSIDEWAYS", 2000, NULL, 0, &TaskScrollSidewaysHandle);
