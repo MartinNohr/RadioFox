@@ -367,6 +367,7 @@ void TaskDTMF(void* parameter)
 				digitalWrite(PTT_PORT, PTT_LISTEN);
 				digitalWrite(TXPOWER_PORT, SystemInfo.bTxPowerLow = true);
 				SystemInfo.bXmit = false;
+				Serial.println("xmit off 2");
 				break;
 
 			case '3':// Number 3 - High Power Mode
@@ -384,6 +385,7 @@ void TaskDTMF(void* parameter)
 				sendLetter('R');
 				digitalWrite(PTT_PORT, PTT_LISTEN);
 				SystemInfo.bXmit = false;    // set the flag to DISABLE transmissions
+				Serial.println("xmit off default");
 				break;
 			}
 		}
