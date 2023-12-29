@@ -346,8 +346,8 @@ void TaskDTMF(void* parameter)
 		button = dtmf.tone2char(tones);
 		if (button > 0) {
 			// TODO: suspend transmitting here?
+			// TODO: this would be safer as a 2 sequence, e.g. '*' to enable followed by a number
 
-			//Serial.print(String("Detected tone:") + tones);
 			// measure 4 times, result of each measurement should be always the same 
 			// time need for this process: 80ms, so the tone must be present at least 100ms to be valid
 			tones |= dtmf.detect() | dtmf.detect() | dtmf.detect();
@@ -359,7 +359,6 @@ void TaskDTMF(void* parameter)
 				digitalWrite(PTT_PORT, PTT_LISTEN);
 				SystemInfo.bXmit = true;        // set the flag to ENABLE transmissions
 				break;
-
 			case '2':// Number 2 - LOW Power Mode - No Loop           
 				digitalWrite(PTT_PORT, PTT_TALK);
 				delay(1500);
@@ -367,9 +366,7 @@ void TaskDTMF(void* parameter)
 				digitalWrite(PTT_PORT, PTT_LISTEN);
 				digitalWrite(TXPOWER_PORT, SystemInfo.bTxPowerLow = true);
 				SystemInfo.bXmit = false;
-				Serial.println("xmit off 2");
 				break;
-
 			case '3':// Number 3 - High Power Mode
 				digitalWrite(TXPOWER_PORT, SystemInfo.bTxPowerLow = false);
 				digitalWrite(PTT_PORT, PTT_TALK);
@@ -378,14 +375,14 @@ void TaskDTMF(void* parameter)
 				digitalWrite(PTT_PORT, PTT_LISTEN);
 				SystemInfo.bXmit = true;
 				break;
-
-			default:     // any other number, turn off transmissions - send a short letter to confirm receive
+			case '4':	// turn off transmissions - send a short letter to confirm receive
 				digitalWrite(PTT_PORT, PTT_TALK);
 				delay(1500);
 				sendLetter('R');
 				digitalWrite(PTT_PORT, PTT_LISTEN);
 				SystemInfo.bXmit = false;    // set the flag to DISABLE transmissions
-				Serial.println("xmit off default");
+				break;
+			default:    
 				break;
 			}
 		}
