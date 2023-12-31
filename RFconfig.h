@@ -17,7 +17,7 @@
 #define HAS_BATTERY_LEVEL 1
 // battery sensor GPIO
 #define BATTERY_SENSOR_GPIO 13
-// set the push button GPIO port
+// set the push button GPIO port, tried 39, but it seems to pulse every second, somebody is using it!
 #define DIAL_BTN 2
 // default dial direction GPIO ports
 #define DIAL_A 38
