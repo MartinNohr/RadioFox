@@ -555,9 +555,9 @@ void setup()
 	gpio_set_direction(GPIO_NUM_0, GPIO_MODE_INPUT);
 	gpio_set_pull_mode(GPIO_NUM_0, GPIO_PULLUP_ONLY);
 	// radio sleep control
-	pinMode(RADIO_SLEEP_PORT, OUTPUT_OPEN_DRAIN);
+	pinMode(RADIO_SLEEP_PORT, OUTPUT);
 	// keep it awake
-	digitalWrite(RADIO_SLEEP_PORT, HIGH);
+	digitalWrite(RADIO_SLEEP_PORT, LOW);
 	// set the power control to output
 	pinMode(TXPOWER_PORT, OUTPUT);
 
