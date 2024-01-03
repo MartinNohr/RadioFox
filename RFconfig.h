@@ -28,8 +28,9 @@
 #define AUDIO_IN_PORT 36
 #define AUDIO_OUT_PORT 32        // send music and cw out this pin
 #define BUZZER_FREQUENCY 700  // cw pitch
-#define TXPOWER_PORT 15	// Pin to control TX Power, not conncted -> high power, connect to GND -> Low power
+#define TXPOWER_PORT 12	// Pin to control TX Power, not connected -> high power, connect to GND -> Low power
 // the radio serial ports
+#define RADIO_SLEEP_PORT 15
 #define RADIO_SERIAL_RX 21
 #define RADIO_SERIAL_TX 22	// NOTE: do not use the LED_BUILTIN which is also 22, the TTGO T-Display does not have an LED
 // Choose UHF or VHF SA818, 0 is VHF, 1 is UHF
