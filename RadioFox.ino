@@ -64,7 +64,7 @@ void TaskScrollSideways(void* params)
 	// use this to make task run every second
 	TickType_t xLastWakeTime;
 	const TickType_t xFrequency = pdMS_TO_TICKS(SystemInfo.nSidewayScrollSpeed);
-	// Initialise the xLastWakeTime variable with the current time.
+	// Initialize the xLastWakeTime variable with the current time.
 	xLastWakeTime = xTaskGetTickCount();
 	for (;;) {
 		for (int ix = 0; ix < nMenuLineCount; ++ix) {
@@ -217,23 +217,24 @@ void TaskRunRadio(void* parameter)
 	int secondsLeft = 0;
 	int txCount = 0;
 	bool bWaitingForStop = false;
-	bool bWasXmit = SystemInfo.bXmit;
+	bool bWasXmit = false;
 	// use this to make task run every second
 	TickType_t xLastWakeTime;
 	const TickType_t xFrequency = pdMS_TO_TICKS(1000);
-	// Initialise the xLastWakeTime variable with the current time.
+	// Initialize the xLastWakeTime variable with the current time.
 	xLastWakeTime = xTaskGetTickCount();
 
 	while (true) {
-		if (SystemInfo.bXmit || TaskRunTransmitHandle) {
-			if (bWasXmit != SystemInfo.bXmit) {
+		if (IsTransmitEnabled || TaskRunTransmitHandle) {
+			bool bTx = IsTransmitEnabled;
+			if (bWasXmit != IsTransmitEnabled) {
 				// tell the xmitter to stop
 				if (TaskRunTransmitHandle && bWasXmit)
 					xTaskNotify(TaskRunTransmitHandle, 1, eSetValueWithOverwrite);
 				// set if we were xmitting
 				bWaitingForStop = bWasXmit;
 				// don't do this code again until the bXmit flag actually changes
-				bWasXmit = SystemInfo.bXmit;
+				bWasXmit = IsTransmitEnabled;
 				// make sure we start right away
 				secondsLeft = 0;
 			}
@@ -282,7 +283,7 @@ void TaskRunRadio(void* parameter)
 			cStatusText = "Pause";
 		}
 		// set string if not transmitting
-		if (!SystemInfo.bXmit && !bWaitingForStop) {
+		if (!IsTransmitEnabled && !bWaitingForStop) {
 			cStatusText = "Not Transmitting";
 			secondsLeft = 0;
 		}
@@ -298,11 +299,14 @@ void TaskRunRadio(void* parameter)
 					str += String(": ") + (secondsLeft / 60) + " Min " + (secondsLeft % 60) + " Sec";
 				}
 			}
-			DisplayLine(lineNo++, str);
+			if(IsRadioReady)
+				DisplayLine(lineNo++, str);
+			else
+				DisplayLine(lineNo++, "Waiting for Radio");
 			DisplayLine(lineNo++, String("TX Count: ") + txCount);
 			DisplayLine(lineNo++, "ID: " + String(SystemInfo.cBeaconString) + " " + SystemInfo.cRadioCallSign, SystemInfo.menuTextColor);
 			sprintf(fmt, "%03d MHz ", SystemInfo.nFrequency % 1000);
-			DisplayLine(lineNo++, String(SystemInfo.nFrequency / 1000) + "." + fmt + (SystemInfo.bTxPowerLow ? "Low" : "High"), SystemInfo.menuTextColor);
+			DisplayLine(lineNo++, String(SystemInfo.nFrequency / 1000) + "." + fmt + (SystemInfo.bTxPowerLow ? "Lo" : "Hi") + " Power", SystemInfo.menuTextColor);
 			DisplayLine(lineNo++, String("RX Offset: ") + RxOffsetModeText[SystemInfo.nRfOffset] + " kHz", SystemInfo.menuTextColor);
 			DisplayLine(lineNo++, String("Audio: ") + SystemInfo.cAudioFile, SystemInfo.menuTextColor);
 		}
@@ -333,7 +337,7 @@ void TaskDTMF(void* parameter)
 	// use this to make task run periodically, every second
 	TickType_t xLastWakeTime;
 	const TickType_t xFrequency = pdMS_TO_TICKS(1000);
-	// Initialise the xLastWakeTime variable with the current time.
+	// Initialize the xLastWakeTime variable with the current time.
 	xLastWakeTime = xTaskGetTickCount();
 
 	while (true) {
@@ -357,7 +361,7 @@ void TaskDTMF(void* parameter)
 				delay(1500);
 				sendLetter('R');
 				digitalWrite(PTT_PORT, PTT_LISTEN);
-				SystemInfo.bXmit = true;        // set the flag to ENABLE transmissions
+				SetRadioTransmit(true);        // set the flag to ENABLE transmissions
 				break;
 			case '2':// Number 2 - LOW Power Mode - No Loop           
 				digitalWrite(PTT_PORT, PTT_TALK);
@@ -365,7 +369,7 @@ void TaskDTMF(void* parameter)
 				sendLetter('R');
 				digitalWrite(PTT_PORT, PTT_LISTEN);
 				digitalWrite(TXPOWER_PORT, SystemInfo.bTxPowerLow = true);
-				SystemInfo.bXmit = false;
+				SetRadioTransmit(false);
 				break;
 			case '3':// Number 3 - High Power Mode
 				digitalWrite(TXPOWER_PORT, SystemInfo.bTxPowerLow = false);
@@ -373,14 +377,14 @@ void TaskDTMF(void* parameter)
 				delay(1500);
 				sendLetter('R');
 				digitalWrite(PTT_PORT, PTT_LISTEN);
-				SystemInfo.bXmit = true;
+				SetRadioTransmit(true);
 				break;
 			case '4':	// turn off transmissions - send a short letter to confirm receive
 				digitalWrite(PTT_PORT, PTT_TALK);
 				delay(1500);
 				sendLetter('R');
 				digitalWrite(PTT_PORT, PTT_LISTEN);
-				SystemInfo.bXmit = false;    // set the flag to DISABLE transmissions
+				SetRadioTransmit(false);    // set the flag to DISABLE transmissions
 				break;
 			default:    
 				break;
@@ -391,10 +395,23 @@ void TaskDTMF(void* parameter)
 	}
 }
 
+// set the radio transmit event flag
+void SetRadioTransmit(bool bTx)
+{
+	// make sure it is up to date
+	SystemInfo.bXmitEnable = bTx;
+	if (SystemInfo.bXmitEnable)
+		xEventGroupSetBits(gRadioEventsHandle, RadioEventEnableTransmit);
+	else
+		xEventGroupClearBits(gRadioEventsHandle, RadioEventEnableTransmit);
+}
+
 // load the radio settings
 // TODO: do we need to wait for radio not transmitting?
 bool RadioSetup()
 {
+	// tell people the radio is not ready
+	xEventGroupClearBits(gRadioEventsHandle, RadioEventReady);
 	// set the radio power control output
 	digitalWrite(TXPOWER_PORT, SystemInfo.bTxPowerLow);
 	bool retval = false;
@@ -452,6 +469,10 @@ bool RadioSetup()
 	if (retval) {
 		//Serial.println("Radio init successful");
 		WriteMessage("Radio Initialized");
+		// tell everybody
+		xEventGroupSetBits(gRadioEventsHandle, RadioEventReady);
+		// finally, set the transmit correctly
+		SetRadioTransmit(SystemInfo.bXmitEnable);
 	}
 	return retval;
 }
@@ -482,23 +503,16 @@ void TaskMenu(void* params)
 				// make sure that the lcd dim is less than the bright
 				if (SystemInfo.nDisplayDimValue > SystemInfo.nDisplayBrightness)
 					SystemInfo.nDisplayDimValue = SystemInfo.nDisplayBrightness;
-				//// see if any radio settings changed
-				//if (SystemInfo.nFrequency != SystemInfoSaved.nFrequency
-				//	|| SystemInfo.nRfOffset != SystemInfoSaved.nRfOffset
-				//	|| SystemInfo.bTxPowerLow != SystemInfoSaved.bTxPowerLow
-				//	|| SystemInfo.nSquelch != SystemInfoSaved.nSquelch) {
-					// tell the radio
-					if (RadioSetup()) {
-						// worked
-					}
-					else {
-						// failed, turn off transmit
-						//SystemInfo.bXmit = false;
-					}
-				//}
-				SaveLoadSettings(true, false);
+				// tell the radio
+				if (RadioSetup()) {
+					// worked
+				}
+				else {
+					// TODO failed, turn off transmit?
+				}
 				// copy so we know we updated things
 				memcpy(&SystemInfoSaved, &SystemInfo, sizeof(SystemInfo));
+				SaveLoadSettings(true, false);
 			}
 		}
 		bLastSettingsMode = g_bSettingsMode;
@@ -660,6 +674,7 @@ void setup()
 	//	}
 	//	vTaskDelay(pdMS_TO_TICKS(10));
 	//}
+	gRadioEventsHandle = xEventGroupCreate();
 	// set the PTT port
 	gpio_set_direction((gpio_num_t)PTT_PORT, GPIO_MODE_OUTPUT);
 	gpio_set_level((gpio_num_t)PTT_PORT, PTT_LISTEN);
@@ -751,7 +766,7 @@ void RunMenus(int button)
 				if (MenuStack.top()->menu[ix].cHelpText) {
 					WriteMessage(MenuStack.top()->menu[ix].cHelpText, false, -1, true);
 				}
-				bMenuChanged = true;
+				g_bMenuChanged = true;
 				break;
 			case BTN_SELECT:	// handle selection
 				// got one, service it
@@ -768,7 +783,7 @@ void RunMenus(int button)
 				case eChooseFile:
 				case eBool:
 				case eList:
-					bMenuChanged = true;
+					g_bMenuChanged = true;
 					if (MenuStack.top()->menu[ix].change != NULL) {
 						(*MenuStack.top()->menu[ix].change)(&MenuStack.top()->menu[ix], 1);
 					}
@@ -784,7 +799,7 @@ void RunMenus(int button)
 						oldMenu = MenuStack.top();
 						MenuStack.push(new MenuInfo);
 						MenuStack.top()->menu = oldMenu->menu[ix].menu;
-						bMenuChanged = true;
+						g_bMenuChanged = true;
 						MenuStack.top()->index = 0;
 						MenuStack.top()->offset = 0;
 						//Serial.println("change menu");
@@ -803,7 +818,7 @@ void RunMenus(int button)
 		++menuix;
 	}
 	// if no match, and we are in a submenu, go back one level, or if bExit is set
-	if (bExit || (!bMenuChanged && MenuStack.size() > 1)) {
+	if (bExit || (!g_bMenuChanged && MenuStack.size() > 1)) {
 		UpMenuLevel(false);
 	}
 }
@@ -1271,7 +1286,7 @@ bool UpMenuLevel(bool gotoMain)
 			;
 	}
 	else if (MenuStack.size() > 1) {
-		bMenuChanged = true;
+		g_bMenuChanged = true;
 		menuPtr = MenuStack.top();
 		MenuStack.pop();
 		delete menuPtr;
@@ -1283,9 +1298,9 @@ bool UpMenuLevel(bool gotoMain)
 // handle the menus
 bool HandleMenus()
 {
-	if (bMenuChanged) {
+	if (g_bMenuChanged) {
 		ShowMenu(MenuStack.top()->menu);
-		bMenuChanged = false;
+		g_bMenuChanged = false;
 	}
 	bool didsomething = true;
 	CRotaryDialButton::Button button = ReadButton();
@@ -1307,14 +1322,14 @@ bool HandleMenus()
 	case BTN_B0_LONG:	// look for help
 		//UpMenuLevel(true);	// go back to the top menu
 		RunMenus(button);
-		bMenuChanged = true;
+		g_bMenuChanged = true;
 		break;
 	case BTN_B1_LONG:
 		button = BTN_SELECT;
 		// yes, no break here
 	case BTN_SELECT:
 		RunMenus(button);
-		bMenuChanged = true;
+		g_bMenuChanged = true;
 		break;
 	case BTN_RIGHT_LONG:
 	case BTN_RIGHT:
@@ -1324,7 +1339,7 @@ bool HandleMenus()
 			}
 			if (MenuStack.top()->index >= MenuStack.top()->menucount) {
 				MenuStack.top()->index = 0;
-				bMenuChanged = true;
+				g_bMenuChanged = true;
 				MenuStack.top()->offset = 0;
 			}
 			// see if we need to scroll the menu
@@ -1343,7 +1358,7 @@ bool HandleMenus()
 			}
 			if (MenuStack.top()->index < 0) {
 				MenuStack.top()->index = MenuStack.top()->menucount - 1;
-				bMenuChanged = true;
+				g_bMenuChanged = true;
 				MenuStack.top()->offset = MenuStack.top()->menucount - nMenuLineCount;
 			}
 			// see if we need to adjust the offset
@@ -1355,7 +1370,7 @@ bool HandleMenus()
 	case BTN_LONG:
 		ClearScreen();
 		g_bSettingsMode = false;
-		bMenuChanged = true;
+		g_bMenuChanged = true;
 		break;
 	default:
 		didsomething = false;
@@ -1363,7 +1378,7 @@ bool HandleMenus()
 	}
 	// check some conditions that should redraw the menu
 	if (lastMenu != MenuStack.top()->index || lastOffset != MenuStack.top()->offset) {
-		bMenuChanged = true;
+		g_bMenuChanged = true;
 		//Serial.println("menu changed");
 	}
 	return didsomething;

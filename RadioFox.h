@@ -158,7 +158,7 @@ typedef struct SYSTEM_INFO {
     int nTxCTSS = 12;                           // TX CSS 0 to 38
     char cAudioFile[31] = "";                   // choose the audio file
     int nMorseInterval = 200;                   // mSec morse timer
-    bool bXmit = false;                         // if xmit = false, don't transmit
+    bool bXmitEnable = false;                   // if xmit = false, don't transmit
     bool bStopImmediately = true;               // set to true to cancel transmitting without waiting to finish
     //
 };
@@ -354,7 +354,7 @@ MenuItem RadioMenu[] = {
 #else
     {eExit,"VHF Radio Settings"},
 #endif
-    {eBool,"XMIT: %s",ToggleBool,&SystemInfo.bXmit,0,0,0,"On","Off"},
+    {eBool,"XMIT: %s",ToggleBool,&SystemInfo.bXmitEnable,0,0,0,"On","Off"},
     {eBool,"TX Stop: %s",ToggleBool,&SystemInfo.bStopImmediately,0,0,0,"Immediate","Finish Cycle"},
     {eTextInt,"TX Send: %d Sec",GetIntegerValue,&SystemInfo.nTxTime,1,300},
     {eTextInt,"TX Pause: %d Sec",GetIntegerValue,&SystemInfo.nTxPause,1,600},
@@ -397,7 +397,7 @@ typedef struct MenuInfo {
 MenuInfo* menuPtr;
 std::stack<MenuInfo*> MenuStack;
 
-bool bMenuChanged = true;
+bool g_bMenuChanged = true;
 
 RTC_DATA_ATTR int nMenuLineCount = 7;
 
@@ -414,6 +414,15 @@ struct TEXTLINES {
     int nRollDirection;
 };
 std::vector<struct TEXTLINES> TextLines;
+
+// radio event flags, 8 possible, 1,2,4,8,16,32,64,128
+EventGroupHandle_t gRadioEventsHandle;
+#define RadioEventReady 0x01
+#define RadioEventDelayStart 0x02
+#define RadioEventEnableTransmit 0x04
+// some useful macros
+#define IsRadioReady ((xEventGroupGetBits(gRadioEventsHandle) & RadioEventReady) != 0)
+#define IsTransmitEnabled ((xEventGroupGetBits(gRadioEventsHandle) & RadioEventEnableTransmit) != 0)
 
 // task handles for running the radio parts
 TaskHandle_t TaskRunRadioHandle;
