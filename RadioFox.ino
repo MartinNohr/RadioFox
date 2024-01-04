@@ -225,7 +225,10 @@ void TaskRunRadio(void* parameter)
 	xLastWakeTime = xTaskGetTickCount();
 	int delayedSeconds = 0;
 	while (true) {
-		Serial.println(String("delay:") + SystemInfo.nStartDelayTimer);
+		if (!IsRadioReady) {
+			// stop the radio
+			delayedSeconds = secondsLeft = 0;
+		}
 		if (IsTransmitEnabled || TaskRunTransmitHandle) {
 			bool bTx = IsTransmitEnabled;
 			if (bWasXmit != IsTransmitEnabled) {
@@ -310,10 +313,12 @@ void TaskRunRadio(void* parameter)
 					str += String(": ") + (secondsLeft / 60) + " Min " + (secondsLeft % 60) + " Sec";
 				}
 			}
-			if(IsRadioReady)
+			if (IsRadioReady) {
 				DisplayLine(lineNo++, str);
-			else
+			}
+			else {
 				DisplayLine(lineNo++, "Waiting for Radio");
+			}
 			DisplayLine(lineNo++, String("TX Count: ") + txCount);
 			DisplayLine(lineNo++, "ID: " + String(SystemInfo.cBeaconString) + " " + SystemInfo.cRadioCallSign, SystemInfo.menuTextColor);
 			sprintf(fmt, "%03d MHz ", SystemInfo.nFrequency % 1000);

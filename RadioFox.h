@@ -357,7 +357,7 @@ MenuItem RadioMenu[] = {
     {eExit,"VHF Radio Settings"},
 #endif
     {eBool,"XMIT: %s",ToggleBool,&SystemInfo.bXmitEnable,0,0,0,"On","Off"},
-    {eTextInt,"Start Delay: %d Min",GetIntegerValue,&SystemInfo.nStartDelayTimer,0,60},
+    {eTextInt,"Start Delay: %d Min",GetIntegerValue,&SystemInfo.nStartDelayTimer,0,120},
     {eBool,"TX Stop: %s",ToggleBool,&SystemInfo.bStopImmediately,0,0,0,"Immediate","Finish Cycle"},
     {eTextInt,"TX Send: %d Sec",GetIntegerValue,&SystemInfo.nTxTime,1,300},
     {eTextInt,"TX Pause: %d Sec",GetIntegerValue,&SystemInfo.nTxPause,1,600},
