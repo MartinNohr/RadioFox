@@ -331,7 +331,7 @@ void TaskShowBattery(void* parameters)
 	}
 }
 
-// handle DTMF commands, runs every second
+// handle DTMF commands, runs periodically
 void TaskDTMF(void* parameter)
 {
 	// use this to make task run periodically, every second
@@ -339,6 +339,8 @@ void TaskDTMF(void* parameter)
 	const TickType_t xFrequency = pdMS_TO_TICKS(1000);
 	// Initialize the xLastWakeTime variable with the current time.
 	xLastWakeTime = xTaskGetTickCount();
+	bool bEnabled = false;
+	unsigned long enableTimer = 0;
 
 	while (true) {
 		uint8_t   tones;
@@ -350,12 +352,21 @@ void TaskDTMF(void* parameter)
 		button = dtmf.tone2char(tones);
 		if (button > 0) {
 			// TODO: suspend transmitting here?
-			// TODO: this would be safer as a 2 sequence, e.g. '*' to enable followed by a number
 
 			// measure 4 times, result of each measurement should be always the same 
-			// time need for this process: 80ms, so the tone must be present at least 100ms to be valid
+			// time needed for this process: 80ms, so the tone must be present at least 100ms to be valid
 			tones |= dtmf.detect() | dtmf.detect() | dtmf.detect();
-			switch (dtmf.tone2char(tones)) {
+			char ch = dtmf.tone2char(tones);
+			// unless the timer is on, only accept '*'
+			if ((enableTimer < millis()) && ch != '*') {
+				continue;
+			}
+			// enable for the timer active seconds
+			enableTimer = millis() + SystemInfo.nDtmfEnableTimer * 1000;
+			switch (ch) {
+			case '*':
+				bEnabled = true;
+				break;
 			case '1':// Number 1 - Start Loop
 				digitalWrite(PTT_PORT, PTT_TALK);
 				delay(1500);

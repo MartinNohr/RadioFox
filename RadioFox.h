@@ -1,6 +1,6 @@
 #pragma once
 
-const char* FOX_Version = "0.10";
+const char* FOX_Version = "0.11";
 
 const char* StartFileName = "START.FOX";
 // some config things
@@ -160,6 +160,7 @@ typedef struct SYSTEM_INFO {
     int nMorseInterval = 200;                   // mSec morse timer
     bool bXmitEnable = false;                   // if xmit = false, don't transmit
     bool bStopImmediately = true;               // set to true to cancel transmitting without waiting to finish
+    int nDtmfEnableTimer = 10;                  // the number of seconds after '*' that DTMF commands will work
     //
 };
 RTC_DATA_ATTR SYSTEM_INFO SystemInfo;
@@ -374,6 +375,7 @@ MenuItem RadioMenu[] = {
     {eEditText,"Beacon: %s",GetText,SystemInfo.cBeaconString,1,sizeof(SystemInfo.cBeaconString) - 1},
     {eEditText,"Audio: %s",GetAudioFile,SystemInfo.cAudioFile,1,sizeof(SystemInfo.cAudioFile) - 1},
     {eTextInt,"Morse Interval: %d mS",GetIntegerValue,&SystemInfo.nMorseInterval,50,500},
+    {eTextInt,"DTMF Active: %d Sec",GetIntegerValue,&SystemInfo.nDtmfEnableTimer,1,20},
     {eExit,PreviousMenu},
     // make sure this one is last
     {eTerminate}
