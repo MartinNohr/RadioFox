@@ -1,6 +1,6 @@
 #pragma once
 
-const char* FOX_Version = "0.11";
+const char* FOX_Version = "0.12";
 
 const char* StartFileName = "START.FOX";
 // some config things
@@ -161,6 +161,7 @@ typedef struct SYSTEM_INFO {
     bool bXmitEnable = false;                   // if xmit = false, don't transmit
     bool bStopImmediately = true;               // set to true to cancel transmitting without waiting to finish
     int nDtmfEnableTimer = 10;                  // the number of seconds after '*' that DTMF commands will work
+    int nStartDelayTimer = 0;                   // seconds before the first transmission
     //
 };
 RTC_DATA_ATTR SYSTEM_INFO SystemInfo;
@@ -356,6 +357,7 @@ MenuItem RadioMenu[] = {
     {eExit,"VHF Radio Settings"},
 #endif
     {eBool,"XMIT: %s",ToggleBool,&SystemInfo.bXmitEnable,0,0,0,"On","Off"},
+    {eTextInt,"Start Delay: %d Min",GetIntegerValue,&SystemInfo.nStartDelayTimer,0,60},
     {eBool,"TX Stop: %s",ToggleBool,&SystemInfo.bStopImmediately,0,0,0,"Immediate","Finish Cycle"},
     {eTextInt,"TX Send: %d Sec",GetIntegerValue,&SystemInfo.nTxTime,1,300},
     {eTextInt,"TX Pause: %d Sec",GetIntegerValue,&SystemInfo.nTxPause,1,600},

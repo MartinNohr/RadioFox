@@ -223,8 +223,9 @@ void TaskRunRadio(void* parameter)
 	const TickType_t xFrequency = pdMS_TO_TICKS(1000);
 	// Initialize the xLastWakeTime variable with the current time.
 	xLastWakeTime = xTaskGetTickCount();
-
+	int delayedSeconds = 0;
 	while (true) {
+		Serial.println(String("delay:") + SystemInfo.nStartDelayTimer);
 		if (IsTransmitEnabled || TaskRunTransmitHandle) {
 			bool bTx = IsTransmitEnabled;
 			if (bWasXmit != IsTransmitEnabled) {
@@ -235,11 +236,14 @@ void TaskRunRadio(void* parameter)
 				bWaitingForStop = bWasXmit;
 				// don't do this code again until the bXmit flag actually changes
 				bWasXmit = IsTransmitEnabled;
-				// make sure we start right away
+				// make sure we start right away or after the delay specified
 				secondsLeft = 0;
+				if (SystemInfo.nStartDelayTimer) {
+					delayedSeconds = SystemInfo.nStartDelayTimer * 60;
+				}
 			}
 			// see if the timer has run out and we need to change state
-			if (secondsLeft == 0) {
+			if (secondsLeft == 0 && delayedSeconds == 0) {
 				bTransmitting = !bTransmitting;
 				if (bTransmitting) {
 					bWaitingForStop = false;
@@ -280,12 +284,16 @@ void TaskRunRadio(void* parameter)
 			}
 		}
 		if (!bTransmitting && !bWaitingForStop) {
-			cStatusText = "Pause";
+			if (delayedSeconds)
+				cStatusText = "Delay";
+			else
+				cStatusText = "Pause";
 		}
 		// set string if not transmitting
 		if (!IsTransmitEnabled && !bWaitingForStop) {
 			cStatusText = "Not Transmitting";
 			secondsLeft = 0;
+			delayedSeconds = 0;
 		}
 		if (!g_bSettingsMode) {
 			int lineNo = 0;
@@ -295,7 +303,10 @@ void TaskRunRadio(void* parameter)
 				str = cStatusText + String(": Stopping");
 			}
 			else {
-				if (secondsLeft) {
+				if (delayedSeconds) {
+					str += String(": ") + (delayedSeconds / 60) + " Min " + (delayedSeconds % 60) + " Sec";
+				}
+				else if (secondsLeft) {
 					str += String(": ") + (secondsLeft / 60) + " Min " + (secondsLeft % 60) + " Sec";
 				}
 			}
@@ -312,6 +323,8 @@ void TaskRunRadio(void* parameter)
 		}
 		if (secondsLeft > 0)
 			--secondsLeft;
+		if (delayedSeconds > 0)
+			--delayedSeconds;
 		// Wait for the next cycle.
 		vTaskDelayUntil(&xLastWakeTime, xFrequency);
 	}
