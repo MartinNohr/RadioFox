@@ -318,7 +318,7 @@ MenuItem SystemMenu[] = {
 #if HAS_BATTERY_LEVEL
     {eMenu,"Battery Settings",{.menu = BatteryMenu}},
 #endif
-    {eMenu,"WiFi Settings",{.menu = WiFiMenu}},
+    //{eMenu,"WiFi Settings",{.menu = WiFiMenu}},
     {eText,"New Version BIN file",CheckUpdateBin},
     {eText,"Reset All Settings",FactorySettings},
     {eEditText,"Serial #: %s",NULL,SystemInfo.cSerialNumber ,1,sizeof(SystemInfo.cSerialNumber) - 1},

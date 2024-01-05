@@ -273,6 +273,7 @@ void TaskRunRadio(void* parameter)
 					bWaitingForStop = true;
 					// -1 keeps us waiting
 					secondsLeft = -1;
+					delayedSeconds = 0;
 				}
 			}
 			// see if the task sent us anything
@@ -289,14 +290,15 @@ void TaskRunRadio(void* parameter)
 				secondsLeft = SystemInfo.nTxPause;
 			}
 		}
-		if (!bTransmitting && !bWaitingForStop) {
-			if (delayedSeconds)
-				cStatusText = "Delay";
-			else
-				cStatusText = "Pause";
-		}
+		// some logic to get the correct status message
+		if (!IsTransmitEnabled)
+			delayedSeconds = 0;
+		if (delayedSeconds)
+			cStatusText = "Delay";
+		else if (IsTransmitEnabled && !bTransmitting && !bWaitingForStop)
+			cStatusText = "Pause";
 		// set string if not transmitting
-		if (!IsTransmitEnabled && !bWaitingForStop) {
+		else if (!IsTransmitEnabled && !bWaitingForStop) {
 			cStatusText = "Not Transmitting";
 			secondsLeft = 0;
 			delayedSeconds = 0;
