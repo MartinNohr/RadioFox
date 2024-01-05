@@ -160,10 +160,8 @@ void TaskSendMusic(void* parameter)
 // this controls the radio sending operations
 void TaskRunTransmit(void* parameter)
 {
-	while(!IsRadioReady)
-		vTaskDelay(pdMS_TO_TICKS(100));
-
-	gpio_set_level((gpio_num_t)PTT_PORT, PTT_TALK);
+	if (IsTransmitEnabled && IsRadioReady)
+		gpio_set_level((gpio_num_t)PTT_PORT, PTT_TALK);
 	xTaskNotify(TaskRunRadioHandle, (uint32_t)"TX Start", eSetValueWithOverwrite);
 	// wait for PTT to take effect
 	vTaskDelay(pdMS_TO_TICKS(500));
@@ -177,7 +175,7 @@ void TaskRunTransmit(void* parameter)
 		{"ID",TaskSendBeacon,&TaskSendBeaconHandle},
 	};
 	bool bDone = false;
-	while (!bDone && ulTaskNotifyTake(pdTRUE, 0) == 0) {
+	while (IsRadioReady && IsTransmitEnabled && !bDone && ulTaskNotifyTake(pdTRUE, 0) == 0) {
 		for (const struct RFTaskEntry& pte : RFTaskList) {
 			// send the name for display
 			xTaskNotify(TaskRunRadioHandle, (uint32_t)pte.name, eSetValueWithOverwrite);
@@ -195,7 +193,7 @@ void TaskRunTransmit(void* parameter)
 				}
 				vTaskDelay(pdMS_TO_TICKS(100));
 			}
-			if (bDone)
+			if (bDone || !IsTransmitEnabled)
 				break;
 		}
 		vTaskDelay(pdMS_TO_TICKS(500));
