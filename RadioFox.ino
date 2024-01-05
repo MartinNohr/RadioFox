@@ -225,7 +225,7 @@ void TaskRunRadio(void* parameter)
 	xLastWakeTime = xTaskGetTickCount();
 	int delayedSeconds = 0;
 	while (true) {
-		if (!IsRadioReady) {
+		if (!IsRadioReady && bWasXmit) {
 			// stop the radio
 			delayedSeconds = secondsLeft = 0;
 		}
