@@ -562,8 +562,6 @@ void setup()
 	}
 	// create the display mutex
 	MutexDisplayHandle = xSemaphoreCreateMutex();
-	// and the settingsmode one
-	MutexSettingsMode = xSemaphoreCreateBinary();
 	// init the display
 	tft.init();
 	tft.fillScreen(TFT_BLACK);
@@ -1657,17 +1655,17 @@ String FormatMultiLine(String & input)
 void WriteMessage(String txt, bool error, int wait, bool process)
 {
 	ClearScreen();
-	if (process) {
-		txt = FormatMultiLine(txt);
-	}
-	if (error) {
-		txt = "**" + txt + "**";
-		tft.setTextColor(TFT_RED);
-	}
-	else {
-		tft.setTextColor(SystemInfo.menuTextColor);
-	}
 	if (xSemaphoreTake(MutexDisplayHandle, portMAX_DELAY) == pdTRUE) {
+		if (process) {
+			txt = FormatMultiLine(txt);
+		}
+		if (error) {
+			txt = "**" + txt + "**";
+			tft.setTextColor(TFT_RED);
+		}
+		else {
+			tft.setTextColor(SystemInfo.menuTextColor);
+		}
 		tft.setCursor(0, tft.fontHeight());
 		tft.setTextWrap(true);
 		tft.print(txt);

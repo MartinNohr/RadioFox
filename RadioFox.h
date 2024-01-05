@@ -439,7 +439,6 @@ TaskHandle_t TaskScrollSidewaysHandle;
 TaskHandle_t TaskMenuHandle;
 // a mutex to control access to writing on the display, the TFT driver is not re-entrant
 SemaphoreHandle_t MutexDisplayHandle;
-SemaphoreHandle_t MutexSettingsMode;
 
 // enums for what to fill the web page dropdowns with
 enum WEB_PAGE_DROP_DOWNS {
