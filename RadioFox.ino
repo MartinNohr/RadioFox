@@ -160,6 +160,9 @@ void TaskSendMusic(void* parameter)
 // this controls the radio sending operations
 void TaskRunTransmit(void* parameter)
 {
+	while(!IsRadioReady)
+		vTaskDelay(pdMS_TO_TICKS(100));
+
 	gpio_set_level((gpio_num_t)PTT_PORT, PTT_TALK);
 	xTaskNotify(TaskRunRadioHandle, (uint32_t)"TX Start", eSetValueWithOverwrite);
 	// wait for PTT to take effect
