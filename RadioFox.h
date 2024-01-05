@@ -226,12 +226,10 @@ typedef struct MenuItem {
 };
 
 // some menu functions using menus
-void CheckUpdateBin(MenuItem* menu);
 void FactorySettings(MenuItem* menu);
 void EraseFlash(MenuItem* menu);
 void EraseStartFile(MenuItem* menu);
-void SaveStartFile(MenuItem* menu);
-void LoadStartFile(MenuItem* menu);
+void CheckUpdateBin(MenuItem* menu);
 void SaveEepromSettings(MenuItem* menu);
 void LoadEepromSettings(MenuItem* menu);
 void GetIntegerValue(MenuItem* menu);
@@ -245,7 +243,7 @@ void UpdateDisplayDimMode(MenuItem* menu, int flag);
 void SetMenuColor(MenuItem* menu);
 void ShowBattery(MenuItem* menu);
 void GetNetworkName(MenuItem* menu);
-void ChangeNetCredentials(MenuItem* menu);
+//void ChangeNetCredentials(MenuItem* menu);
 void GetText(MenuItem* menu);
 void GetAudioFile(MenuItem* menu);
 

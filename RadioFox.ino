@@ -439,72 +439,107 @@ void SetRadioTransmit(bool bTx)
 }
 
 // load the radio settings
-// TODO: do we need to wait for radio not transmitting?
-bool RadioSetup()
+// bInit is set to send the data to the radio, if false just update the transmit flag for the radio task
+bool RadioSetup(bool bIniit)
 {
-	// tell people the radio is not ready
-	xEventGroupClearBits(gRadioEventsHandle, RadioEventReady);
-	// set the radio power control output
-	digitalWrite(TXPOWER_PORT, SystemInfo.bTxPowerLow);
 	bool retval = false;
-	//Serial.println("radio setup");
-	RadioSerial.println("AT+DMOCONNECT");
-	// see if the radio answers
-	for (int i = 100; i > 0; --i) {
-		if (RadioSerial.available()) {
-			retval = true;
-			break;
+	if (bIniit) {
+		// tell people the radio is not ready
+		xEventGroupClearBits(gRadioEventsHandle, RadioEventReady);
+		//Serial.println("radio setup");
+		RadioSerial.println("AT+DMOCONNECT");
+		// see if the radio answers
+		for (int i = 100; i > 0; --i) {
+			if (RadioSerial.available()) {
+				retval = true;
+				break;
+			}
+			delay(5);
 		}
-		delay(5);
-	}
-	if (retval) {
-		retval = false;
-		String str = RadioSerial.readString();
-		//Serial.println("Radio Connect:" + str);
-		// check the return value
-		if (str.indexOf(":0") > 0) {
-			// set the radio data, e.g. AT+DMOSETGROUP=0,415.1250,415.1250,0012,4, 0013
-			char line[200];
-			float fRX = SystemInfo.nFrequency / 1000.0;
-			float fTX = (SystemInfo.nFrequency + atof(RxOffsetModeText[SystemInfo.nRfOffset])) / 1000.0;
-			sprintf(line, "AT+DMOSETGROUP=%d,%.4f,%.4f,%d,%d,%d",
-				SystemInfo.nBandWidth, fTX, fRX, SystemInfo.nTxCTSS, SystemInfo.nSquelch, SystemInfo.nRxCTSS);
-			//Serial.println(line);
-			RadioSerial.println(line);
-			delay(100);
-			if (RadioSerial.available()) {
-				str = RadioSerial.readString();
-				//Serial.println("Radio Group Reply:" + str);
-				if (str.indexOf(":0") > 0) {
-					//Serial.println("Radio Ready");
-					// it worked
-					retval = true;
+		if (retval) {
+			retval = false;
+			String str = RadioSerial.readString();
+			//Serial.println("Radio Connect:" + str);
+			// check the return value
+			if (str.indexOf(":0") > 0) {
+				// set the radio data, e.g. AT+DMOSETGROUP=0,415.1250,415.1250,0012,4, 0013
+				char line[200];
+				float fRX = SystemInfo.nFrequency / 1000.0;
+				float fTX = (SystemInfo.nFrequency + atof(RxOffsetModeText[SystemInfo.nRfOffset])) / 1000.0;
+				sprintf(line, "AT+DMOSETGROUP=%d,%.4f,%.4f,%d,%d,%d",
+					SystemInfo.nBandWidth, fTX, fRX, SystemInfo.nTxCTSS, SystemInfo.nSquelch, SystemInfo.nRxCTSS);
+				//Serial.println(line);
+				RadioSerial.println(line);
+				delay(100);
+				if (RadioSerial.available()) {
+					str = RadioSerial.readString();
+					//Serial.println("Radio Group Reply:" + str);
+					if (str.indexOf(":0") > 0) {
+						//Serial.println("Radio Ready");
+						// it worked
+						retval = true;
+					}
+				}
+				// set the volume level
+				sprintf(line, "AT+DMOSETVOLUME=%d", SystemInfo.nRxVolume);
+				RadioSerial.println(line);
+				delay(100);
+				if (RadioSerial.available()) {
+					str = RadioSerial.readString();
+					if (str.indexOf(":0") > 0) {
+						// it worked
+						retval = true;
+					}
 				}
 			}
-			// set the volume level
-			sprintf(line, "AT+DMOSETVOLUME=%d", SystemInfo.nRxVolume);
-			RadioSerial.println(line);
-			delay(100);
-			if (RadioSerial.available()) {
-				str = RadioSerial.readString();
-				if (str.indexOf(":0") > 0) {
-					// it worked
-					retval = true;
-				}
-			}
+		}
+		else {
+			//Serial.println("Radio did not respond");
+			WriteMessage("Radio Not Found", true);
+		}
+		if (retval) {
+			//Serial.println("Radio init successful");
+			WriteMessage("Radio Initialized");
+			// tell everybody
+			xEventGroupSetBits(gRadioEventsHandle, RadioEventReady);
 		}
 	}
 	else {
-		//Serial.println("Radio did not respond");
-		WriteMessage("Radio Not Found", true);
+		retval = true;
 	}
-	if (retval) {
-		//Serial.println("Radio init successful");
-		WriteMessage("Radio Initialized");
-		// tell everybody
-		xEventGroupSetBits(gRadioEventsHandle, RadioEventReady);
-		// finally, set the transmit correctly
-		SetRadioTransmit(SystemInfo.bXmitEnable);
+	// set the radio power control output
+	digitalWrite(TXPOWER_PORT, SystemInfo.bTxPowerLow);
+	// finally, set the transmit correctly
+	SetRadioTransmit(SystemInfo.bXmitEnable);
+	return retval;
+}
+
+// check if any important radio settings have changed between the two sets
+// return true if any changes found
+bool CompareRadioSettings(SYSTEM_INFO* pSystemInfo, SYSTEM_INFO* pSystemInfoSaved)
+{
+	bool retval = false;
+#define SIVL_ENTRY(x) {offsetof(SYSTEM_INFO,x),sizeof(SystemInfo.x)}
+	static struct SYSINFO_VALUE_LIST {
+		uint offset;
+		uint size;
+	} sysInfoValueList[] = {
+		SIVL_ENTRY(nBandWidth),
+		SIVL_ENTRY(nFrequency),
+		SIVL_ENTRY(nRfOffset),
+		SIVL_ENTRY(nTxCTSS),
+		SIVL_ENTRY(nSquelch),
+		SIVL_ENTRY(nRxCTSS),
+		SIVL_ENTRY(nRxVolume),
+	};
+	byte* a = (byte*)pSystemInfo;
+	byte* b = (byte*)pSystemInfoSaved;
+	for (struct SYSINFO_VALUE_LIST vl :sysInfoValueList) {
+		// compare them
+		if (memcmp(a + vl.offset, b + vl.offset, vl.size) != 0) {
+			retval = true;
+			break;
+		}
 	}
 	return retval;
 }
@@ -535,8 +570,12 @@ void TaskMenu(void* params)
 				// make sure that the lcd dim is less than the bright
 				if (SystemInfo.nDisplayDimValue > SystemInfo.nDisplayBrightness)
 					SystemInfo.nDisplayDimValue = SystemInfo.nDisplayBrightness;
+				// figure out if any radio settings need to be sent to the radio
+				bool bRadioChanges = false;
+				// scan the important settings
+				bRadioChanges = CompareRadioSettings(&SystemInfo, &SystemInfoSaved);
 				// tell the radio
-				if (RadioSetup()) {
+				if (RadioSetup(bRadioChanges)) {
 					// worked
 				}
 				else {
@@ -717,7 +756,7 @@ void setup()
 	xTaskCreate(TaskMenu, "MENU", 3000, NULL, 4, &TaskMenuHandle);
 	ResetDimTimer();
 	// init the radio
-	RadioSetup();
+	RadioSetup(true);
 }
 
 // check and handle the rotary dial type
@@ -1434,6 +1473,9 @@ bool HandleRunMode()
 		break;
 	case BTN_B0_CLICK:
 		// handle on board button 0
+		// toggle the run flag
+		SystemInfo.bXmitEnable = !SystemInfo.bXmitEnable;
+		RadioSetup(false);
 		break;
 	case BTN_B0_LONG:
 		break;
