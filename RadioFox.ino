@@ -1682,7 +1682,7 @@ void WriteMessage(String txt, bool error, int wait, bool process)
 		tft.setTextColor(TFT_WHITE);
 		xSemaphoreGive(MutexDisplayHandle);
 	}
-	ClearScreen();
+	//ClearScreen();
 }
 
 // compare strings for sort ignoring case
@@ -1771,7 +1771,6 @@ bool SaveLoadSettings(bool save, bool nodisplay)
 		prefs.putBytes(prefsSystemInfo, &SystemInfo, sizeof(SystemInfo));
 		// save things
 		if (!nodisplay) {
-			ClearScreen();
 			WriteMessage("Settings Saved", false, 1000);
 		}
 	}
@@ -1783,7 +1782,6 @@ bool SaveLoadSettings(bool save, bool nodisplay)
 			// set the brightness values since they might have changed
 			SetDisplayBrightness(SystemInfo.nDisplayBrightness);
 			if (!nodisplay) {
-				ClearScreen();
 				WriteMessage("Settings Loaded", false, 1000);
 			}
 			// these are always done
