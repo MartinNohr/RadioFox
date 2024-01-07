@@ -1,6 +1,6 @@
 #pragma once
 
-const char* FOX_Version = "0.12";
+const char* FOX_Version = "0.13";
 
 const char* StartFileName = "START.FOX";
 // some config things
@@ -154,8 +154,13 @@ typedef struct SYSTEM_INFO {
     int nRfOffset = 1;                          // RX frequeny offset 0=-600 1=0 2=+600 kHz, 1200 for UHF
     int nRxVolume = 6;                          // volume from 1 to 8
     int nSquelch = 2;                           // squelch setting, 0 to 8, 0 is monitor mode
-    int nRxCTSS = 12;                           // RX CSS 0 to 38, 12 is 100Hz, 0 is none, see SubToneText[] below
-    int nTxCTSS = 12;                           // TX CSS 0 to 38
+    bool bCTCSS = true;                         // false for DCS
+    int nRxCTCSS = 12;                          // RX CSS 0 to 38, 12 is 100Hz, 0 is none, see SubToneText[] below
+    int nTxCTCSS = 12;                          // TX CSS 0 to 38
+    bool bTxDcsNI = false;                      // true for DCS 'N', false for 'I'
+    bool bRxDcsNI = false;                      // true for DCS 'N', false for 'I'
+    int nTxDcs = 0;                             // DCS code, 0 is none
+    int nRxDcs = 0;                             // DCS code, 0 is none
     char cAudioFile[31] = "";                   // choose the audio file
     int nMorseInterval = 200;                   // mSec morse timer
     bool bXmitEnable = false;                   // if xmit = false, don't transmit
@@ -340,11 +345,23 @@ MenuItem EepromMenu[] = {
 #endif
 // the CTSS subtone list
 const char* SubToneText[] = {
-    "0","67","71.9","74.4","77","79.7","82.5","85.4","88.5","91.5","94.8",
+    "None","67","71.9","74.4","77","79.7","82.5","85.4","88.5","91.5","94.8",
     "97.4","100","103.5","107.2","110.9","114.8","118.8","123","127.3","131.8",
     "136.5","141.3","146.2","151.4","156.7","162.2","167.9","173.8","179.9","186.2",
-    "192.8","203.5","210.7","218.1","225.7","233.6","241.8","250.3",
+    "192.8","203.5","210.7","218.1","225.7","233.6","241.8","250.3"
 };
+const char* DcsText[] = {
+    "None",
+	"023", "025", "026", "031", "032", "036", "043", "047", "051", "053", "054",
+	"065", "071", "072", "073", "074", "114", "115", "116", "125", "131", "132",
+	"134", "143", "152", "155", "156", "162", "165", "172", "174", "205", "223",
+	"226", "243", "244", "245", "251", "261", "263", "265", "271", "306", "311",
+	"315", "331", "343", "346", "351", "364", "365", "371", "411", "412", "413",
+	"423", "431", "432", "445", "464", "465", "466", "503", "506", "516", "532",
+	"546", "565", "606", "612", "624", "627", "631", "632", "654", "662", "664",
+	"703", "712", "723", "731", "732", "734", "743", "754"
+};
+
 // the bandwidth
 const char* BandWidthText[] = { "12.5","25" };
 
@@ -367,8 +384,16 @@ MenuItem RadioMenu[] = {
 #endif
     {eList,"RX Offset: %s kHz",GetSelectChoice,&SystemInfo.nRfOffset,0,sizeof(RxOffsetModeText) / sizeof(*RxOffsetModeText) - 1,0,NULL,NULL,NULL,RxOffsetModeText},
     {eList,"BandWidth: %s kHz",GetSelectChoice,&SystemInfo.nBandWidth,0,sizeof(BandWidthText) / sizeof(*BandWidthText) - 1,0,NULL,NULL,NULL,BandWidthText},
-    {eList,"RX CTSS: %s Hz",GetSelectChoiceList,&SystemInfo.nRxCTSS,0,sizeof(SubToneText) / sizeof(*SubToneText) - 1,0,NULL,NULL,NULL,SubToneText},
-    {eList,"TX CTSS: %s Hz",GetSelectChoiceList,&SystemInfo.nTxCTSS,0,sizeof(SubToneText) / sizeof(*SubToneText) - 1,0,NULL,NULL,NULL,SubToneText},
+    {eBool,"CTCSS/DCS: %s",ToggleBool,&SystemInfo.bCTCSS,0,0,0,"CTCSS","DCS"},
+    {eIfEqual,"",NULL,&SystemInfo.bCTCSS,true},
+        {eList,"TX CTCSS: %s Hz",GetSelectChoiceList,&SystemInfo.nTxCTCSS,0,sizeof(SubToneText) / sizeof(*SubToneText) - 1,0,NULL,NULL,NULL,SubToneText},
+        {eList,"RX CTCSS: %s Hz",GetSelectChoiceList,&SystemInfo.nRxCTCSS,0,sizeof(SubToneText) / sizeof(*SubToneText) - 1,0,NULL,NULL,NULL,SubToneText},
+    {eElse},
+        {eList,"TX DCS: %s",GetSelectChoiceList,&SystemInfo.nTxDcs,0,sizeof(DcsText) / sizeof(*DcsText) - 1,0,NULL,NULL,NULL,DcsText},
+        {eBool,"TX I/N: %s",ToggleBool,&SystemInfo.bTxDcsNI,0,0,0,"N","I"},
+        {eList,"RX DCS: %s",GetSelectChoiceList,&SystemInfo.nRxDcs,0,sizeof(DcsText) / sizeof(*DcsText) - 1,0,NULL,NULL,NULL,DcsText},
+        {eBool,"RX I/N: %s",ToggleBool,&SystemInfo.bRxDcsNI,0,0,0,"N","I"},
+    {eEndif},
     {eTextInt,"RX Volume: %d",GetIntegerValue,&SystemInfo.nRxVolume,1,8},
     {eTextInt,"RX Squelch: %d",GetIntegerValue,&SystemInfo.nSquelch,0,8},
     {eEditText,"Call Sign: %s",GetText,SystemInfo.cRadioCallSign,1,sizeof(SystemInfo.cRadioCallSign) - 1},
