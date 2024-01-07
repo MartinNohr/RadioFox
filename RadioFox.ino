@@ -372,8 +372,7 @@ void TaskDTMF(void* parameter)
 		// if valid tone was found, proof for validity
 		button = dtmf.tone2char(tones);
 		if (button > 0) {
-			// TODO: suspend transmitting here?
-
+			//Serial.println(String("button:")+button);
 			// measure 4 times, result of each measurement should be always the same 
 			// time needed for this process: 80ms, so the tone must be present at least 100ms to be valid
 			tones |= dtmf.detect() | dtmf.detect() | dtmf.detect();
@@ -384,43 +383,47 @@ void TaskDTMF(void* parameter)
 			}
 			// enable for the timer active seconds
 			enableTimer = millis() + SystemInfo.nDtmfEnableTimer * 1000;
+			// save so we can restore it
+			bool bPTT = digitalRead(PTT_PORT);
 			switch (ch) {
 			case '*':
 				bEnabled = true;
 				break;
-			case '1':// Number 1 - Start Loop
+			case '1':	// Start Loop
 				digitalWrite(PTT_PORT, PTT_TALK);
 				delay(1500);
 				sendLetter('R');
 				digitalWrite(PTT_PORT, PTT_LISTEN);
 				SetRadioTransmit(true);        // set the flag to ENABLE transmissions
 				break;
-			case '2':// Number 2 - LOW Power Mode - No Loop           
-				digitalWrite(PTT_PORT, PTT_TALK);
-				delay(1500);
-				sendLetter('R');
-				digitalWrite(PTT_PORT, PTT_LISTEN);
-				digitalWrite(TXPOWER_PORT, SystemInfo.bTxPowerLow = true);
-				SetRadioTransmit(false);
-				break;
-			case '3':// Number 3 - High Power Mode
-				digitalWrite(TXPOWER_PORT, SystemInfo.bTxPowerLow = false);
-				digitalWrite(PTT_PORT, PTT_TALK);
-				delay(1500);
-				sendLetter('R');
-				digitalWrite(PTT_PORT, PTT_LISTEN);
-				SetRadioTransmit(true);
-				break;
-			case '4':	// turn off transmissions - send a short letter to confirm receive
+			case '2':	// turn off transmissions - send a short letter to confirm receive
 				digitalWrite(PTT_PORT, PTT_TALK);
 				delay(1500);
 				sendLetter('R');
 				digitalWrite(PTT_PORT, PTT_LISTEN);
 				SetRadioTransmit(false);    // set the flag to DISABLE transmissions
 				break;
-			default:    
+			case '4':	// LOW Power Mode - No Loop           
+				digitalWrite(PTT_PORT, PTT_TALK);
+				delay(1500);
+				sendLetter('R');
+				digitalWrite(PTT_PORT, PTT_LISTEN);
+				digitalWrite(TXPOWER_PORT, SystemInfo.bTxPowerLow = true);
+				RadioSetup(false);
+				break;
+			case '5':	// High Power Mode
+				digitalWrite(PTT_PORT, PTT_TALK);
+				delay(1500);
+				sendLetter('R');
+				digitalWrite(PTT_PORT, PTT_LISTEN);
+				digitalWrite(TXPOWER_PORT, SystemInfo.bTxPowerLow = false);
+				RadioSetup(false);
+				break;
+			default:
 				break;
 			}
+			// restore the PTT
+			digitalWrite(PTT_PORT, bPTT);
 		}
 		// Wait for the next cycle.
 		vTaskDelayUntil(&xLastWakeTime, xFrequency);
