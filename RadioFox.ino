@@ -438,39 +438,54 @@ void SetRadioTransmit(bool bTx)
 		xEventGroupClearBits(gRadioEventsHandle, RadioEventEnableTransmit);
 }
 
+// send a string to the radio
+// wait for a response, empty string return when it works
+String SendToRadio(char* msg)
+{
+	bool retval = false;
+	String retstr = "Radio timeout";
+	RadioSerial.println(msg);
+	// wait for a response
+	// see if the radio answers
+	for (int i = 100; i > 0; --i) {
+		if (RadioSerial.available()) {
+			String from = RadioSerial.readString();
+			// check the return value
+			retval = from.indexOf(":0") > 0;
+			retstr = retval ? "" : from;
+			break;
+		}
+		vTaskDelay(pdMS_TO_TICKS(5));
+	}
+	return (retval ? String("") : (String(msg) + " : ")) + retstr;
+}
+
 // load the radio settings
 // bInit is set to send the data to the radio, if false just update the transmit flag for the radio task
 bool RadioSetup(bool bIniit)
 {
-	bool retval = false;
+	bool retval = true;
+	String str;
 	if (bIniit) {
 		// tell people the radio is not ready
 		xEventGroupClearBits(gRadioEventsHandle, RadioEventReady);
-		//Serial.println("radio setup");
-		RadioSerial.println("AT+DMOCONNECT");
-		// see if the radio answers
-		for (int i = 100; i > 0; --i) {
-			if (RadioSerial.available()) {
-				retval = true;
+		char line[200];
+		// loop through all the commands we need to send to the radio
+		bool done = false;
+		for (int which = 0; !done; ++which) {
+			switch (which) {
+			case 0:	// connect
+				strcpy(line, "AT+DMOCONNECT");
 				break;
-			}
-			delay(5);
-		}
-		if (retval) {
-			retval = false;
-			String str = RadioSerial.readString();
-			//Serial.println("Radio Connect:" + str);
-			// check the return value
-			if (str.indexOf(":0") > 0) {
-				retval = false;
+			case 1:	// radio group settings
+			{
 				// set the radio data, e.g. AT+DMOSETGROUP=0,415.1250,415.1250,0012,4, 0013
-				char line[200];
 				float fRX = SystemInfo.nFrequency / 1000.0;
 				float fTX = (SystemInfo.nFrequency + atof(RxOffsetModeText[SystemInfo.nRfOffset])) / 1000.0;
 				if (SystemInfo.bCTCSS) {
 					sprintf(line, "AT+DMOSETGROUP=%d,%.4f,%.4f,%04d,%d,%04d",
-						SystemInfo.nBandWidth, fTX, fRX, 
-						SystemInfo.nTxCTCSS, 
+						SystemInfo.nBandWidth, fTX, fRX,
+						SystemInfo.nTxCTCSS,
 						SystemInfo.nSquelch,
 						SystemInfo.nRxCTCSS
 					);
@@ -485,49 +500,28 @@ bool RadioSetup(bool bIniit)
 						SystemInfo.nRxDcs ? (SystemInfo.bRxDcsNI ? 'N' : 'I') : '0'
 					);
 				}
-				//Serial.println(line);
-				RadioSerial.println(line);
-				delay(100);
-				if (RadioSerial.available()) {
-					str = RadioSerial.readString();
-					if (str.indexOf(":0") > 0) {
-						// it worked
-						retval = true;
-					}
-				}
-				if (!retval) {
-					WriteMessage("Radio group setting error", true);
-				}
-				retval = false;
-				// set the volume level
+			}
+				break;
+			case 2:	// set receive volume
 				sprintf(line, "AT+DMOSETVOLUME=%d", SystemInfo.nRxVolume);
-				RadioSerial.println(line);
-				delay(100);
-				if (RadioSerial.available()) {
-					str = RadioSerial.readString();
-					if (str.indexOf(":0") > 0) {
-						// it worked
-						retval = true;
-					}
-				}
+				break;
+			default:
+				done = true;
+				break;
+			}
+			// send it to the radio and see if it worked or timed out
+			str = SendToRadio(line);
+			if (!str.isEmpty()) {
+				retval = false;
+				done = true;
+				WriteMessage(str, true);
 			}
 		}
-		else {
-			//Serial.println("Radio did not respond");
-			WriteMessage("Radio Not Found", true);
-		}
 		if (retval) {
-			//Serial.println("Radio init successful");
 			WriteMessage("Radio Initialized");
 			// tell everybody
 			xEventGroupSetBits(gRadioEventsHandle, RadioEventReady);
 		}
-		else {
-			WriteMessage("Error from radio", true);
-		}
-	}
-	else {
-		retval = true;
 	}
 	// set the radio power control output
 	digitalWrite(TXPOWER_PORT, SystemInfo.bTxPowerLow);
