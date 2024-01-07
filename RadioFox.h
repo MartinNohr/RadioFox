@@ -447,9 +447,11 @@ EventGroupHandle_t gRadioEventsHandle;
 #define RadioEventReady 0x01
 #define RadioEventDelayStart 0x02
 #define RadioEventEnableTransmit 0x04
+#define RadioEventIsTransmitting 0x08   // keep track of transmitting or not
 // some useful macros
 #define IsRadioReady ((xEventGroupGetBits(gRadioEventsHandle) & RadioEventReady) != 0)
 #define IsTransmitEnabled ((xEventGroupGetBits(gRadioEventsHandle) & RadioEventEnableTransmit) != 0)
+#define IsTransmitting ((xEventGroupGetBits(gRadioEventsHandle) & RadioEventIsTransmitting) != 0)
 
 // task handles for running the radio parts
 TaskHandle_t TaskRunRadioHandle;

@@ -119,6 +119,9 @@ void TaskSendBeacon(void* parameter)
 		for (char ch : str) {
 			sendLetter(ch);
 		}
+		if (!IsTransmitting) {
+			break;
+		}
 	}
 	// terminate this task
 	TaskSendBeaconHandle = NULL;
@@ -130,7 +133,7 @@ void TaskSendMusic(void* parameter)
 {
 	// iterate over the notes of the melody.
 	// Remember, the array is twice the number of notes (notes + durations)
-	for (int thisNote = 0; thisNote < notes * 2; thisNote = thisNote + 2) {
+	for (int thisNote = 0; IsTransmitting && (thisNote < notes * 2); thisNote = thisNote + 2) {
 		// calculates the duration of each note
 		divider = melody[thisNote + 1];
 		if (divider > 0) {
@@ -160,8 +163,10 @@ void TaskSendMusic(void* parameter)
 // this controls the radio sending operations
 void TaskRunTransmit(void* parameter)
 {
-	if (IsTransmitEnabled && IsRadioReady)
+	if (IsTransmitEnabled && IsRadioReady) {
 		gpio_set_level((gpio_num_t)PTT_PORT, PTT_TALK);
+		xEventGroupSetBits(gRadioEventsHandle, RadioEventIsTransmitting);
+	}
 	xTaskNotify(TaskRunRadioHandle, (uint32_t)"TX Start", eSetValueWithOverwrite);
 	// wait for PTT to take effect
 	vTaskDelay(pdMS_TO_TICKS(500));
@@ -202,6 +207,7 @@ void TaskRunTransmit(void* parameter)
 	ledcWriteTone(toneChannel, 0);
 	// turn PTT off here
 	gpio_set_level((gpio_num_t)PTT_PORT, PTT_LISTEN);
+	xEventGroupClearBits(gRadioEventsHandle, RadioEventIsTransmitting);
 	// stop this task after clearing the handle
 	TaskRunTransmitHandle = NULL;
 	vTaskDelete(NULL);
@@ -353,11 +359,12 @@ void TaskShowBattery(void* parameters)
 }
 
 // handle DTMF commands, runs periodically
+// TODO: should probably turn off sending while working in here
 void TaskDTMF(void* parameter)
 {
-	// use this to make task run periodically, every second
+	// use this to make task run periodically
 	TickType_t xLastWakeTime;
-	const TickType_t xFrequency = pdMS_TO_TICKS(1000);
+	const TickType_t xFrequency = pdMS_TO_TICKS(250);
 	// Initialize the xLastWakeTime variable with the current time.
 	xLastWakeTime = xTaskGetTickCount();
 	bool bEnabled = false;
@@ -378,16 +385,15 @@ void TaskDTMF(void* parameter)
 			tones |= dtmf.detect() | dtmf.detect() | dtmf.detect();
 			char ch = dtmf.tone2char(tones);
 			// unless the timer is on, only accept '*'
-			if ((enableTimer < millis()) && ch != '*') {
+			if ((millis() > enableTimer) && ch != '*') {
 				continue;
 			}
 			// enable for the timer active seconds
 			enableTimer = millis() + SystemInfo.nDtmfEnableTimer * 1000;
-			// save so we can restore it
-			bool bPTT = digitalRead(PTT_PORT);
 			switch (ch) {
 			case '*':
 				bEnabled = true;
+				digitalWrite(PTT_PORT, PTT_LISTEN);
 				break;
 			case '1':	// Start Loop
 				digitalWrite(PTT_PORT, PTT_TALK);
@@ -422,8 +428,16 @@ void TaskDTMF(void* parameter)
 			default:
 				break;
 			}
-			// restore the PTT
-			digitalWrite(PTT_PORT, bPTT);
+		}
+		// check timer
+		if (bEnabled) {
+			if (millis() > enableTimer) {
+				bEnabled = false;
+				// restore PTT setting
+				if (IsTransmitting) {
+					digitalWrite(PTT_PORT, PTT_TALK);
+				}
+			}
 		}
 		// Wait for the next cycle.
 		vTaskDelayUntil(&xLastWakeTime, xFrequency);
@@ -656,8 +670,6 @@ void setup()
 	ledcAttachPin(TFT_ENABLE, ledChannel);
 	CRotaryDialButton::begin((gpio_num_t)DIAL_A, (gpio_num_t)DIAL_B, (gpio_num_t)DIAL_BTN, (gpio_num_t)0, (gpio_num_t)35, (gpio_num_t)-1, (gpio_num_t)-1, &SystemInfo.DialSettings);
 	setupSDcard();
-	//gpio_set_direction((gpio_num_t)LED, GPIO_MODE_OUTPUT);
-	//digitalWrite(LED, HIGH);
 	// init the onboard buttons
 	gpio_set_direction(GPIO_NUM_0, GPIO_MODE_INPUT);
 	gpio_set_pull_mode(GPIO_NUM_0, GPIO_PULLUP_ONLY);
@@ -769,7 +781,7 @@ void setup()
 	//}
 	gRadioEventsHandle = xEventGroupCreate();
 	// set the PTT port
-	gpio_set_direction((gpio_num_t)PTT_PORT, GPIO_MODE_OUTPUT);
+	gpio_set_direction((gpio_num_t)PTT_PORT, GPIO_MODE_INPUT_OUTPUT);
 	gpio_set_level((gpio_num_t)PTT_PORT, PTT_LISTEN);
 	ClearScreen();
 	// start the transmit and management tasks
