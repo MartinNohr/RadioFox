@@ -365,23 +365,8 @@ const char* DcsText[] = {
 // the bandwidth
 const char* BandWidthText[] = { "12.5","25" };
 
-MenuItem RadioMenu[] = {
-#if RADIO_UHF
-    {eExit,"UHF Radio Settings"},
-#else
-    {eExit,"VHF Radio Settings"},
-#endif
-    {eBool,"XMIT: %s",ToggleBool,&SystemInfo.bXmitEnable,0,0,0,"On","Off"},
-    {eTextInt,"Start Delay: %d Min",GetIntegerValue,&SystemInfo.nStartDelayTimer,0,120},
-    {eBool,"TX Stop: %s",ToggleBool,&SystemInfo.bStopImmediately,0,0,0,"Immediate","Finish Cycle"},
-    {eTextInt,"TX Send: %d Sec",GetIntegerValue,&SystemInfo.nTxTime,1,300},
-    {eTextInt,"TX Pause: %d Sec",GetIntegerValue,&SystemInfo.nTxPause,1,600},
-    {eBool,"TX Power: %s",ToggleBool,&SystemInfo.bTxPowerLow,0,0,0,"Low","High"},
-#if RADIO_UHF
-    {eTextInt,"TX: %d.%03d MHz",GetIntegerValue,&SystemInfo.nFrequency,400000,480000,3},
-#else
-    {eTextInt,"TX: %d.%03d MHz",GetIntegerValue,&SystemInfo.nFrequency,134000,174000,3},
-#endif
+MenuItem RadioMenuMore[] = {
+    {eExit,"More Radio Settings"},
     {eList,"RX Offset: %s kHz",GetSelectChoice,&SystemInfo.nRfOffset,0,sizeof(RxOffsetModeText) / sizeof(*RxOffsetModeText) - 1,0,NULL,NULL,NULL,RxOffsetModeText},
     {eList,"BandWidth: %s kHz",GetSelectChoice,&SystemInfo.nBandWidth,0,sizeof(BandWidthText) / sizeof(*BandWidthText) - 1,0,NULL,NULL,NULL,BandWidthText},
     {eBool,"CTCSS/DCS: %s",ToggleBool,&SystemInfo.bCTCSS,0,0,0,"CTCSS","DCS"},
@@ -396,17 +381,46 @@ MenuItem RadioMenu[] = {
     {eEndif},
     {eTextInt,"RX Volume: %d",GetIntegerValue,&SystemInfo.nRxVolume,1,8},
     {eTextInt,"RX Squelch: %d",GetIntegerValue,&SystemInfo.nSquelch,0,8},
+    {eTextInt,"DTMF Active: %d Sec",GetIntegerValue,&SystemInfo.nDtmfEnableTimer,1,20},
+    {eExit,PreviousMenu},
+    // make sure this one is last
+    {eTerminate}
+};
+MenuItem RadioTimersMenu[] = {
+    {eExit,"Radio Timers"},
+    {eTextInt,"Start Delay: %d Min",GetIntegerValue,&SystemInfo.nStartDelayTimer,0,120},
+    {eTextInt,"TX Send: %d Sec",GetIntegerValue,&SystemInfo.nTxTime,1,300},
+    {eTextInt,"TX Pause: %d Sec",GetIntegerValue,&SystemInfo.nTxPause,1,600},
+    {eBool,"TX Stop: %s",ToggleBool,&SystemInfo.bStopImmediately,0,0,0,"Immediate","Finish Cycle"},
+    {eExit,PreviousMenu},
+    // make sure this one is last
+    {eTerminate}
+};
+MenuItem RadioMenu[] = {
+#if RADIO_UHF
+    {eExit,"UHF Radio Settings"},
+#else
+    {eExit,"VHF Radio Settings"},
+#endif
+    {eBool,"XMIT: %s",ToggleBool,&SystemInfo.bXmitEnable,0,0,0,"On","Off"},
+    {eBool,"TX Power: %s",ToggleBool,&SystemInfo.bTxPowerLow,0,0,0,"Low","High"},
+#if RADIO_UHF
+    {eTextInt,"TX: %d.%03d MHz",GetIntegerValue,&SystemInfo.nFrequency,400000,480000,3},
+#else
+    {eTextInt,"TX: %d.%03d MHz",GetIntegerValue,&SystemInfo.nFrequency,134000,174000,3},
+#endif
     {eEditText,"Call Sign: %s",GetText,SystemInfo.cRadioCallSign,1,sizeof(SystemInfo.cRadioCallSign) - 1},
     {eEditText,"Beacon: %s",GetText,SystemInfo.cBeaconString,1,sizeof(SystemInfo.cBeaconString) - 1},
     {eEditText,"Audio: %s",GetAudioFile,SystemInfo.cAudioFile,1,sizeof(SystemInfo.cAudioFile) - 1},
     {eTextInt,"Morse Interval: %d mS",GetIntegerValue,&SystemInfo.nMorseInterval,50,500},
-    {eTextInt,"DTMF Active: %d Sec",GetIntegerValue,&SystemInfo.nDtmfEnableTimer,1,20},
     {eExit,PreviousMenu},
     // make sure this one is last
     {eTerminate}
 };
 MenuItem MainMenu[] = {
     {eMenu,"Radio Settings",{.menu = RadioMenu}},
+    {eMenu,"Radio Timers",{.menu = RadioTimersMenu}},
+    {eMenu,"More Radio Settings",{.menu = RadioMenuMore}},
     {eMenu,"Saved Settings",{.menu = EepromMenu}},
     {eMenu,"System Settings",{.menu = SystemMenu}},
     {eReboot,"Reboot"},

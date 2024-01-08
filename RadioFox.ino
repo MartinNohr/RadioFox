@@ -364,7 +364,7 @@ void TaskDTMF(void* parameter)
 {
 	// use this to make task run periodically
 	TickType_t xLastWakeTime;
-	const TickType_t xFrequency = pdMS_TO_TICKS(250);
+	const TickType_t xFrequency = pdMS_TO_TICKS(200);
 	// Initialize the xLastWakeTime variable with the current time.
 	xLastWakeTime = xTaskGetTickCount();
 	bool bEnabled = false;
