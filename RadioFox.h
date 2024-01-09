@@ -1,6 +1,6 @@
 #pragma once
 
-const char* FOX_Version = "0.13";
+const char* FOX_Version = "0.14";
 
 const char* StartFileName = "START.FOX";
 // some config things
@@ -130,8 +130,6 @@ typedef struct SYSTEM_INFO {
     int nBatteryEmptyLevel = 1230;              // 0% battery, should cause a shutdown to save the batteries
     int bShowBatteryLevel = HAS_BATTERY_LEVEL;  // display the battery level on the bottom line
     int bCriticalBatteryLevel = false;          // set true if battery too low
-    //int bShowBatteryLevel = 0;  // display the battery level on the bottom line
-    int nBatteries = 1;                         // how many batteries
     CRotaryDialButton::ROTARY_DIAL_SETTINGS DialSettings;
     int eDisplayDimMode = DISPLAY_DIM_MODE_NONE;// 0 is none, 1 is dimtime, 2 is light sensor
     int nDisplayDimTime = 0;                    // seconds before lcd is dimmed
@@ -243,7 +241,6 @@ void GetSelectChoiceList(MenuItem* menu);
 void ToggleBool(MenuItem* menu);
 void ToggleWebServer(MenuItem* menu);
 void UpdateDisplayBrightness(MenuItem* menu, int flag);
-void UpdateBatteries(MenuItem* menu, int flag);
 void UpdateDisplayDimMode(MenuItem* menu, int flag);
 void SetMenuColor(MenuItem* menu);
 void ShowBattery(MenuItem* menu);
@@ -259,7 +256,6 @@ MenuItem BatteryMenu[] = {
     {eText,"Read Battery",ShowBattery},
     {eTextInt,"100%% Battery: %d",GetIntegerValue,&SystemInfo.nBatteryFullLevel,900,4200},
     {eTextInt,"0%% Battery: %d",GetIntegerValue,&SystemInfo.nBatteryEmptyLevel,500,3000},
-    {eTextInt,"Battery Count: %d",GetIntegerValue,&SystemInfo.nBatteries,1,4,0,NULL,NULL,UpdateBatteries},
     {eExit,PreviousMenu},
     // make sure this one is last
     {eTerminate}
@@ -276,10 +272,10 @@ MenuItem SidewaysScrollMenu[] = {
 MenuItem DialMenu[] = {
     {eExit,"Rotary Dial Settings"},
     {eBool,"Direction: %s",ToggleBool,&SystemInfo.DialSettings.m_bReverseDial,0,0,0,"Reverse","Normal"},
-    {eTextInt,"Pulse Count: %d",GetIntegerValue,&SystemInfo.DialSettings.m_nDialPulseCount,1,5},
-    {eTextInt,"Pulse Timer: %d mS",GetIntegerValue,&SystemInfo.DialSettings.m_nDialPulseTimer,100,1000},
-    {eTextInt,"Long Press count: %d",GetIntegerValue,&SystemInfo.DialSettings.m_nLongPressTimerValue,2,200},
-    {eBool,"Rotate Dial Type: %s",ToggleBool,&SystemInfo.DialSettings.m_bToggleDial,0,0,0,"Toggle","Pulse"},
+    //{eTextInt,"Pulse Count: %d",GetIntegerValue,&SystemInfo.DialSettings.m_nDialPulseCount,1,5},
+    //{eTextInt,"Pulse Timer: %d mS",GetIntegerValue,&SystemInfo.DialSettings.m_nDialPulseTimer,100,1000},
+    {eTextInt,"Long Press timer: %d",GetIntegerValue,&SystemInfo.DialSettings.m_nLongPressTimerValue,2,200},
+    //{eBool,"Rotate Dial Type: %s",ToggleBool,&SystemInfo.DialSettings.m_bToggleDial,0,0,0,"Toggle","Pulse"},
     {eExit,PreviousMenu},
     // make sure this one is last
     {eTerminate}
@@ -299,7 +295,7 @@ MenuItem DisplayMenu[] = {
     {eMenu,"Sideways Scroll Settings",{.menu = SidewaysScrollMenu}},
     {eBool,"Menu Choice: %s",ToggleBool,&SystemInfo.bMenuStar,0,0,0,"*","Color"},
     {eText,"Text Color",SetMenuColor},
-    {eBool,"Menu Wrap: %s",ToggleBool,&SystemInfo.bAllowMenuWrap,0,0,0,"Yes","No"},
+    //{eBool,"Menu Wrap: %s",ToggleBool,&SystemInfo.bAllowMenuWrap,0,0,0,"Yes","No"},
     {eExit,PreviousMenu},
     // make sure this one is last
     {eTerminate}

@@ -1276,23 +1276,6 @@ void GetIntegerValue(MenuItem * menu)
 	} while (!done);
 }
 
-// update the batterie default settings, 1-4 batteries
-void UpdateBatteries(MenuItem * menu, int flag)
-{
-	int batLo[4] = { 553, 1276, 1999, 2710 };
-	int batHi[4] = { 809, 1790, 2763, 4094 };
-	switch (flag) {
-	case 1:		// first time
-		break;
-	case 0:		// every change
-		break;
-	case -1:	// last time, load the defaults
-		SystemInfo.nBatteryEmptyLevel = batLo[SystemInfo.nBatteries - menu->min];
-		SystemInfo.nBatteryFullLevel = batHi[SystemInfo.nBatteries - menu->min];
-		break;
-	}
-}
-
 void UpdateDisplayBrightness(MenuItem * menu, int flag)
 {
 	// control LCD brightness
