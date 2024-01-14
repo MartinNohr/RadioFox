@@ -669,6 +669,8 @@ void setup()
 	// attach the channel to the GPIO to be controlled
 	ledcAttachPin(TFT_ENABLE, ledChannel);
 	CRotaryDialButton::begin((gpio_num_t)DIAL_A, (gpio_num_t)DIAL_B, (gpio_num_t)DIAL_BTN, (gpio_num_t)0, (gpio_num_t)35, (gpio_num_t)-1, (gpio_num_t)-1, &SystemInfo.DialSettings);
+	// we know that this is a toggle switch type
+	SystemInfo.DialSettings.m_bToggleDial = true;
 	setupSDcard();
 	// init the onboard buttons
 	gpio_set_direction(GPIO_NUM_0, GPIO_MODE_INPUT);
@@ -706,8 +708,6 @@ void setup()
 		msg = "Settings Loaded";
 	}
 	else {
-		// set the dial type
-		CheckRotaryDialType();
 		// must not be anything there, so save it
 		SaveLoadSettings(true);
 	}
@@ -793,45 +793,6 @@ void setup()
 	ResetDimTimer();
 	// init the radio
 	RadioSetup(true);
-}
-
-// check and handle the rotary dial type
-// if either A or B is 0, then this is a toggle dial
-// else
-// tell user to rotate one click
-// delay
-// if A or B is 0, then this is a toggle
-// else it is a pulse dial
-void CheckRotaryDialType()
-{
-	bool bA, bB;
-	WriteMessage("checking dial type...", false, 1000);
-	bA = gpio_get_level((gpio_num_t)DIAL_A);
-	bB = gpio_get_level((gpio_num_t)DIAL_B);
-	//Serial.println("ab " + String(bA) + String(bB));
-	if (!bA && !bB) {
-		// if both low must be a toggle
-		SystemInfo.DialSettings.m_bToggleDial = true;
-	}
-	else {
-		CRotaryDialButton::clear();
-		WriteMessage("Rotate dial 1 click", false, -1);
-		// wait for rotate, they were both high before if we got this far, so just look at A
-		while (gpio_get_level((gpio_num_t)DIAL_A))
-			delay(10);
-		// wait for button bounce
-		delay(250);
-		// read them again
-		bA = gpio_get_level((gpio_num_t)DIAL_A);
-		bB = gpio_get_level((gpio_num_t)DIAL_B);
-		//Serial.println("ab " + String(bA) + String(bB));
-		// if both low must be a toggle
-		SystemInfo.DialSettings.m_bToggleDial = !bA && !bB;
-		// we shouldn't need this again
-	}
-	if (!SystemInfo.DialSettings.m_bToggleDial)
-		SystemInfo.DialSettings.m_nDialPulseCount = 2;
-	WriteMessage(String("Dial Type: ") + (SystemInfo.DialSettings.m_bToggleDial ? "Toggle" : "Pulse"), false, 2000);
 }
 
 void ResetDimTimer() {

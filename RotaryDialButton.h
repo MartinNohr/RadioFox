@@ -174,7 +174,7 @@ private:
         // our interrupt went low, if timer not started, start it
 		if (m_nWhichButton != -1 && m_nLongPressTimer == 0) {
 			m_nLongPressTimer = pSettings->m_nLongPressTimerValue * 10;
-            m_nButtonTimer = 20; // wait 20 mS
+            m_nButtonTimer = 40; // wait 40 mS
         }
         portEXIT_CRITICAL_ISR(&buttonMux);
     }
