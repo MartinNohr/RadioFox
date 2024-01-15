@@ -161,6 +161,7 @@ private:
         case '1':
             m_nWhichButton = 2;
             break;
+        // 2 and 3 are only on T4 model
         case '2':
             m_nWhichButton = 3;
             break;
@@ -174,7 +175,7 @@ private:
         // our interrupt went low, if timer not started, start it
 		if (m_nWhichButton != -1 && m_nLongPressTimer == 0) {
 			m_nLongPressTimer = pSettings->m_nLongPressTimerValue * 10;
-            m_nButtonTimer = 40; // wait 40 mS
+            m_nButtonTimer = 30; // wait mS for debouncing
         }
         portEXIT_CRITICAL_ISR(&buttonMux);
     }
