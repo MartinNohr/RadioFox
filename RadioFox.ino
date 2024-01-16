@@ -354,7 +354,7 @@ void TaskShowBattery(void* parameters)
 			ReadBattery(&raw);
 			ShowBattery(NULL);
 		}
-		ulTaskNotifyTake(pdTRUE, pdMS_TO_TICKS(60000));
+		ulTaskNotifyTake(pdTRUE, pdMS_TO_TICKS(15 * 1000));
 	}
 }
 
@@ -364,7 +364,7 @@ void TaskDTMF(void* parameter)
 {
 	// use this to make task run periodically
 	TickType_t xLastWakeTime;
-	const TickType_t xFrequency = pdMS_TO_TICKS(200);
+	const TickType_t xFrequency = pdMS_TO_TICKS(400);
 	// Initialize the xLastWakeTime variable with the current time.
 	xLastWakeTime = xTaskGetTickCount();
 	bool bEnabled = false;
@@ -438,9 +438,12 @@ void TaskDTMF(void* parameter)
 					digitalWrite(PTT_PORT, PTT_TALK);
 				}
 			}
+			vTaskDelay(pdMS_TO_TICKS(10));
 		}
-		// Wait for the next cycle.
-		vTaskDelayUntil(&xLastWakeTime, xFrequency);
+		else {
+			// Wait for the next cycle if nothing happened this time
+			vTaskDelayUntil(&xLastWakeTime, xFrequency);
+		}
 	}
 }
 
@@ -2550,6 +2553,37 @@ void GetText(MenuItem* menu)
 	}
 }
 
+// display the USB voltage
+void ShowUsbVoltage(MenuItem* menu)
+{
+	ClearScreen();
+	DisplayLine(nMenuLineCount - 1, "Click/Dial=Cancel", SystemInfo.menuTextColor);
+	CRotaryDialButton::Button button = BTN_NONE;
+	bool done = false;
+	do {
+		float bat = GetUsbVoltage();
+		String str;
+		str = String("Voltage: ") + bat;
+		DisplayLine(0, str);
+		button = ReadButton();
+		switch (button) {
+		case BTN_NONE:
+			break;
+		case BTN_B1_CLICK:
+		case BTN_B2_LONG:
+		case BTN_B1_LONG:
+		case BTN_B0_CLICK:
+		case BTN_B0_LONG:
+		case BTN_RIGHT:
+		case BTN_SELECT:
+			// anything cancels
+			done = true;
+			break;
+		}
+		vTaskDelay(pdMS_TO_TICKS(500));
+	} while (!done);
+}
+
 // get an audio file from the SD card
 void GetAudioFile(MenuItem* menu)
 {
@@ -2849,4 +2883,21 @@ void sendDash() {
 	ledcWriteTone(toneChannel, 0);
 	vTaskDelay(pdMS_TO_TICKS(1 * SystemInfo.nMorseInterval));
 	//   Serial.print("-");
+}
+
+// get USB voltage
+float GetUsbVoltage()
+{
+	//analogSetPinAttenuation(digitalPinToDacChannel(6), ADC_0db);
+	//analogReadResolution(12);
+	//float measurement = analogReadMilliVolts(6);
+	//float voltage = (measurement / 4095.0) * 7.26;
+	//return voltage;
+	uint16_t v1 = analogRead(34);
+	uint16_t v2 = analogRead(14);
+
+	float battery_voltage = ((float)v1 / 4095.0) * 2.0 * 3.3 * (1100 / 1000.0);
+	float other_voltage = ((float)v2 / 4095.0) * 2.0 * 3.3 * (1100 / 1000.0);
+	//return other_voltage;
+	return battery_voltage;
 }

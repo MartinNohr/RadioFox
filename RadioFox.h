@@ -248,6 +248,7 @@ void GetNetworkName(MenuItem* menu);
 //void ChangeNetCredentials(MenuItem* menu);
 void GetText(MenuItem* menu);
 void GetAudioFile(MenuItem* menu);
+void ShowUsbVoltage(MenuItem* menu);
 
 const char* PreviousMenu = "Back";
 MenuItem BatteryMenu[] = {
@@ -317,6 +318,7 @@ MenuItem SystemMenu[] = {
 #if HAS_BATTERY_LEVEL
     {eMenu,"Battery Settings",{.menu = BatteryMenu}},
 #endif
+    {eText,"5V Measurement",ShowUsbVoltage},
     //{eMenu,"WiFi Settings",{.menu = WiFiMenu}},
     {eText,"New Version BIN file",CheckUpdateBin},
     {eText,"Reset All Settings",FactorySettings},

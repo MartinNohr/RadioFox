@@ -175,7 +175,7 @@ private:
         // our interrupt went low, if timer not started, start it
 		if (m_nWhichButton != -1 && m_nLongPressTimer == 0) {
 			m_nLongPressTimer = pSettings->m_nLongPressTimerValue * 10;
-            m_nButtonTimer = 30; // wait mS for debouncing
+            m_nButtonTimer = 20; // wait mS for debouncing
         }
         portEXIT_CRITICAL_ISR(&buttonMux);
     }
