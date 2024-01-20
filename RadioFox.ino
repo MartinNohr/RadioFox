@@ -46,14 +46,6 @@ void periodic_Second_timer_callback(void* arg)
 	}
 }
 
-// tone generator
-const int toneChannel = 2;
-
-constexpr int TFT_ENABLE = 4;
-// use these to control the LCD brightness
-const int freq = 5000;
-const int ledChannel = 0;
-const int resolution = 8;
 TFT_eSprite LineSprite = TFT_eSprite(&tft);  // Create Sprite object "LineSprite" with pointer to "tft" object
 #define BATTERY_BAR_HEIGHT 5
 TFT_eSprite BatterySprite = TFT_eSprite(&tft);  // Create Sprite object "BatterySprite" with pointer to "tft" object
