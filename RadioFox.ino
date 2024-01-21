@@ -331,9 +331,20 @@ void TaskRunRadio(void* parameter)
 			--secondsLeft;
 		if (delayedSeconds > 0)
 			--delayedSeconds;
+		// see if we need to cancel the pauses
+		if (IsCancelWaits) {
+			delayedSeconds = secondsLeft = 0;
+			xEventGroupClearBits(gRadioEventsHandle, RadioEventCancelWaits);
+		}
 		// Wait for the next cycle.
 		vTaskDelayUntil(&xLastWakeTime, xFrequency);
 	}
+}
+
+// cancel the radio wait timers
+void CancelWaitTimers(MenuItem*)
+{
+	xEventGroupSetBits(gRadioEventsHandle, RadioEventCancelWaits);
 }
 
 // show the battery every 60 seconds
@@ -382,43 +393,38 @@ void TaskDTMF(void* parameter)
 			}
 			// enable for the timer active seconds
 			enableTimer = millis() + SystemInfo.nDtmfEnableTimer * 1000;
+			bool bValidCommand = true;
 			switch (ch) {
 			case '*':
 				bEnabled = true;
 				digitalWrite(PTT_PORT, PTT_LISTEN);
 				break;
 			case '1':	// Start Loop
-				digitalWrite(PTT_PORT, PTT_TALK);
-				delay(1500);
-				sendLetter('R');
-				digitalWrite(PTT_PORT, PTT_LISTEN);
 				SetRadioTransmit(true);        // set the flag to ENABLE transmissions
 				break;
 			case '2':	// turn off transmissions - send a short letter to confirm receive
-				digitalWrite(PTT_PORT, PTT_TALK);
-				delay(1500);
-				sendLetter('R');
-				digitalWrite(PTT_PORT, PTT_LISTEN);
 				SetRadioTransmit(false);    // set the flag to DISABLE transmissions
 				break;
 			case '4':	// LOW Power Mode - No Loop           
-				digitalWrite(PTT_PORT, PTT_TALK);
-				delay(1500);
-				sendLetter('R');
-				digitalWrite(PTT_PORT, PTT_LISTEN);
 				digitalWrite(TXPOWER_PORT, SystemInfo.bTxPowerLow = true);
 				RadioSetup(false);
 				break;
 			case '5':	// High Power Mode
+				digitalWrite(TXPOWER_PORT, SystemInfo.bTxPowerLow = false);
+				RadioSetup(false);
+				break;
+			case '6':	// start tx by cancelling the delay and pause
+				CancelWaitTimers(NULL);
+				break;
+			default:
+				bValidCommand = false;
+				break;
+			}
+			if (bValidCommand) {
 				digitalWrite(PTT_PORT, PTT_TALK);
 				delay(1500);
 				sendLetter('R');
 				digitalWrite(PTT_PORT, PTT_LISTEN);
-				digitalWrite(TXPOWER_PORT, SystemInfo.bTxPowerLow = false);
-				RadioSetup(false);
-				break;
-			default:
-				break;
 			}
 		}
 		// check timer

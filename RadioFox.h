@@ -249,6 +249,7 @@ void GetNetworkName(MenuItem* menu);
 void GetText(MenuItem* menu);
 void GetAudioFile(MenuItem* menu);
 void ShowUsbVoltage(MenuItem* menu);
+void CancelWaitTimers(MenuItem*);
 
 const char* PreviousMenu = "Back";
 MenuItem BatteryMenu[] = {
@@ -419,6 +420,7 @@ MenuItem MainMenu[] = {
     {eMenu,"Radio Settings",{.menu = RadioMenu}},
     {eMenu,"Radio Timers",{.menu = RadioTimersMenu}},
     {eMenu,"More Radio Settings",{.menu = RadioMenuMore}},
+    {eText,"Cancel Waits/TX Now",CancelWaitTimers},
     {eMenu,"Saved Settings",{.menu = EepromMenu}},
     {eMenu,"System Settings",{.menu = SystemMenu}},
     {eReboot,"Reboot"},
@@ -456,14 +458,16 @@ std::vector<struct TEXTLINES> TextLines;
 
 // radio event flags, 8 possible, 1,2,4,8,16,32,64,128
 EventGroupHandle_t gRadioEventsHandle;
-#define RadioEventReady 0x01
-#define RadioEventDelayStart 0x02
-#define RadioEventEnableTransmit 0x04
+#define RadioEventReady 0x01            // the radio is ready
+#define RadioEventDelayStart 0x02       // delay start active
+#define RadioEventEnableTransmit 0x04   // transmit enabled
 #define RadioEventIsTransmitting 0x08   // keep track of transmitting or not
+#define RadioEventCancelWaits 0x10      // clear the delay and pause timers
 // some useful macros
 #define IsRadioReady ((xEventGroupGetBits(gRadioEventsHandle) & RadioEventReady) != 0)
 #define IsTransmitEnabled ((xEventGroupGetBits(gRadioEventsHandle) & RadioEventEnableTransmit) != 0)
 #define IsTransmitting ((xEventGroupGetBits(gRadioEventsHandle) & RadioEventIsTransmitting) != 0)
+#define IsCancelWaits ((xEventGroupGetBits(gRadioEventsHandle) & RadioEventCancelWaits) != 0)
 
 // task handles for running the radio parts
 TaskHandle_t TaskRunRadioHandle;
