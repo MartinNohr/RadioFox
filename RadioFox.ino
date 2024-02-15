@@ -325,7 +325,7 @@ void TaskRunRadio(void* parameter)
 			sprintf(fmt, "%03d MHz ", SystemInfo.nFrequency % 1000);
 			DisplayLine(lineNo++, String(SystemInfo.nFrequency / 1000) + "." + fmt + (SystemInfo.bTxPowerLow ? "Lo" : "Hi") + " Power", SystemInfo.menuTextColor);
 			DisplayLine(lineNo++, String("RX Offset: ") + RxOffsetModeText[SystemInfo.nRfOffset] + " kHz", SystemInfo.menuTextColor);
-			DisplayLine(lineNo++, String("Audio: ") + SystemInfo.cAudioFile, SystemInfo.menuTextColor);
+			//DisplayLine(lineNo++, String("Audio: ") + SystemInfo.cAudioFile, SystemInfo.menuTextColor);
 		}
 		if (secondsLeft > 0)
 			--secondsLeft;
@@ -651,11 +651,12 @@ void setup()
 	TextLines.resize(nMenuLineCount);
 	// start the radio serial port
 	RadioSerial.begin(9600, SERIAL_8N1, RADIO_SERIAL_RX, RADIO_SERIAL_TX, false);
-	// start the tone generator
-	ledcSetup(toneChannel, 0, 8);
+	// start the tone generator, freq=0 gives error on Serial port during boot, so just set to 1000
+	ledcSetup(toneChannel, 1000, 8);
 	ledcAttachPin(AUDIO_OUT_PORT, toneChannel);
-	ledcWrite(toneChannel, 127);
-	ledcWriteTone(toneChannel, 0);
+	// the next two lines don't seem to make any difference, but leave them here just in case in the future
+	//ledcWrite(toneChannel, 127);
+	//ledcWriteTone(toneChannel, 0);
 	// start the DTMF detector
 	dtmf.begin(AUDIO_IN_PORT, 2000);
 
@@ -663,7 +664,7 @@ void setup()
 	//Serial.print("setup() is running on core ");
 	//Serial.println(xPortGetCoreID());
 
-	// configure LCD PWM functionalitites
+	// configure LCD PWM functionality
 	pinMode(TFT_ENABLE, OUTPUT);
 	digitalWrite(TFT_ENABLE, 1);
 	ledcSetup(ledChannel, freq, resolution);

@@ -10,7 +10,7 @@
 // make sure this one is commented out
 //#include <User_Setup.h>           // Default setup is root library folder
 
-// pick only one of these and set to 1
+// only set 1 of these to 1, the rest 0
 #define TTGO_T_DISPLAY 1
 #define TTGO_T_DISPLAY_S3 0
 

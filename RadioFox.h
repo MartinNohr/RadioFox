@@ -7,21 +7,24 @@ const char* StartFileName = "START.FOX";
 // ***** Various switches for options are set here *****
 
 // also remember to change User_Setup_Select.h correctly
-// use one of these in that file
+// comment out this line
+//#include <User_Setup.h>           // Default setup is root library folder
+// 
+// uncomment one of these in that file
 //#include <User_Setups/Setup25_TTGO_T_Display.h>    // Setup file for ESP32 and TTGO T-Display ST7789V SPI bus TFT
+//#include <User_Setups/Setup206_LilyGo_T_Display_S3.h>     // For the LilyGo T-Display S3 based ESP32S3 with ST7789 170 x 320 TFT
 
 #include <Update.h>
 
+#include "RFconfig.h"
 #include <time.h>
 #if USE_STANDARD_SD
-#include "SD.h"
+    #include "SD.h"
 #else
-#include <SdFatConfig.h>
-#include <sdfat.h>
+    #include <SdFatConfig.h>
+    #include <sdfat.h>
 #endif
 #include "SPI.h"
-#include "RFconfig.h"
-
 #include <WiFi.h>
 #include <WiFiClient.h>
 #include <WiFiAP.h>
@@ -410,7 +413,7 @@ MenuItem RadioMenu[] = {
 #endif
     {eEditText,"Call Sign: %s",GetText,SystemInfo.cRadioCallSign,1,sizeof(SystemInfo.cRadioCallSign) - 1},
     {eEditText,"Beacon: %s",GetText,SystemInfo.cBeaconString,1,sizeof(SystemInfo.cBeaconString) - 1},
-    {eEditText,"Audio: %s",GetAudioFile,SystemInfo.cAudioFile,1,sizeof(SystemInfo.cAudioFile) - 1},
+    //{eEditText,"Audio: %s",GetAudioFile,SystemInfo.cAudioFile,1,sizeof(SystemInfo.cAudioFile) - 1},
     {eTextInt,"Morse Interval: %d mS",GetIntegerValue,&SystemInfo.nMorseInterval,50,500},
     {eExit,PreviousMenu},
     // make sure this one is last
