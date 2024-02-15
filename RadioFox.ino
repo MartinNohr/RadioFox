@@ -830,7 +830,7 @@ void RunMenus(int button)
 		if (menuix == MenuStack.top()->index) {
 			gotmatch = true;
 			switch (button) {
-			case BTN_B0_LONG:	// handle help if there is any
+			case BTN_B1_LONG:	// handle help if there is any
 				if (MenuStack.top()->menu[ix].cHelpText) {
 					WriteMessage(MenuStack.top()->menu[ix].cHelpText, false, -1, true);
 				}
@@ -1370,13 +1370,13 @@ bool HandleMenus()
 	case BTN_B0_CLICK:	// go back a menu level if we can
 		UpMenuLevel(false);
 		break;
-	case BTN_B0_LONG:	// look for help
+	case BTN_B1_LONG:	// look for help
 		//UpMenuLevel(true);	// go back to the top menu
 		RunMenus(button);
 		g_bMenuChanged = true;
 		break;
-	case BTN_B1_LONG:
-		button = BTN_SELECT;
+	//case BTN_B1_LONG:
+	//	button = BTN_SELECT;
 		// yes, no break here
 	case BTN_SELECT:
 		RunMenus(button);
@@ -1460,6 +1460,7 @@ bool HandleRunMode()
 		RadioSetup(false);
 		break;
 	case BTN_B0_LONG:
+		CancelWaitTimers(NULL);
 		break;
 	case BTN_B1_CLICK:
 		break;
