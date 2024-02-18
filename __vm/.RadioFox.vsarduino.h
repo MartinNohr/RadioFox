@@ -20,7 +20,7 @@
 #define UNITY_INCLUDE_CONFIG_H 1
 #define WITH_POSIX 1
 #define _GNU_SOURCE 1
-#define IDF_VER "v4.4.5"
+#define IDF_VER "v4.4.6-dirty"
 #define ESP_PLATFORM 1
 #define _POSIX_READER_WRITER_LOCKS 1
 #define F_CPU 240000000L
@@ -29,7 +29,7 @@
 #define ARDUINO_ARCH_ESP32 1
 #define ARDUINO_BOARD "TTGO_T1"
 #define ARDUINO_VARIANT "ttgo-t1"
-#define ARDUINO_PARTITION_default 1
+#define ARDUINO_PARTITION_min_spiffs 1
 #define ESP32 1
 #define CORE_DEBUG_LEVEL 0
 #define ARDUINO_USB_CDC_ON_BOOT 0

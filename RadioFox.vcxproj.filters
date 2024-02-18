@@ -48,5 +48,8 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="RadioFox.ino" />
+    <ClCompile Include="WavPlayer.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
 </Project>
