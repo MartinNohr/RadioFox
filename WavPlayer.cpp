@@ -39,7 +39,7 @@
 
 #define SAMPLE_PER_CYCLE (SAMPLE_RATE/WAVE_FREQ_HZ)
 
-#if TEST == 1
+#if TEST == 0
 static void setup_triangle_sine_waves(int bits)
 {
     int* samples_data = (int*)malloc(((bits + 8) / 16) * SAMPLE_PER_CYCLE * 4);
@@ -99,12 +99,12 @@ void WavPlayer(char* wavfile)
     //if 2-channels, 16-bit each channel, total buffer is 360*4 = 1440 bytes
     //if 2-channels, 24/32-bit each channel, total buffer is 360*8 = 2880 bytes
     i2s_config_t i2s_config = {
-        .mode = (i2s_mode_t)(I2S_MODE_MASTER | I2S_MODE_TX),                    // Only TX
+		.mode = (i2s_mode_t)(I2S_MODE_MASTER | I2S_MODE_TX), // Only TX
         .sample_rate = (uint32_t)SAMPLE_RATE,
         .bits_per_sample = (i2s_bits_per_sample_t)16,
-        .channel_format = I2S_CHANNEL_FMT_RIGHT_LEFT,                           //2-channels
+        .channel_format = I2S_CHANNEL_FMT_ONLY_RIGHT,
         .communication_format = (i2s_comm_format_t)(I2S_COMM_FORMAT_I2S | I2S_COMM_FORMAT_I2S_MSB),
-        .intr_alloc_flags = ESP_INTR_FLAG_LEVEL1,                                //Interrupt level 1
+        .intr_alloc_flags = ESP_INTR_FLAG_LEVEL1,            //Interrupt level 1
         .dma_buf_count = 6,
         .dma_buf_len = 60,
         .use_apll = false,
@@ -180,14 +180,14 @@ void WavPlayer(char* wavfile)
     wavProperties_t wavProps;
     //i2s configuration 
     static i2s_config_t i2s_config = {
-         .mode = (i2s_mode_t)(I2S_MODE_MASTER | I2S_MODE_TX),
+         .mode = (i2s_mode_t)(I2S_MODE_MASTER | I2S_MODE_TX /*| I2S_MODE_DAC_BUILT_IN*/),
          .sample_rate = 44100,
          .bits_per_sample = I2S_BITS_PER_SAMPLE_16BIT,
          .channel_format = I2S_CHANNEL_FMT_RIGHT_LEFT,
          .communication_format = (i2s_comm_format_t)(I2S_COMM_FORMAT_I2S | I2S_COMM_FORMAT_I2S_MSB),
          .intr_alloc_flags = ESP_INTR_FLAG_LEVEL1,  //Interrupt level 1
          .dma_buf_count = 8,
-         .dma_buf_len = 128,
+         .dma_buf_len = 64,
          .use_apll = false
     };
 
@@ -245,12 +245,12 @@ void WavPlayer(char* wavfile)
                 break;
                 /* after processing wav file, it is time to process music data */
             case DATA:
-                uint8_t data[2];
-                n = file.read(data, 2);
+                uint8_t data[4];
+                n = file.read(data, 4);
 				//Serial.println("count:" + String(n) + " data:" + data[0] + " " + data[1]);
                 size_t bytes;
                 i2s_write(I2S_NUM_0, (const void*)data, 2, &bytes, portMAX_DELAY);
-                if (n != 2) {
+                if (n == -1) {
 					Serial.println("done due to file read error:" + String(file.getError()));
                     done = true;
                 }

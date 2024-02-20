@@ -638,6 +638,9 @@ void setup()
 	while (!Serial.availableForWrite()) {
 		delay(10);
 	}
+	//esp_chip_info_t data;
+	//esp_chip_info(&data);
+	//Serial.println(String("chip:") + data.model + " features:" + String(data.features, 2) + " cores:" + data.cores);
 	// create the display mutex
 	MutexDisplayHandle = xSemaphoreCreateMutex();
 	// init the display
@@ -793,7 +796,7 @@ void setup()
 	xTaskCreate(TaskScrollSideways, "SCROLLSIDEWAYS", 2000, NULL, 0, &TaskScrollSidewaysHandle);
 	xTaskCreate(TaskMenu, "MENU", 3000, NULL, 4, &TaskMenuHandle);
 	ResetDimTimer();
-	//WavPlayer(SystemInfo.cAudioFile);
+	//WavPlayer(SystemInfo.cAudioFile); // for testing I2S
 	// init the radio
 	RadioSetup(true);
 }
