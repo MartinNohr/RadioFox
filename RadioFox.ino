@@ -167,31 +167,35 @@ void TaskRunTransmit(void* parameter)
 		char* name;
 		void (*task)(void* pArgs);
 		TaskHandle_t* pTaskHandle;
+		bool* bRunThis;	// NULL to always run, else a boolean address
 	} RFTaskList[] = {
-		{"Music",TaskSendMusic,&TaskSendMusicHandle},
-		{"ID",TaskSendBeacon,&TaskSendBeaconHandle},
+		{"Music",TaskSendMusic,&TaskSendMusicHandle,&SystemInfo.bPlayMusic},
+		{"ID",TaskSendBeacon,&TaskSendBeaconHandle,NULL},
 	};
 	bool bDone = false;
 	while (IsRadioReady && IsTransmitEnabled && !bDone && ulTaskNotifyTake(pdTRUE, 0) == 0) {
 		for (const struct RFTaskEntry& pte : RFTaskList) {
-			// send the name for display
-			xTaskNotify(TaskRunRadioHandle, (uint32_t)pte.name, eSetValueWithOverwrite);
-			// start the task
-			xTaskCreate(pte.task, pte.name, 2000, NULL, 6, pte.pTaskHandle);
-			// wait for it to complete or be cancelled
-			while (*pte.pTaskHandle) {
-				// check for timeout or cancel task
-				if (SystemInfo.bStopImmediately && ulTaskNotifyTake(pdTRUE, 0)) {
-					if (*pte.pTaskHandle)
-						vTaskDelete(*pte.pTaskHandle);
-					*pte.pTaskHandle = NULL;
-					bDone = true;
-					break;
+			// see if this should be run, NULL or *true means do it
+			if (pte.bRunThis == NULL || *pte.bRunThis) {
+				// send the name for display
+				xTaskNotify(TaskRunRadioHandle, (uint32_t)pte.name, eSetValueWithOverwrite);
+				// start the task
+				xTaskCreate(pte.task, pte.name, 2000, NULL, 6, pte.pTaskHandle);
+				// wait for it to complete or be cancelled
+				while (*pte.pTaskHandle) {
+					// check for timeout or cancel task
+					if (SystemInfo.bStopImmediately && ulTaskNotifyTake(pdTRUE, 0)) {
+						if (*pte.pTaskHandle)
+							vTaskDelete(*pte.pTaskHandle);
+						*pte.pTaskHandle = NULL;
+						bDone = true;
+						break;
+					}
+					vTaskDelay(pdMS_TO_TICKS(100));
 				}
-				vTaskDelay(pdMS_TO_TICKS(100));
+				if (bDone || !IsTransmitEnabled)
+					break;
 			}
-			if (bDone || !IsTransmitEnabled)
-				break;
 		}
 		vTaskDelay(pdMS_TO_TICKS(500));
 	}

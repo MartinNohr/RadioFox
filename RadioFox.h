@@ -1,6 +1,6 @@
 #pragma once
 
-const char* FOX_Version = "0.14";
+const char* FOX_Version = "0.15";
 
 const char* StartFileName = "START.FOX";
 // some config things
@@ -120,6 +120,7 @@ bool bWebRunning = false;                 // set while running from web
 enum DISPLAY_DIM_MODES { DISPLAY_DIM_MODE_NONE, DISPLAY_DIM_MODE_TIME};
 const char* DisplayDimModeText[] = { "None","Timer"};
 
+// NOTE: update CompareRadioSettings if anything important is changed that needs the radio to initialized
 typedef struct SYSTEM_INFO {
     uint16_t menuTextColor = TFT_WHITE;
     bool bMenuStar = false;
@@ -168,6 +169,7 @@ typedef struct SYSTEM_INFO {
     bool bStopImmediately = true;               // set to true to cancel transmitting without waiting to finish
     int nDtmfEnableTimer = 10;                  // the number of seconds after '*' that DTMF commands will work
     int nStartDelayTimer = 0;                   // seconds before the first transmission
+    bool bPlayMusic = true;                     // play the Tetris theme
     //
 };
 RTC_DATA_ATTR SYSTEM_INFO SystemInfo;
@@ -415,6 +417,7 @@ MenuItem RadioMenu[] = {
     {eEditText,"Beacon: %s",GetText,SystemInfo.cBeaconString,1,sizeof(SystemInfo.cBeaconString) - 1},
 	//{eEditText,"Audio: %s",GetAudioFile,SystemInfo.cAudioFile,1,sizeof(SystemInfo.cAudioFile) - 1},
     {eTextInt,"Morse Interval: %d mS",GetIntegerValue,&SystemInfo.nMorseInterval,50,500},
+    {eBool,"Play Tetris Theme: %s",ToggleBool,&SystemInfo.bPlayMusic,0,0,0,"Yes","No"},
     {eExit,PreviousMenu},
     // make sure this one is last
     {eTerminate}
