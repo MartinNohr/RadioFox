@@ -1,0 +1,17 @@
+This is the Tetris theme music
+there are two values per note (pitch and duration)
+make sure each token ends with a ','
+and that the data starts with the tilde which must not be in these comments
+LENGTH, %val can be used to set the length of the note, it defaults to 90% and 10% quiet after the note
+This can be used for pizzicato notes, LENGTH, 25, for example
+~
+TEMPO, 145,
+LENGTH, 90,
+NOTE_E5, 4,  NOTE_B4, 8,  NOTE_C5, 8,  NOTE_D5, 4,  NOTE_C5, 8,  NOTE_B4, 8,
+NOTE_A4, 4,  NOTE_A4, 8,  NOTE_C5, 8,  NOTE_E5, 4,  NOTE_D5, 8,  NOTE_C5, 8,
+NOTE_B4, -4, NOTE_C5, 8,  NOTE_D5, 4,  NOTE_E5, 4,
+NOTE_C5, 4,  NOTE_A4, 4,  NOTE_A4, 8,  NOTE_A4, 4,  NOTE_B4, 8,  NOTE_C5, 8,
+NOTE_D5, -4, NOTE_F5, 8,  NOTE_A5, 4,  NOTE_G5, 8,  NOTE_F5, 8,
+NOTE_E5, -4, NOTE_C5, 8,  NOTE_E5, 4,  NOTE_D5, 8,  NOTE_C5, 8,
+NOTE_B4, 4,  NOTE_B4, 8,  NOTE_C5, 8,  NOTE_D5, 4,  NOTE_E5, 4,
+NOTE_C5, 4,  NOTE_A4, 4,  NOTE_A4, 4, REST, 4,

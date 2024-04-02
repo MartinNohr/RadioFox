@@ -1,6 +1,6 @@
 #pragma once
 
-const char* FOX_Version = "0.15";
+const char* FOX_Version = "0.16";
 
 const char* StartFileName = "START.FOX";
 // some config things
@@ -163,13 +163,13 @@ typedef struct SYSTEM_INFO {
     bool bRxDcsNI = false;                      // true for DCS 'N', false for 'I'
     int nTxDcs = 0;                             // DCS code, 0 is none
     int nRxDcs = 0;                             // DCS code, 0 is none
-    char cAudioFile[31] = "";                   // choose the audio file
+    bool bPlayAudioFile = false;
+    char cAudioFile[31] = "";                   // choose the music file
     int nMorseInterval = 200;                   // mSec morse timer
     bool bXmitEnable = false;                   // if xmit = false, don't transmit
     bool bStopImmediately = true;               // set to true to cancel transmitting without waiting to finish
     int nDtmfEnableTimer = 10;                  // the number of seconds after '*' that DTMF commands will work
     int nStartDelayTimer = 0;                   // seconds before the first transmission
-    bool bPlayMusic = true;                     // play the Tetris theme
     //
 };
 RTC_DATA_ATTR SYSTEM_INFO SystemInfo;
@@ -415,9 +415,9 @@ MenuItem RadioMenu[] = {
 #endif
     {eEditText,"Call Sign: %s",GetText,SystemInfo.cRadioCallSign,1,sizeof(SystemInfo.cRadioCallSign) - 1},
     {eEditText,"Beacon: %s",GetText,SystemInfo.cBeaconString,1,sizeof(SystemInfo.cBeaconString) - 1},
-	//{eEditText,"Audio: %s",GetAudioFile,SystemInfo.cAudioFile,1,sizeof(SystemInfo.cAudioFile) - 1},
+    {eBool,"Play Audio File: %s",ToggleBool,&SystemInfo.bPlayAudioFile,0,0,0,"Yes","No"},
+	{eEditText,"Audio File: %s",GetAudioFile,SystemInfo.cAudioFile,1,sizeof(SystemInfo.cAudioFile) - 1},
     {eTextInt,"Morse Interval: %d mS",GetIntegerValue,&SystemInfo.nMorseInterval,50,500},
-    {eBool,"Play Tetris Theme: %s",ToggleBool,&SystemInfo.bPlayMusic,0,0,0,"Yes","No"},
     {eExit,PreviousMenu},
     // make sure this one is last
     {eTerminate}

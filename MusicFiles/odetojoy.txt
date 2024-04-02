@@ -1,0 +1,27 @@
+there are two values per note (pitch and duration)
+make sure each token ends with a ','
+and that the data starts with the tilde which must not be in these comments
+LENGTH, %val can be used to set the length of the note, it defaults to 90% and 10% quiet after the note
+This can be used for pizzicato notes, LENGTH, 25, for example
+~
+TEMPO, 114,
+ NOTE_E4,4,  NOTE_E4,4,  NOTE_F4,4,  NOTE_G4,4,
+  NOTE_G4,4,  NOTE_F4,4,  NOTE_E4,4,  NOTE_D4,4,
+  NOTE_C4,4,  NOTE_C4,4,  NOTE_D4,4,  NOTE_E4,4,
+  NOTE_E4,-4, NOTE_D4,8,  NOTE_D4,2,
+
+  NOTE_E4,4,  NOTE_E4,4,  NOTE_F4,4,  NOTE_G4,4,
+  NOTE_G4,4,  NOTE_F4,4,  NOTE_E4,4,  NOTE_D4,4,
+  NOTE_C4,4,  NOTE_C4,4,  NOTE_D4,4,  NOTE_E4,4,
+  NOTE_D4,-4,  NOTE_C4,8,  NOTE_C4,2,
+
+  NOTE_D4,4,  NOTE_D4,4,  NOTE_E4,4,  NOTE_C4,4,
+  NOTE_D4,4,  NOTE_E4,8,  NOTE_F4,8,  NOTE_E4,4, NOTE_C4,4,
+  NOTE_D4,4,  NOTE_E4,8,  NOTE_F4,8,  NOTE_E4,4, NOTE_D4,4,
+  NOTE_C4,4,  NOTE_D4,4,  NOTE_G3,2,
+
+  NOTE_E4,4,  NOTE_E4,4,  NOTE_F4,4,  NOTE_G4,4,
+  NOTE_G4,4,  NOTE_F4,4,  NOTE_E4,4,  NOTE_D4,4,
+  NOTE_C4,4,  NOTE_C4,4,  NOTE_D4,4,  NOTE_E4,4,
+  NOTE_D4,-4,  NOTE_C4,8,  NOTE_C4,2
+  

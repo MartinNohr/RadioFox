@@ -11,7 +11,7 @@
     NOTE: This code current only works with SDFS, the standard SD library does not work
 */
 // set TEST to 1 to create sine and triangle waves for testing
-#define TEST 0
+#define TEST 1
 
 #include <math.h>
 
@@ -39,7 +39,7 @@
 
 #define SAMPLE_PER_CYCLE (SAMPLE_RATE/WAVE_FREQ_HZ)
 
-#if TEST == 0
+#if TEST == 1
 static void setup_triangle_sine_waves(int bits)
 {
     int* samples_data = (int*)malloc(((bits + 8) / 16) * SAMPLE_PER_CYCLE * 4);
@@ -99,10 +99,10 @@ void WavPlayer(char* wavfile)
     //if 2-channels, 16-bit each channel, total buffer is 360*4 = 1440 bytes
     //if 2-channels, 24/32-bit each channel, total buffer is 360*8 = 2880 bytes
     i2s_config_t i2s_config = {
-		.mode = (i2s_mode_t)(I2S_MODE_MASTER | I2S_MODE_TX), // Only TX
+		.mode = (i2s_mode_t)(I2S_MODE_MASTER | I2S_MODE_TX | I2S_MODE_PDM), // Only TX
         .sample_rate = (uint32_t)SAMPLE_RATE,
         .bits_per_sample = (i2s_bits_per_sample_t)16,
-        .channel_format = I2S_CHANNEL_FMT_ONLY_RIGHT,
+        .channel_format = I2S_CHANNEL_FMT_ALL_RIGHT,
         .communication_format = (i2s_comm_format_t)(I2S_COMM_FORMAT_I2S | I2S_COMM_FORMAT_I2S_MSB),
         .intr_alloc_flags = ESP_INTR_FLAG_LEVEL1,            //Interrupt level 1
         .dma_buf_count = 6,
@@ -180,7 +180,7 @@ void WavPlayer(char* wavfile)
     wavProperties_t wavProps;
     //i2s configuration 
     static i2s_config_t i2s_config = {
-         .mode = (i2s_mode_t)(I2S_MODE_MASTER | I2S_MODE_TX /*| I2S_MODE_DAC_BUILT_IN*/),
+         .mode = (i2s_mode_t)(I2S_MODE_MASTER | I2S_MODE_TX | I2S_MODE_PDM),
          .sample_rate = 44100,
          .bits_per_sample = I2S_BITS_PER_SAMPLE_16BIT,
          .channel_format = I2S_CHANNEL_FMT_RIGHT_LEFT,

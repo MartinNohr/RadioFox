@@ -10,9 +10,8 @@
 // make sure this one is commented out
 //#include <User_Setup.h>           // Default setup is root library folder
 
-// only set 1 of these to 1, the rest 0
+// only set 1 for T-Display, 3 for S3 version
 #define TTGO_T_DISPLAY 1
-#define TTGO_T_DISPLAY_S3 0
 
 // 1 for standard SD library, 0 for the new exFat library which allows > 32GB SD cards
 #define USE_STANDARD_SD 0
@@ -25,7 +24,7 @@
 #define PTT_LISTEN 1
 
 // all the gpio pins
-#if TTGO_T_DISPLAY
+#if TTGO_T_DISPLAY == 1
 // tone generator
 const int toneChannel = 2;
 constexpr int TFT_ENABLE = 4;
@@ -54,7 +53,8 @@ const int resolution = 8;
 #define RADIO_SERIAL_RX 21
 #define RADIO_SERIAL_TX 22	// NOTE: do not use the LED_BUILTIN which is also 22, the TTGO T-Display does not have an LED
 #endif
-#if TTGO_T_DISPLAY_S3
+
+#if TTGO_T_DISPLAY == 3
 // tone generator
 const int toneChannel = 2;
 

@@ -11,30 +11,6 @@
 
 PhoneDTMF dtmf = PhoneDTMF();
 
-const int tempo = 145; // Tempo of Melody
-
-// notes in the melody:
-int melody[] = {
-
-  NOTE_E5, 4,  NOTE_B4, 8,  NOTE_C5, 8,  NOTE_D5, 4,  NOTE_C5, 8,  NOTE_B4, 8,
-  NOTE_A4, 4,  NOTE_A4, 8,  NOTE_C5, 8,  NOTE_E5, 4,  NOTE_D5, 8,  NOTE_C5, 8,
-  NOTE_B4, -4,  NOTE_C5, 8,  NOTE_D5, 4,  NOTE_E5, 4,
-  NOTE_C5, 4,  NOTE_A4, 4,  NOTE_A4, 8,  NOTE_A4, 4,  NOTE_B4, 8,  NOTE_C5, 8,
-
-  NOTE_D5, -4,  NOTE_F5, 8,  NOTE_A5, 4,  NOTE_G5, 8,  NOTE_F5, 8,
-  NOTE_E5, -4,  NOTE_C5, 8,  NOTE_E5, 4,  NOTE_D5, 8,  NOTE_C5, 8,
-  NOTE_B4, 4,  NOTE_B4, 8,  NOTE_C5, 8,  NOTE_D5, 4,  NOTE_E5, 4,
-  NOTE_C5, 4,  NOTE_A4, 4,  NOTE_A4, 4, REST, 4,
-};
-
-// sizeof gives the number of bytes, each int value is composed of two bytes (16 bits)
-// there are two values per note (pitch and duration), so for each note there are four bytes
-int notes = sizeof(melody) / sizeof(melody[0]) / 2;
-
-// this calculates the duration of a whole note in ms (60s/tempo)*4 beats
-int wholenote = (60000 * 4) / tempo;
-int divider = 0, noteDuration = 0;
-
 // timer called every second
 void periodic_Second_timer_callback(void* arg)
 {
@@ -123,29 +99,58 @@ void TaskSendBeacon(void* parameter)
 //task to send the music
 void TaskSendMusic(void* parameter)
 {
-	// iterate over the notes of the melody.
-	// Remember, the array is twice the number of notes (notes + durations)
-	for (int thisNote = 0; IsTransmitting && (thisNote < notes * 2); thisNote = thisNote + 2) {
-		// calculates the duration of each note
-		divider = melody[thisNote + 1];
-		if (divider > 0) {
-			// regular note, just proceed
-			noteDuration = (wholenote) / divider;
+	if (SD.exists(SystemInfo.cAudioFile)) {
+		// open the audio file and start reading lines from it
+		FsFile audioFile;
+		audioFile = SD.open(SystemInfo.cAudioFile);
+		if (audioFile.getError() == 0) {
+			// put some defaults in just in case they are missing in the music file
+			int noteLength = 90;
+			int tempo = 145;
+			// this holds the duration of a whole note in ms (60s/tempo)*4 beats
+			int wholenote = (60000 * 4) / tempo;
+			// first read until the ~ which marks the start of the data stream
+			audioFile.readStringUntil('~');
+			// read tokens until done
+			String key, value;
+			while ((key = audioFile.readStringUntil(','))) {
+				// clean the key
+				key.trim();
+				key.toUpperCase();
+				// next get the value
+				value = audioFile.readStringUntil(',');
+				value.trim();
+				// if empty must be missing value, give up
+				if (value.isEmpty())
+					break;
+				// check for tempo setting
+				if (key.equals("TEMPO")) {
+					// set the tempo
+					tempo = value.toInt();
+					wholenote = (60000 * 4) / tempo;
+				}
+				else if (key.equals("LENGTH")) {
+					noteLength = value.toInt();
+				}
+				else {
+					// process the notes and durations
+					int note = mapNotes[key.c_str()];
+					int divider = value.toInt();
+					int duration = wholenote / divider;
+					// negative duration means times 1.5 (dotted note)
+					if (duration < 0) {
+						// dotted notes are represented with negative durations!!
+						duration *= -1.5;
+					}
+					// we only play the note for noteLength % of the duration, leaving the rest as a pause
+					ledcWriteTone(toneChannel, note);
+					vTaskDelay(pdMS_TO_TICKS((float)duration * noteLength / 100.0));
+					ledcWriteTone(toneChannel, 0);
+					vTaskDelay(pdMS_TO_TICKS((float)duration * ((100 - noteLength) / 100.0)));
+				}
+			}
+			audioFile.close();
 		}
-		else if (divider < 0) {
-			// dotted notes are represented with negative durations!!
-			noteDuration = (wholenote) / abs(divider);
-			noteDuration *= 1.5; // increases the duration in half for dotted notes
-		}
-		// we only play the note for 90% of the duration, leaving 10% as a pause
-		ledcWriteTone(toneChannel, melody[thisNote]);
-		vTaskDelay(pdMS_TO_TICKS(noteDuration * 0.9));
-		ledcWriteTone(toneChannel, 0);
-		vTaskDelay(pdMS_TO_TICKS(noteDuration * 0.1));
-		// Wait for the special duration before playing the next note.
-		//delay(noteDuration);
-		// stop the waveform generation before the next note.
-		//noTone(BUZZER_PIN);
 	}
 	// terminate this task
 	TaskSendMusicHandle = NULL;
@@ -169,7 +174,7 @@ void TaskRunTransmit(void* parameter)
 		TaskHandle_t* pTaskHandle;
 		bool* bRunThis;	// NULL to always run, else a boolean address
 	} RFTaskList[] = {
-		{"Music",TaskSendMusic,&TaskSendMusicHandle,&SystemInfo.bPlayMusic},
+		{"Music",TaskSendMusic,&TaskSendMusicHandle,&SystemInfo.bPlayAudioFile},
 		{"ID",TaskSendBeacon,&TaskSendBeaconHandle,NULL},
 	};
 	bool bDone = false;
@@ -2599,7 +2604,7 @@ void GetAudioFile(MenuItem* menu)
 	// keep the files here
 	std::vector<String> FileNames;
 	// read all the filenames
-	GetFileNamesFromSD(FileNames, "WAV");
+	GetFileNamesFromSD(FileNames, "TXT");
 	if (str) {
 		// holds the current selection
 		int nNameIndex = 0;
