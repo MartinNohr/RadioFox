@@ -387,7 +387,8 @@ void TaskDTMF(void* parameter)
 		char      button;
 		// detect tone
 		tones = dtmf.detect();
-
+		if (tones)
+			Serial.println(String("tones:") + tones);
 		// if valid tone was found, proof for validity
 		button = dtmf.tone2char(tones);
 		if (button > 0) {
@@ -396,6 +397,7 @@ void TaskDTMF(void* parameter)
 			// time needed for this process: 80ms, so the tone must be present at least 100ms to be valid
 			tones |= dtmf.detect() | dtmf.detect() | dtmf.detect();
 			char ch = dtmf.tone2char(tones);
+			Serial.println(String("ch:") + ch);
 			// unless the timer is on, only accept '*'
 			if ((millis() > enableTimer) && ch != '*') {
 				continue;
@@ -429,12 +431,12 @@ void TaskDTMF(void* parameter)
 				bValidCommand = false;
 				break;
 			}
-			if (bValidCommand) {
-				digitalWrite(PTT_PORT, PTT_TALK);
-				delay(1500);
-				sendLetter('R');
-				digitalWrite(PTT_PORT, PTT_LISTEN);
-			}
+			//if (bValidCommand) {
+			//	digitalWrite(PTT_PORT, PTT_TALK);
+			//	delay(500);
+			//	sendLetter('R');
+			//	digitalWrite(PTT_PORT, PTT_LISTEN);
+			//}
 		}
 		// check timer
 		if (bEnabled) {
@@ -477,13 +479,16 @@ String SendToRadio(char* msg)
 	// purge the input from the radio first
 	if (RadioSerial.available()) {
 		rxString = RadioSerial.readString();
+		Serial.println("clearing radio input");
 	}
 	RadioSerial.println(msg);
+	Serial.println(String("TX:") + msg);
 	// wait for a response
 	// see if the radio answers
 	for (int i = 100; i > 0; --i) {
 		if (RadioSerial.available()) {
 			rxString = RadioSerial.readString();
+			Serial.println(String("RX:") + rxString);
 			rxString.trim();
 			// check the return value
 			retval = rxString.indexOf(":0") > 0;
@@ -503,8 +508,6 @@ bool RadioSetup(bool bIniit)
 	if (bIniit) {
 		// tell people the radio is not ready
 		xEventGroupClearBits(gRadioEventsHandle, RadioEventReady);
-		// flush the radio buffer just in case...
-		RadioSerial.write("\r\n");
 		char line[200];
 		// loop through all the commands we need to send to the radio
 		bool done = false;
@@ -548,8 +551,9 @@ bool RadioSetup(bool bIniit)
 			}
 			// send it to the radio and see if it worked or timed out
 			String str;
-			if (line[0])
+			if (line[0]) {
 				str = SendToRadio(line);
+			}
 			if (!str.isEmpty()) {
 				retval = false;
 				done = true;
