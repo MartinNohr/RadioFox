@@ -503,6 +503,8 @@ bool RadioSetup(bool bIniit)
 	if (bIniit) {
 		// tell people the radio is not ready
 		xEventGroupClearBits(gRadioEventsHandle, RadioEventReady);
+		// flush the radio buffer just in case...
+		RadioSerial.write("\r\n");
 		char line[200];
 		// loop through all the commands we need to send to the radio
 		bool done = false;
@@ -551,7 +553,7 @@ bool RadioSetup(bool bIniit)
 			if (!str.isEmpty()) {
 				retval = false;
 				done = true;
-				WriteMessage(str, true);
+				WriteMessage(str, true, 5000);
 			}
 		}
 		if (retval) {
