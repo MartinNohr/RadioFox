@@ -469,17 +469,25 @@ void SetRadioTransmit(bool bTx)
 // wait for a response, empty string return when it works
 String SendToRadio(char* msg)
 {
+	if (*msg == '\0')
+		return "";
 	bool retval = false;
 	String retstr = "Radio timeout";
+	String rxString;
+	// purge the input from the radio first
+	if (RadioSerial.available()) {
+		rxString = RadioSerial.readString();
+	}
 	RadioSerial.println(msg);
 	// wait for a response
 	// see if the radio answers
 	for (int i = 100; i > 0; --i) {
 		if (RadioSerial.available()) {
-			String from = RadioSerial.readString();
+			rxString = RadioSerial.readString();
+			rxString.trim();
 			// check the return value
-			retval = from.indexOf(":0") > 0;
-			retstr = retval ? "" : from;
+			retval = rxString.indexOf(":0") > 0;
+			retstr = retval ? "" : rxString;
 			break;
 		}
 		vTaskDelay(pdMS_TO_TICKS(5));
@@ -492,7 +500,6 @@ String SendToRadio(char* msg)
 bool RadioSetup(bool bIniit)
 {
 	bool retval = true;
-	String str;
 	if (bIniit) {
 		// tell people the radio is not ready
 		xEventGroupClearBits(gRadioEventsHandle, RadioEventReady);
@@ -533,11 +540,14 @@ bool RadioSetup(bool bIniit)
 				sprintf(line, "AT+DMOSETVOLUME=%d", SystemInfo.nRxVolume);
 				break;
 			default:
+				line[0] = '\0';
 				done = true;
 				break;
 			}
 			// send it to the radio and see if it worked or timed out
-			str = SendToRadio(line);
+			String str;
+			if (line[0])
+				str = SendToRadio(line);
 			if (!str.isEmpty()) {
 				retval = false;
 				done = true;

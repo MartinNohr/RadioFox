@@ -56,5 +56,26 @@
     <Text Include="MusicFiles\tetris.txt">
       <Filter>Resource Files</Filter>
     </Text>
+    <Text Include="MusicFiles\babyelephantwalk.txt">
+      <Filter>Resource Files</Filter>
+    </Text>
+    <Text Include="MusicFiles\canoninD.txt">
+      <Filter>Resource Files</Filter>
+    </Text>
+    <Text Include="MusicFiles\greensleeves.txt">
+      <Filter>Resource Files</Filter>
+    </Text>
+    <Text Include="MusicFiles\imperialmarch.txt">
+      <Filter>Resource Files</Filter>
+    </Text>
+    <Text Include="MusicFiles\odetojoy.txt">
+      <Filter>Resource Files</Filter>
+    </Text>
+    <Text Include="MusicFiles\pacman.txt">
+      <Filter>Resource Files</Filter>
+    </Text>
+    <Text Include="MusicFiles\pinkpanther.txt">
+      <Filter>Resource Files</Filter>
+    </Text>
   </ItemGroup>
 </Project>
