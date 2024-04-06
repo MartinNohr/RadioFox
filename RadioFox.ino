@@ -2927,7 +2927,7 @@ void sendDash() {
 	//   Serial.print("-");
 }
 
-// get USB voltage
+// get USB voltage on TTGO
 float GetUsbVoltage()
 {
 	//analogSetPinAttenuation(digitalPinToDacChannel(6), ADC_0db);

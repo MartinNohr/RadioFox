@@ -130,8 +130,8 @@ typedef struct SYSTEM_INFO {
     int nSidewayScrollSpeed = 25;               // mSec for pixel scroll
     int nSidewaysScrollPause = 20;              // how long to wait at each end
     int nSidewaysScrollReverse = 3;             // reverse speed multiplier
-    int nBatteryFullLevel = 1760;               // 100% battery
-    int nBatteryEmptyLevel = 1230;              // 0% battery, should cause a shutdown to save the batteries
+    int nBatteryFullLevel = 3330;               // 100% battery
+    int nBatteryEmptyLevel = 2180;              // 0% battery, should cause a shutdown to save the batteries
     int bShowBatteryLevel = HAS_BATTERY_LEVEL;  // display the battery level on the bottom line
     int bCriticalBatteryLevel = false;          // set true if battery too low
     CRotaryDialButton::ROTARY_DIAL_SETTINGS DialSettings;
@@ -324,7 +324,7 @@ MenuItem SystemMenu[] = {
 #if HAS_BATTERY_LEVEL
     {eMenu,"Battery Settings",{.menu = BatteryMenu}},
 #endif
-    {eText,"5V Measurement",ShowUsbVoltage},
+    //{eText,"5V Measurement",ShowUsbVoltage},
     //{eMenu,"WiFi Settings",{.menu = WiFiMenu}},
     {eText,"New Version BIN file",CheckUpdateBin},
     {eText,"Reset All Settings",FactorySettings},
