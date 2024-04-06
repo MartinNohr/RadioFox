@@ -383,12 +383,13 @@ void TaskDTMF(void* parameter)
 	unsigned long enableTimer = 0;
 
 	while (true) {
+		bool bReply = false;
 		uint8_t   tones;
 		char      button;
 		// detect tone
 		tones = dtmf.detect();
-		if (tones)
-			Serial.println(String("tones:") + tones);
+		//if (tones)
+		//	Serial.println(String("tones:") + tones);
 		// if valid tone was found, proof for validity
 		button = dtmf.tone2char(tones);
 		if (button > 0) {
@@ -409,20 +410,25 @@ void TaskDTMF(void* parameter)
 			case '*':
 				bEnabled = true;
 				digitalWrite(PTT_PORT, PTT_LISTEN);
+				bReply = false;
 				break;
 			case '1':	// Start Loop
 				SetRadioTransmit(true);        // set the flag to ENABLE transmissions
+				bReply = true;
 				break;
 			case '2':	// turn off transmissions - send a short letter to confirm receive
 				SetRadioTransmit(false);    // set the flag to DISABLE transmissions
+				bReply = true;
 				break;
 			case '4':	// LOW Power Mode - No Loop           
 				digitalWrite(TXPOWER_PORT, SystemInfo.bTxPowerLow = true);
 				RadioSetup(false);
+				bReply = true;
 				break;
 			case '5':	// High Power Mode
 				digitalWrite(TXPOWER_PORT, SystemInfo.bTxPowerLow = false);
 				RadioSetup(false);
+				bReply = true;
 				break;
 			case '6':	// start tx by cancelling the delay and pause
 				CancelWaitTimers(NULL);
@@ -431,21 +437,23 @@ void TaskDTMF(void* parameter)
 				bValidCommand = false;
 				break;
 			}
-			//if (bValidCommand) {
-			//	digitalWrite(PTT_PORT, PTT_TALK);
-			//	delay(500);
-			//	sendLetter('R');
-			//	digitalWrite(PTT_PORT, PTT_LISTEN);
-			//}
 		}
+		// TODO: this reply seems to kill the command, probably something to do with half duplex radio
+		//if (bReply) {
+		//	digitalWrite(PTT_PORT, PTT_TALK);
+		//	delay(500);
+		//	sendLetter('R');
+		//	digitalWrite(PTT_PORT, PTT_LISTEN);
+		//	bReply = false;
+		//}
 		// check timer
 		if (bEnabled) {
 			if (millis() > enableTimer) {
 				bEnabled = false;
-				// restore PTT setting
-				if (IsTransmitting) {
-					digitalWrite(PTT_PORT, PTT_TALK);
-				}
+				//// restore PTT setting
+				//if (IsTransmitting) {
+				//	digitalWrite(PTT_PORT, PTT_TALK);
+				//}
 			}
 			vTaskDelay(pdMS_TO_TICKS(10));
 		}
@@ -476,26 +484,31 @@ String SendToRadio(char* msg)
 	bool retval = false;
 	String retstr = "Radio timeout";
 	String rxString;
-	// purge the input from the radio first
-	if (RadioSerial.available()) {
-		rxString = RadioSerial.readString();
-		Serial.println("clearing radio input");
-	}
-	RadioSerial.println(msg);
-	Serial.println(String("TX:") + msg);
-	// wait for a response
-	// see if the radio answers
-	for (int i = 100; i > 0; --i) {
+	bool done = false;
+	// try a few times
+	for (int tries = 0; !done && tries < 3; ++tries) {
+		// purge the input from the radio first
 		if (RadioSerial.available()) {
 			rxString = RadioSerial.readString();
-			Serial.println(String("RX:") + rxString);
-			rxString.trim();
-			// check the return value
-			retval = rxString.indexOf(":0") > 0;
-			retstr = retval ? "" : rxString;
-			break;
+			//Serial.println("clearing radio input");
 		}
-		vTaskDelay(pdMS_TO_TICKS(5));
+		RadioSerial.println(msg);
+		//Serial.println(String("TX:") + msg);
+		// wait for a response
+		// see if the radio answers
+		for (int i = 100; i > 0; --i) {
+			if (RadioSerial.available()) {
+				rxString = RadioSerial.readString();
+				//Serial.println(String("RX:") + rxString);
+				rxString.trim();
+				// check the return value
+				retval = rxString.indexOf(":0") > 0;
+				retstr = retval ? "" : rxString;
+				done = true;
+				break;
+			}
+			vTaskDelay(pdMS_TO_TICKS(5));
+		}
 	}
 	return (retval ? String("") : (String(msg) + " : ")) + retstr;
 }
