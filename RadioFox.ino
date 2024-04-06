@@ -331,6 +331,8 @@ void TaskRunRadio(void* parameter)
 			}
 			DisplayLine(lineNo++, String("TX Count: ") + txCount);
 			DisplayLine(lineNo++, "ID: " + String(SystemInfo.cBeaconString) + " " + SystemInfo.cRadioCallSign, SystemInfo.menuTextColor);
+			if (SystemInfo.bPlayAudioFile)
+				DisplayLine(lineNo++, "Music: " + String(SystemInfo.cAudioFile));
 			sprintf(fmt, "%03d MHz ", SystemInfo.nFrequency % 1000);
 			DisplayLine(lineNo++, String(SystemInfo.nFrequency / 1000) + "." + fmt + (SystemInfo.bTxPowerLow ? "Lo" : "Hi") + " Power", SystemInfo.menuTextColor);
 			DisplayLine(lineNo++, String("RX Offset: ") + RxOffsetModeText[SystemInfo.nRfOffset] + " kHz", SystemInfo.menuTextColor);

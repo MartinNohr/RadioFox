@@ -416,7 +416,9 @@ MenuItem RadioMenu[] = {
     {eEditText,"Call Sign: %s",GetText,SystemInfo.cRadioCallSign,1,sizeof(SystemInfo.cRadioCallSign) - 1},
     {eEditText,"Beacon: %s",GetText,SystemInfo.cBeaconString,1,sizeof(SystemInfo.cBeaconString) - 1},
     {eBool,"Play Audio File: %s",ToggleBool,&SystemInfo.bPlayAudioFile,0,0,0,"Yes","No"},
-	{eEditText,"Audio File: %s",GetAudioFile,SystemInfo.cAudioFile,1,sizeof(SystemInfo.cAudioFile) - 1},
+    {eIfEqual,"",NULL,&SystemInfo.bPlayAudioFile,true},
+        {eEditText,"Audio File: %s",GetAudioFile,SystemInfo.cAudioFile,1,sizeof(SystemInfo.cAudioFile) - 1},
+    {eEndif},
     {eTextInt,"Morse Interval: %d mS",GetIntegerValue,&SystemInfo.nMorseInterval,50,500},
     {eExit,PreviousMenu},
     // make sure this one is last
