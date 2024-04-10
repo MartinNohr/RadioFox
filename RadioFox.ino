@@ -358,6 +358,40 @@ void CancelWaitTimers(MenuItem*)
 	xEventGroupSetBits(gRadioEventsHandle, RadioEventCancelWaits);
 }
 
+// show the transmit animation while sending
+void TaskXmitDisplay(void* parameters)
+{
+	// use this to make task run periodically
+	TickType_t xLastWakeTime;
+	const TickType_t xFrequency = pdMS_TO_TICKS(500);
+	// Initialize the xLastWakeTime variable with the current time.
+	xLastWakeTime = xTaskGetTickCount();
+
+	int cycle = 0;
+	while (true) {
+		if (!g_bSettingsMode) {
+			if (xSemaphoreTake(MutexDisplayHandle, portMAX_DELAY) == pdTRUE) {
+				cycle = cycle % 6;
+				if (!IsTransmitting)
+					cycle = 0;
+				if (cycle) {
+					tft.drawCircle(5, tft.height() - 6, cycle, TFT_RED);
+				}
+				else {
+					tft.fillCircle(5, tft.height() - 6, 6, TFT_BLACK);
+				}
+				++cycle;
+				xSemaphoreGive(MutexDisplayHandle);
+			}
+		}
+		else {
+			cycle = 0;
+		}
+		// Wait for the next cycle if nothing happened this time
+		vTaskDelayUntil(&xLastWakeTime, xFrequency);
+	}
+}
+
 // show the battery every 60 seconds
 void TaskShowBattery(void* parameters)
 {
@@ -835,6 +869,7 @@ void setup()
 	xTaskCreate(TaskDTMF, "DTMFHANDLER", 2000, NULL, 2, &TaskDTMFHandle);
 	xTaskCreate(TaskScrollSideways, "SCROLLSIDEWAYS", 2000, NULL, 0, &TaskScrollSidewaysHandle);
 	xTaskCreate(TaskMenu, "MENU", 3000, NULL, 4, &TaskMenuHandle);
+	xTaskCreate(TaskXmitDisplay, "XMITDISPLAY", 2000, NULL, 0, NULL);
 	ResetDimTimer();
 	//WavPlayer(SystemInfo.cAudioFile); // for testing I2S
 	// init the radio
