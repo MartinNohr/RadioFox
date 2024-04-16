@@ -1,6 +1,6 @@
 #pragma once
 
-const char* FOX_Version = "0.16";
+const char* FOX_Version = "0.18";
 
 const char* StartFileName = "START.FOX";
 // some config things
@@ -131,7 +131,7 @@ typedef struct SYSTEM_INFO {
     int nSidewaysScrollPause = 20;              // how long to wait at each end
     int nSidewaysScrollReverse = 3;             // reverse speed multiplier
     int nBatteryFullLevel = 3330;               // 100% battery
-    int nBatteryEmptyLevel = 2180;              // 0% battery, should cause a shutdown to save the batteries
+    int nBatteryEmptyLevel = 2500;              // 0% battery, should cause a shutdown to save the batteries
     int bShowBatteryLevel = HAS_BATTERY_LEVEL;  // display the battery level on the bottom line
     int bCriticalBatteryLevel = false;          // set true if battery too low
     CRotaryDialButton::ROTARY_DIAL_SETTINGS DialSettings;
@@ -146,6 +146,7 @@ typedef struct SYSTEM_INFO {
     char cSerialNumber[13] = "G2023XX";         // fox serial number
 	int nTxTime = 2 * 60;                       // tx time in seconds
 	int nTxPause = 3 * 60;                      // tx pause time in seconds
+    bool bSleepWhilePausing = false;            // turn the radio off while pausing
     bool bTxPowerLow = false;                   // tx power control
     int nBandWidth = 0;                         // 0 for 12.5k and 1 for 25k
 #if RADIO_UHF
@@ -153,7 +154,7 @@ typedef struct SYSTEM_INFO {
 #else
     int nFrequency = 140000;                    // VHF radio frequency in kHz
 #endif
-    int nRfOffset = 1;                          // RX frequeny offset 0=-600 1=0 2=+600 kHz, 1200 for UHF
+    int nRfOffset = 1;                          // RX frequency offset 0=-600 1=0 2=+600 kHz, 1200 for UHF
     int nRxVolume = 6;                          // volume from 1 to 8
     int nSquelch = 2;                           // squelch setting, 0 to 8, 0 is monitor mode
     bool bCTCSS = true;                         // false for DCS
@@ -396,6 +397,7 @@ MenuItem RadioTimersMenu[] = {
     {eTextInt,"TX Send: %d Sec",GetIntegerValue,&SystemInfo.nTxTime,1,300},
     {eTextInt,"TX Pause: %d Sec",GetIntegerValue,&SystemInfo.nTxPause,1,600},
     {eBool,"TX Stop: %s",ToggleBool,&SystemInfo.bStopImmediately,0,0,0,"Immediate","Finish Cycle"},
+    {eBool,"Radio Pause: %s",ToggleBool,&SystemInfo.bSleepWhilePausing,0,0,0,"Sleep","Awake"},
     {eExit,PreviousMenu},
     // make sure this one is last
     {eTerminate}

@@ -140,6 +140,9 @@
     <Text Include="MusicFiles\pinkpanther.txt" />
     <Text Include="MusicFiles\tetris.txt" />
   </ItemGroup>
+  <ItemGroup>
+    <None Include="Release\RadioFox.ino.ttgo-t1.bin" />
+  </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
   </ImportGroup>

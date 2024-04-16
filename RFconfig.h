@@ -10,7 +10,7 @@
 // make sure this one is commented out
 //#include <User_Setup.h>           // Default setup is root library folder
 
-// only set 1 for T-Display, 3 for S3 version
+// set 1 for T-Display, 3 for S3 version
 #define TTGO_T_DISPLAY 1
 
 // 1 for standard SD library, 0 for the new exFat library which allows > 32GB SD cards

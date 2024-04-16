@@ -259,8 +259,13 @@ void TaskRunRadio(void* parameter)
 				if (bTransmitting) {
 					bWaitingForStop = false;
 					// start the xmitter task, only one copy to be safe
-					if (TaskRunTransmitHandle == NULL)
+					if (TaskRunTransmitHandle == NULL) {
+						if (SystemInfo.bSleepWhilePausing) {
+							RadioEnable(true);
+							vTaskDelay(pdMS_TO_TICKS(250));
+						}
 						xTaskCreate(TaskRunTransmit, "XMITFOX", 2000, NULL, 2, &TaskRunTransmitHandle);
+					}
 					// wait for it to start and let us know
 					while ((status = ulTaskNotifyTake(pdTRUE, 0)) == 0) {
 						vTaskDelay(pdMS_TO_TICKS(10));
@@ -293,6 +298,10 @@ void TaskRunRadio(void* parameter)
 			if (!TaskRunTransmitHandle) {
 				bWaitingForStop = false;
 				secondsLeft = SystemInfo.nTxPause;
+				// sleep radio if required
+				if (SystemInfo.bSleepWhilePausing) {
+					RadioEnable(false);
+				}
 			}
 		}
 		// some logic to get the correct status message
@@ -402,7 +411,7 @@ void TaskShowBattery(void* parameters)
 			ReadBattery(&raw);
 			ShowBattery(NULL);
 		}
-		ulTaskNotifyTake(pdTRUE, pdMS_TO_TICKS(15 * 1000));
+		ulTaskNotifyTake(pdTRUE, pdMS_TO_TICKS(10 * 1000));
 	}
 }
 
@@ -757,7 +766,7 @@ void setup()
 	// radio sleep control
 	pinMode(RADIO_SLEEP_PORT, OUTPUT);
 	// keep it awake
-	digitalWrite(RADIO_SLEEP_PORT, LOW);
+	RadioEnable(true);
 	// set the power control to output
 	pinMode(TXPOWER_PORT, OUTPUT);
 
@@ -864,10 +873,10 @@ void setup()
 	gpio_set_level((gpio_num_t)PTT_PORT, PTT_LISTEN);
 	ClearScreen();
 	// start the transmit and management tasks
-	xTaskCreate(TaskRunRadio, "FOXRADIO", 2000, NULL, 5, &TaskRunRadioHandle);
+	xTaskCreate(TaskRunRadio, "FOXRADIO", 2000, NULL, 3, &TaskRunRadioHandle);
 	xTaskCreate(TaskShowBattery, "BATTERYLEVEL", 2000, NULL, 0, &TaskShowBatteryHandle);
 	xTaskCreate(TaskDTMF, "DTMFHANDLER", 2000, NULL, 2, &TaskDTMFHandle);
-	xTaskCreate(TaskScrollSideways, "SCROLLSIDEWAYS", 2000, NULL, 0, &TaskScrollSidewaysHandle);
+	xTaskCreate(TaskScrollSideways, "SCROLLSIDEWAYS", 2000, NULL, 1, &TaskScrollSidewaysHandle);
 	xTaskCreate(TaskMenu, "MENU", 3000, NULL, 4, &TaskMenuHandle);
 	xTaskCreate(TaskXmitDisplay, "XMITDISPLAY", 2000, NULL, 0, NULL);
 	ResetDimTimer();
@@ -1597,7 +1606,7 @@ bool CheckCancel(bool bLeaveButton)
 	ResetDimTimer();
 	// if it has been set, just return true
 	CRotaryDialButton::Button button = ReadButton();
-	if (button) {
+	if (button != BTN_NONE) {
 		if (button == BTN_LONG) {
 			return true;
 		}
@@ -2417,7 +2426,7 @@ void ShowUpdateProgress(size_t x, size_t total)
 // see if there is an update bin file in the SD slot
 void CheckUpdateBin(MenuItem * menu)
 {
-	const char* binFileName = "/RadioFox.bin";
+	const char* binFileName = "/RadioFox.ino.ttgo-t1.bin";
 	if (SD.exists(binFileName)) {
 		if (GetYesNo("Load New Firmware?")) {
 			ClearScreen();
@@ -2979,4 +2988,10 @@ float GetUsbVoltage()
 	float other_voltage = ((float)v2 / 4095.0) * 2.0 * 3.3 * (1100 / 1000.0);
 	//return other_voltage;
 	return battery_voltage;
+}
+
+// enable or disable radio
+void RadioEnable(bool bEnable)
+{
+	digitalWrite(RADIO_SLEEP_PORT, bEnable ? LOW : HIGH);
 }
