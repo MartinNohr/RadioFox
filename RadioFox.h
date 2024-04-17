@@ -1,6 +1,6 @@
 #pragma once
 
-const char* FOX_Version = "0.18";
+const char* FOX_Version = "0.19";
 
 const char* StartFileName = "START.FOX";
 // some config things
@@ -130,8 +130,8 @@ typedef struct SYSTEM_INFO {
     int nSidewayScrollSpeed = 25;               // mSec for pixel scroll
     int nSidewaysScrollPause = 20;              // how long to wait at each end
     int nSidewaysScrollReverse = 3;             // reverse speed multiplier
-    int nBatteryFullLevel = 3330;               // 100% battery
-    int nBatteryEmptyLevel = 2500;              // 0% battery, should cause a shutdown to save the batteries
+    int nBatteryFullLevel = 3545;               // 100% battery
+    int nBatteryEmptyLevel = 2700;              // 0% battery, should cause a shutdown to save the batteries, about full*3.2/4.2
     int bShowBatteryLevel = HAS_BATTERY_LEVEL;  // display the battery level on the bottom line
     int bCriticalBatteryLevel = false;          // set true if battery too low
     CRotaryDialButton::ROTARY_DIAL_SETTINGS DialSettings;

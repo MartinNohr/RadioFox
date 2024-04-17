@@ -411,7 +411,7 @@ void TaskShowBattery(void* parameters)
 			ReadBattery(&raw);
 			ShowBattery(NULL);
 		}
-		ulTaskNotifyTake(pdTRUE, pdMS_TO_TICKS(10 * 1000));
+		ulTaskNotifyTake(pdTRUE, pdMS_TO_TICKS(15 * 1000));
 	}
 }
 
