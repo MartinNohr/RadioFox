@@ -533,8 +533,9 @@ String SendToRadio(char* msg)
 	// try a few times
 	for (int tries = 0; !done && tries < 3; ++tries) {
 		// purge the input from the radio first
-		if (RadioSerial.available()) {
-			rxString = RadioSerial.readString();
+		while (RadioSerial.available()) {
+			byte b;
+			RadioSerial.readBytes(&b, sizeof(b));
 			//Serial.println("clearing radio input");
 		}
 		RadioSerial.println(msg);
@@ -735,8 +736,6 @@ void setup()
 	tft.setTextPadding(tft.width());
 	nMenuLineCount = tft.height() / tft.fontHeight();
 	TextLines.resize(nMenuLineCount);
-	// start the radio serial port
-	RadioSerial.begin(9600, SERIAL_8N1, RADIO_SERIAL_RX, RADIO_SERIAL_TX, false);
 	// start the tone generator, freq=0 gives error on Serial port during boot, so just set to 1000
 	ledcSetup(toneChannel, 1000, 8);
 	ledcAttachPin(AUDIO_OUT_PORT, toneChannel);
@@ -881,6 +880,8 @@ void setup()
 	xTaskCreate(TaskXmitDisplay, "XMITDISPLAY", 2000, NULL, 0, NULL);
 	ResetDimTimer();
 	//WavPlayer(SystemInfo.cAudioFile); // for testing I2S
+	// start the radio serial port
+	RadioSerial.begin(9600, SERIAL_8N1, RADIO_SERIAL_RX, RADIO_SERIAL_TX, false);
 	// init the radio
 	RadioSetup(true);
 }
