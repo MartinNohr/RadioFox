@@ -1,6 +1,6 @@
 #pragma once
 
-const char* FOX_Version = "0.21";
+const char* FOX_Version = "0.22";
 
 const char* StartFileName = "START.FOX";
 // some config things
@@ -130,7 +130,8 @@ typedef struct SYSTEM_INFO {
     int nSidewayScrollSpeed = 25;               // mSec for pixel scroll
     int nSidewaysScrollPause = 20;              // how long to wait at each end
     int nSidewaysScrollReverse = 3;             // reverse speed multiplier
-    int nBatteryFullLevel = 2000;               // 100% battery, low value is 3.2/4.2 of this, ShowBattery will update this value during charging
+    int nBatteryFullLevel = 3000;               // 100% battery, low value is 3.2/4.2 of this, ShowBattery will update this value during charging
+    int nBatteryLowLevel = 1200;                // the low battery level value
     int bShowBatteryLevel = HAS_BATTERY_LEVEL;  // display the battery level on the bottom line
     bool bCriticalBatteryLevel = false;         // set when battery is too low
     CRotaryDialButton::ROTARY_DIAL_SETTINGS DialSettings;
@@ -173,7 +174,7 @@ typedef struct SYSTEM_INFO {
     //
 };
 RTC_DATA_ATTR SYSTEM_INFO SystemInfo;
-#define LOW_BATTERY_VALUE ((int)(SystemInfo.nBatteryFullLevel*3.2/4.2))
+//#define LOW_BATTERY_VALUE ((int)(SystemInfo.nBatteryFullLevel*3.2/4.2))
 
 
 // settings
@@ -251,21 +252,26 @@ void UpdateDisplayBrightness(MenuItem* menu, int flag);
 void UpdateDisplayDimMode(MenuItem* menu, int flag);
 void SetMenuColor(MenuItem* menu);
 void ShowBattery(MenuItem* menu);
-void ResetBattery(MenuItem* menu);
+//void ResetBattery(MenuItem* menu);
 void GetNetworkName(MenuItem* menu);
 //void ChangeNetCredentials(MenuItem* menu);
 void GetText(MenuItem* menu);
 void GetAudioFile(MenuItem* menu);
 void ShowUsbVoltage(MenuItem* menu);
 void CancelWaitTimers(MenuItem*);
+void SetLowBattery(MenuItem*);
+void SetHighBattery(MenuItem*);
 
 const char* PreviousMenu = "Back";
 MenuItem BatteryMenu[] = {
     {eExit,"Battery"},
     {eBool,"Show Battery: %s",ToggleBool,&SystemInfo.bShowBatteryLevel,0,0,0,"Yes","No"},
-    {eTextInt,"Reset Calibration",ResetBattery},
-    //{eTextInt,"100%% Battery: %d",GetIntegerValue,&SystemInfo.nBatteryFullLevel,900,4200},
-    //{eText,"Read Battery Raw Data",ShowBattery},
+    //{eTextInt,"Reset Calibration",ResetBattery},
+    {eTextInt,"Full Battery: %d",GetIntegerValue,&SystemInfo.nBatteryFullLevel,900,4200},
+    {eTextInt,"Set Full Battery From Current",SetHighBattery},
+    {eTextInt,"Low Battery: %d",GetIntegerValue,&SystemInfo.nBatteryLowLevel,900,4200},
+    {eTextInt,"Set Low Battery From Current",SetLowBattery},
+    {eText,"Read Battery Raw Data",ShowBattery},
     {eExit,PreviousMenu},
     // make sure this one is last
     {eTerminate}

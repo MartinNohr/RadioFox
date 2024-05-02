@@ -2346,10 +2346,10 @@ int ReadBattery(int* raw)
 		// calculate the %
 		if (eSmooth >= SystemInfo.nBatteryFullLevel)
 			percent = 100;
-		else if (eSmooth <= LOW_BATTERY_VALUE)
+		else if (eSmooth <= SystemInfo.nBatteryLowLevel)
 			percent = 0;
 		else {
-			percent = (eSmooth - LOW_BATTERY_VALUE) * 100 / (SystemInfo.nBatteryFullLevel - LOW_BATTERY_VALUE);
+			percent = (eSmooth - SystemInfo.nBatteryLowLevel) * 100 / (SystemInfo.nBatteryFullLevel - SystemInfo.nBatteryLowLevel);
 		}
 		delay(2);
 	}
@@ -2365,14 +2365,14 @@ int ReadBattery(int* raw)
 	return percent;
 }
 
-// reset the battery indicator, this is done by setting it to 1/2 and letting the ShowBattery code letting it rise to its maximum level
-void ResetBattery(MenuItem* menu)
-{
-	if (GetYesNo("Reset Battery Calibration?")) {
-		WriteMessage("Calibration reset,\nfully charge battery\nto finish", false, 5000);
-		SystemInfo.nBatteryFullLevel /= 2;
-	}
-}
+//// reset the battery indicator, this is done by setting it to 1/2 and letting the ShowBattery code letting it rise to its maximum level
+//void ResetBattery(MenuItem* menu)
+//{
+//	if (GetYesNo("Reset Battery Calibration?")) {
+//		WriteMessage("Calibration reset,\nfully charge battery\nto finish", false, 5000);
+//		SystemInfo.nBatteryFullLevel /= 2;
+//	}
+//}
 
 // this code shows the battery on the main display when menu is NULL
 // otherwise it shows the current raw integer readings of the battery sensor
@@ -2408,13 +2408,14 @@ void ShowBattery(MenuItem* menu)
 					// push the sprite to the display
 					BatterySprite.pushSprite(tft.width() - 101, tft.height() - sh + 2);
 					xSemaphoreGive(MutexDisplayHandle);
-					// see if this value is larger than the current calibration, use 98% of value during charging
-					int rawNew = raw * 0.98;
-					if (rawNew > SystemInfo.nBatteryFullLevel) {
-						//Serial.println(String("full: ") + SystemInfo.nBatteryFullLevel + " raw: " + raw + " read: " + rawNew);
-						SystemInfo.nBatteryFullLevel = rawNew;
-						SaveLoadSettings(true, true);
-					}
+					//// see if this value is larger than the current calibration, use 90% of value during charging
+					//int rawNew = raw * 0.90;
+					//if (rawNew > SystemInfo.nBatteryFullLevel) {
+					//	//Serial.println(String("full: ") + SystemInfo.nBatteryFullLevel + " raw: " + raw + " read: " + rawNew);
+					//	SystemInfo.nBatteryFullLevel = rawNew;
+					//	SystemInfo.nBatteryLowLevel = rawNew * 3.2 / 4.2;
+					//	SaveLoadSettings(true, true);
+					//}
 				}
 			}
 			showtime = millis();
@@ -2424,6 +2425,18 @@ void ShowBattery(MenuItem* menu)
 		else
 			break;
 	}
+}
+
+// set the low battery level from the current value
+void SetLowBattery(MenuItem*)
+{
+	ReadBattery(&SystemInfo.nBatteryLowLevel);
+}
+
+// set the high battery level from the current value
+void SetHighBattery(MenuItem*)
+{
+	ReadBattery(&SystemInfo.nBatteryFullLevel);
 }
 
 void ShowProgressBar(int percent)
