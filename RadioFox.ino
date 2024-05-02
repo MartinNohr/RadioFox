@@ -880,7 +880,7 @@ void setup()
 	xTaskCreate(TaskXmitDisplay, "XMITDISPLAY", 2000, NULL, 0, NULL);
 	ResetDimTimer();
 	//WavPlayer(SystemInfo.cAudioFile); // for testing I2S
-	// start the radio serial port
+	// start the radio serial port, wait until here to make sure the radio is powered up completely
 	RadioSerial.begin(9600, SERIAL_8N1, RADIO_SERIAL_RX, RADIO_SERIAL_TX, false);
 	// init the radio
 	RadioSetup(true);
@@ -2325,25 +2325,31 @@ String MenuToHtml(MenuItem * pMenu, bool bActive, int nLevel)
 	return str;
 }
 
-// read the battery level, LiIon cells are 4.2 fully charged and should not be discharged below 2.75
+// read the battery level, LiIon cells are 4.2 fully charged and should not be discharged below 2.75 (some say 3.2)
 // smoothing of the reading is done using an exponential moving average
 int ReadBattery(int* raw)
 {
+	static bool bFirstTime = true;
 	const float alpha = 0.9;
 	static float eSmooth = 0.0;
 	int percent;
 	float nextLevel;
 	for (int tries = 0; tries < 5; ++tries) {
 		nextLevel = (float)analogRead(BATTERY_SENSOR_GPIO);
+		// first time set eSmooth to current value
+		if (bFirstTime) {
+			eSmooth = nextLevel;
+			bFirstTime = false;
+		}
 		// calculate the next value
 		eSmooth = (alpha * eSmooth) + ((1 - alpha) * nextLevel);
 		// calculate the %
 		if (eSmooth >= SystemInfo.nBatteryFullLevel)
 			percent = 100;
-		else if (eSmooth <= SystemInfo.nBatteryEmptyLevel)
+		else if (eSmooth <= LOW_BATTERY_VALUE)
 			percent = 0;
 		else {
-			percent = (eSmooth - SystemInfo.nBatteryEmptyLevel) * 100 / (SystemInfo.nBatteryFullLevel - SystemInfo.nBatteryEmptyLevel);
+			percent = (eSmooth - LOW_BATTERY_VALUE) * 100 / (SystemInfo.nBatteryFullLevel - LOW_BATTERY_VALUE);
 		}
 		delay(2);
 	}
@@ -2359,10 +2365,19 @@ int ReadBattery(int* raw)
 	return percent;
 }
 
+// reset the battery indicator, this is done by setting it to 1/2 and letting the ShowBattery code letting it rise to its maximum level
+void ResetBattery(MenuItem* menu)
+{
+	if (GetYesNo("Reset Battery Calibration?")) {
+		WriteMessage("Calibration reset,\nfully charge battery\nto finish", false, 5000);
+		SystemInfo.nBatteryFullLevel /= 2;
+	}
+}
+
 // this code shows the battery on the main display when menu is NULL
 // otherwise it shows the current raw integer readings of the battery sensor
 // if this call comes from the menu system the display is already locked, otherwise we lock it here
-void ShowBattery(MenuItem * menu)
+void ShowBattery(MenuItem* menu)
 {
 	static int percent = 0, raw = 0;
 	if (menu)
@@ -2377,6 +2392,7 @@ void ShowBattery(MenuItem * menu)
 				DisplayLine(3, "Long Press to Cancel", SystemInfo.menuTextColor);
 			}
 			else {
+				// update the battery calibration by setting the max value to 90% of what is read when it is larger than the last value
 				if (xSemaphoreTake(MutexDisplayHandle, portMAX_DELAY) == pdTRUE) {
 					// TODO: fix this so it works for a sprite that is not 100 pixels wide
 					int sh = BatterySprite.height();
@@ -2392,6 +2408,13 @@ void ShowBattery(MenuItem * menu)
 					// push the sprite to the display
 					BatterySprite.pushSprite(tft.width() - 101, tft.height() - sh + 2);
 					xSemaphoreGive(MutexDisplayHandle);
+					// see if this value is larger than the current calibration, use 98% of value during charging
+					int rawNew = raw * 0.98;
+					if (rawNew > SystemInfo.nBatteryFullLevel) {
+						//Serial.println(String("full: ") + SystemInfo.nBatteryFullLevel + " raw: " + raw + " read: " + rawNew);
+						SystemInfo.nBatteryFullLevel = rawNew;
+						SaveLoadSettings(true, true);
+					}
 				}
 			}
 			showtime = millis();

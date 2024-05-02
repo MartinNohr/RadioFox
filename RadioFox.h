@@ -1,6 +1,6 @@
 #pragma once
 
-const char* FOX_Version = "0.20";
+const char* FOX_Version = "0.21";
 
 const char* StartFileName = "START.FOX";
 // some config things
@@ -130,10 +130,9 @@ typedef struct SYSTEM_INFO {
     int nSidewayScrollSpeed = 25;               // mSec for pixel scroll
     int nSidewaysScrollPause = 20;              // how long to wait at each end
     int nSidewaysScrollReverse = 3;             // reverse speed multiplier
-    int nBatteryFullLevel = 3545;               // 100% battery
-    int nBatteryEmptyLevel = 2700;              // 0% battery, should cause a shutdown to save the batteries, about full*3.2/4.2
+    int nBatteryFullLevel = 2000;               // 100% battery, low value is 3.2/4.2 of this, ShowBattery will update this value during charging
     int bShowBatteryLevel = HAS_BATTERY_LEVEL;  // display the battery level on the bottom line
-    int bCriticalBatteryLevel = false;          // set true if battery too low
+    bool bCriticalBatteryLevel = false;         // set when battery is too low
     CRotaryDialButton::ROTARY_DIAL_SETTINGS DialSettings;
     int eDisplayDimMode = DISPLAY_DIM_MODE_NONE;// 0 is none, 1 is dimtime, 2 is light sensor
     int nDisplayDimTime = 0;                    // seconds before lcd is dimmed
@@ -174,6 +173,8 @@ typedef struct SYSTEM_INFO {
     //
 };
 RTC_DATA_ATTR SYSTEM_INFO SystemInfo;
+#define LOW_BATTERY_VALUE ((int)(SystemInfo.nBatteryFullLevel*3.2/4.2))
+
 
 // settings
 bool bSdCardValid = false;              // set to true when card is found
@@ -250,6 +251,7 @@ void UpdateDisplayBrightness(MenuItem* menu, int flag);
 void UpdateDisplayDimMode(MenuItem* menu, int flag);
 void SetMenuColor(MenuItem* menu);
 void ShowBattery(MenuItem* menu);
+void ResetBattery(MenuItem* menu);
 void GetNetworkName(MenuItem* menu);
 //void ChangeNetCredentials(MenuItem* menu);
 void GetText(MenuItem* menu);
@@ -261,9 +263,9 @@ const char* PreviousMenu = "Back";
 MenuItem BatteryMenu[] = {
     {eExit,"Battery"},
     {eBool,"Show Battery: %s",ToggleBool,&SystemInfo.bShowBatteryLevel,0,0,0,"Yes","No"},
-    {eText,"Read Battery",ShowBattery},
-    {eTextInt,"100%% Battery: %d",GetIntegerValue,&SystemInfo.nBatteryFullLevel,900,4200},
-    {eTextInt,"0%% Battery: %d",GetIntegerValue,&SystemInfo.nBatteryEmptyLevel,500,3000},
+    {eTextInt,"Reset Calibration",ResetBattery},
+    //{eTextInt,"100%% Battery: %d",GetIntegerValue,&SystemInfo.nBatteryFullLevel,900,4200},
+    //{eText,"Read Battery Raw Data",ShowBattery},
     {eExit,PreviousMenu},
     // make sure this one is last
     {eTerminate}
@@ -329,7 +331,7 @@ MenuItem SystemMenu[] = {
     //{eMenu,"WiFi Settings",{.menu = WiFiMenu}},
     {eText,"New Version BIN file",CheckUpdateBin},
     {eText,"Reset All Settings",FactorySettings},
-    {eEditText,"Serial #: %s",NULL,SystemInfo.cSerialNumber ,1,sizeof(SystemInfo.cSerialNumber) - 1},
+    //{eEditText,"Serial #: %s",NULL,SystemInfo.cSerialNumber ,1,sizeof(SystemInfo.cSerialNumber) - 1},
     {eExit,PreviousMenu},
     // make sure this one is last
     {eTerminate}
