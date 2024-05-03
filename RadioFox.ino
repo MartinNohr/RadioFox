@@ -672,6 +672,7 @@ bool CompareRadioSettings(SYSTEM_INFO* pSystemInfo, SYSTEM_INFO* pSystemInfoSave
 void TaskMenu(void* params)
 {
 	static SYSTEM_INFO SystemInfoSaved;
+	static BATTERY_INFO BatteryInfoSaved;
 	static bool bLastSettingsMode = false;
 	for (;;) {
 		if (g_bSettingsMode) {
@@ -683,13 +684,14 @@ void TaskMenu(void* params)
 		// did settings mode just turn on?
 		if (g_bSettingsMode && !bLastSettingsMode) {
 			memcpy(&SystemInfoSaved, &SystemInfo, sizeof(SystemInfo));
+			memcpy(&BatteryInfoSaved, &BatteryInfo, sizeof(BatteryInfo));
 			ClearScreen();
 		}
 		// did settings mode just turn off?
 		if (!g_bSettingsMode && bLastSettingsMode) {
 			// show the battery display by telling the task to run
 			xTaskNotifyGive(TaskShowBatteryHandle);
-			if (memcmp(&SystemInfoSaved, &SystemInfo, sizeof(SystemInfo))) {
+			if (memcmp(&SystemInfoSaved, &SystemInfo, sizeof(SystemInfo)) || memcmp(&BatteryInfoSaved, &BatteryInfo, sizeof(BatteryInfo))) {
 				// make sure that the lcd dim is less than the bright
 				if (SystemInfo.nDisplayDimValue > SystemInfo.nDisplayBrightness)
 					SystemInfo.nDisplayDimValue = SystemInfo.nDisplayBrightness;
@@ -706,6 +708,7 @@ void TaskMenu(void* params)
 				}
 				// copy so we know we updated things
 				memcpy(&SystemInfoSaved, &SystemInfo, sizeof(SystemInfo));
+				memcpy(&BatteryInfoSaved, &BatteryInfo, sizeof(BatteryInfo));
 				SaveLoadSettings(true, false);
 			}
 		}
@@ -783,10 +786,7 @@ void setup()
 	SetDisplayBrightness(SystemInfo.nDisplayBrightness);
 	// see if the button is down, if so clear all settings
 	if (gpio_get_level((gpio_num_t)DIAL_BTN) == 0) {
-		Preferences prefs;
-		prefs.begin(prefsName);
-		prefs.clear();
-		prefs.end();
+		FactorySettings(NULL);
 		WriteMessage("Factory Reset");
 	}
 	String msg;
@@ -796,7 +796,7 @@ void setup()
 	}
 	else {
 		// must not be anything there, so save it
-		SaveLoadSettings(true);
+		SaveLoadSettings(true, false);
 	}
 	ClearScreen();
 	SetDisplayBrightness(SystemInfo.nDisplayBrightness);
@@ -1809,13 +1809,13 @@ bool CompareNames(const String & a, const String & b)
 // save the eeprom settings
 void SaveEepromSettings(MenuItem * menu)
 {
-	SaveLoadSettings(true);
+	SaveLoadSettings(true, false);
 }
 
 // load eeprom settings
 void LoadEepromSettings(MenuItem * menu)
 {
-	SaveLoadSettings(false);
+	SaveLoadSettings(false, false);
 }
 
 // get a yes/no response
@@ -1870,6 +1870,26 @@ void DrawProgressBar(int x, int y, int dx, int dy, int percent, bool rect)
 	tft.fillRect(x + 1 + fill, y + 1, dx - 2 - fill, dy - 2, TFT_BLACK);
 }
 
+// save/load battery settings
+bool SaveLoadBatterySettings(bool save)
+{
+	bool retvalue = true;
+	Preferences prefs;
+	prefs.begin(prefsName, !save);
+	if (save) {
+		// save things
+		prefs.putBytes(prefsBatteryInfo, &BatteryInfo, sizeof(BatteryInfo));
+	}
+	else {
+		// load things
+		if (prefs.getBytes(prefsBatteryInfo, &BatteryInfo, sizeof(BatteryInfo)) != sizeof(BatteryInfo)) {
+			retvalue = false;
+		}
+	}
+	prefs.end();
+	return retvalue;
+}
+
 // save/load settings
 // return false if not found or wrong version
 bool SaveLoadSettings(bool save, bool nodisplay)
@@ -1878,10 +1898,9 @@ bool SaveLoadSettings(bool save, bool nodisplay)
 	Preferences prefs;
 	prefs.begin(prefsName, !save);
 	if (save) {
-		//Serial.println("saving");
+		// save things
 		prefs.putString(prefsVersion, FOX_Version);
 		prefs.putBytes(prefsSystemInfo, &SystemInfo, sizeof(SystemInfo));
-		// save things
 		if (!nodisplay) {
 			WriteMessage("Settings Saved", false, 1000);
 		}
@@ -1893,11 +1912,10 @@ bool SaveLoadSettings(bool save, bool nodisplay)
 			setupSDcard();
 			// set the brightness values since they might have changed
 			SetDisplayBrightness(SystemInfo.nDisplayBrightness);
+			prefs.getBytes(prefsSystemInfo, &SystemInfo, sizeof(SystemInfo));
 			if (!nodisplay) {
 				WriteMessage("Settings Loaded", false, 1000);
 			}
-			// these are always done
-			prefs.getBytes(prefsSystemInfo, &SystemInfo, sizeof(SystemInfo));
 		}
 		else {
 			retvalue = false;
@@ -1906,18 +1924,23 @@ bool SaveLoadSettings(bool save, bool nodisplay)
 		}
 	}
 	prefs.end();
+	// always do the battery ones
+	SaveLoadBatterySettings(save);
 	return retvalue;
 }
 
-// delete saved settings
+// delete saved settings, except for the battery values
 void FactorySettings(MenuItem * menu)
 {
-	if (GetYesNo("Reset All Settings? (reboot)")) {
+	if (menu == NULL || GetYesNo("Reset All Settings? (reboot)")) {
+		SaveLoadBatterySettings(false);
 		Preferences prefs;
 		prefs.begin(prefsName);
 		prefs.clear();
 		prefs.end();
-		ESP.restart();
+		SaveLoadBatterySettings(true);
+		if (menu != NULL)
+			ESP.restart();
 	}
 }
 
@@ -2344,12 +2367,12 @@ int ReadBattery(int* raw)
 		// calculate the next value
 		eSmooth = (alpha * eSmooth) + ((1 - alpha) * nextLevel);
 		// calculate the %
-		if (eSmooth >= SystemInfo.nBatteryFullLevel)
+		if (eSmooth >= BatteryInfo.nBatteryFullLevel)
 			percent = 100;
-		else if (eSmooth <= SystemInfo.nBatteryLowLevel)
+		else if (eSmooth <= BatteryInfo.nBatteryLowLevel)
 			percent = 0;
 		else {
-			percent = (eSmooth - SystemInfo.nBatteryLowLevel) * 100 / (SystemInfo.nBatteryFullLevel - SystemInfo.nBatteryLowLevel);
+			percent = (eSmooth - BatteryInfo.nBatteryLowLevel) * 100 / (BatteryInfo.nBatteryFullLevel - BatteryInfo.nBatteryLowLevel);
 		}
 		delay(2);
 	}
@@ -2413,7 +2436,7 @@ void ShowBattery(MenuItem* menu)
 					//if (rawNew > SystemInfo.nBatteryFullLevel) {
 					//	//Serial.println(String("full: ") + SystemInfo.nBatteryFullLevel + " raw: " + raw + " read: " + rawNew);
 					//	SystemInfo.nBatteryFullLevel = rawNew;
-					//	SystemInfo.nBatteryLowLevel = rawNew * 3.2 / 4.2;
+					//	BatteryInfo.nBatteryLowLevel = rawNew * 3.2 / 4.2;
 					//	SaveLoadSettings(true, true);
 					//}
 				}
@@ -2430,13 +2453,13 @@ void ShowBattery(MenuItem* menu)
 // set the low battery level from the current value
 void SetLowBattery(MenuItem*)
 {
-	ReadBattery(&SystemInfo.nBatteryLowLevel);
+	ReadBattery(&BatteryInfo.nBatteryLowLevel);
 }
 
 // set the high battery level from the current value
 void SetHighBattery(MenuItem*)
 {
-	ReadBattery(&SystemInfo.nBatteryFullLevel);
+	ReadBattery(&BatteryInfo.nBatteryFullLevel);
 }
 
 void ShowProgressBar(int percent)

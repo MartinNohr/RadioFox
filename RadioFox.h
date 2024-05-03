@@ -68,11 +68,7 @@ const char* prefsName = "FOX";
 const char* prefsVars = "vars";
 const char* prefsVersion = "version";
 const char* prefsSystemInfo = "systeminfo";
-// rotary dial values
-const char* prefsLongPressTimer = "longpress";
-const char* prefsDialSensitivity = "dialsense";
-const char* prefsDialSpeed = "dialspeed";
-const char* prefsDialReverse = "dialreverse";
+const char* prefsBatteryInfo = "batteryinfo";
 
 #if USE_STANDARD_SD
 SPIClass spiSDCard;
@@ -109,7 +105,8 @@ void HomePage();
 void SendHTML_Header();
 void SendHTML_Content();
 void SendHTML_Stop();
-bool SaveLoadSettings(bool save = false, bool nodisplay = false);
+bool SaveLoadSettings(bool save, bool nodisplay);
+bool SaveLoadBatterySettings(bool save);
 CRotaryDialButton::Button ReadButton();
 bool CheckCancel(bool bLeaveButton = false);
 void GetFileNamesFromSD(std::vector<String>& FileNames, String ext = "", String dir = "/");
@@ -130,8 +127,6 @@ typedef struct SYSTEM_INFO {
     int nSidewayScrollSpeed = 25;               // mSec for pixel scroll
     int nSidewaysScrollPause = 20;              // how long to wait at each end
     int nSidewaysScrollReverse = 3;             // reverse speed multiplier
-    int nBatteryFullLevel = 3000;               // 100% battery, low value is 3.2/4.2 of this, ShowBattery will update this value during charging
-    int nBatteryLowLevel = 1200;                // the low battery level value
     int bShowBatteryLevel = HAS_BATTERY_LEVEL;  // display the battery level on the bottom line
     bool bCriticalBatteryLevel = false;         // set when battery is too low
     CRotaryDialButton::ROTARY_DIAL_SETTINGS DialSettings;
@@ -176,6 +171,11 @@ typedef struct SYSTEM_INFO {
 RTC_DATA_ATTR SYSTEM_INFO SystemInfo;
 //#define LOW_BATTERY_VALUE ((int)(SystemInfo.nBatteryFullLevel*3.2/4.2))
 
+typedef struct BATTERY_INFO {
+    int nBatteryFullLevel = 3500;               // 100% battery
+    int nBatteryLowLevel = 2700;                // the low battery
+};
+RTC_DATA_ATTR BATTERY_INFO BatteryInfo;
 
 // settings
 bool bSdCardValid = false;              // set to true when card is found
@@ -267,10 +267,10 @@ MenuItem BatteryMenu[] = {
     {eExit,"Battery"},
     {eBool,"Show Battery: %s",ToggleBool,&SystemInfo.bShowBatteryLevel,0,0,0,"Yes","No"},
     //{eTextInt,"Reset Calibration",ResetBattery},
-    {eTextInt,"Full Battery: %d",GetIntegerValue,&SystemInfo.nBatteryFullLevel,900,4200},
-    {eTextInt,"Set Full Battery From Current",SetHighBattery},
-    {eTextInt,"Low Battery: %d",GetIntegerValue,&SystemInfo.nBatteryLowLevel,900,4200},
-    {eTextInt,"Set Low Battery From Current",SetLowBattery},
+    {eTextInt,"Full Battery: %d",GetIntegerValue,&BatteryInfo.nBatteryFullLevel,2000,4000},
+    {eTextInt,"Set Full Battery",SetHighBattery},
+    {eTextInt,"Low Battery: %d",GetIntegerValue,&BatteryInfo.nBatteryLowLevel,2000,4000},
+    {eTextInt,"Set Low Battery",SetLowBattery},
     {eText,"Read Battery Raw Data",ShowBattery},
     {eExit,PreviousMenu},
     // make sure this one is last
