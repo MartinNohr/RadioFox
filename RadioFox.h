@@ -1,6 +1,6 @@
 #pragma once
 
-const char* FOX_Version = "0.22";
+const char* FOX_Version = "0.23";
 
 const char* StartFileName = "START.FOX";
 // some config things
@@ -139,8 +139,8 @@ typedef struct SYSTEM_INFO {
     char cRadioCallSign[21] = "CALLSIGN";       // ID to transmit
     char cBeaconString[31] = "BEACON";          // beacon string to send
     char cSerialNumber[13] = "G2023XX";         // fox serial number
-	int nTxTime = 2 * 60;                       // tx time in seconds
-	int nTxPause = 3 * 60;                      // tx pause time in seconds
+	int nTxTime = 1 * 60;                       // tx time in seconds
+	int nTxPause = 5 * 60;                      // tx pause time in seconds
     bool bSleepWhilePausing = false;            // turn the radio off while pausing
     bool bTxPowerLow = false;                   // tx power control
     int nBandWidth = 0;                         // 0 for 12.5k and 1 for 25k
@@ -402,8 +402,8 @@ MenuItem RadioMenuMore[] = {
 MenuItem RadioTimersMenu[] = {
     {eExit,"Radio Timers"},
     {eTextInt,"Start Delay: %d Min",GetIntegerValue,&SystemInfo.nStartDelayTimer,0,120},
-    {eTextInt,"TX Send: %d Sec",GetIntegerValue,&SystemInfo.nTxTime,1,300},
-    {eTextInt,"TX Pause: %d Sec",GetIntegerValue,&SystemInfo.nTxPause,1,600},
+    {eTextInt,"TX Send: %d Sec",GetIntegerValue,&SystemInfo.nTxTime,1,90},  // too much xmit time causes hot radio
+    {eTextInt,"TX Pause: %d Sec",GetIntegerValue,&SystemInfo.nTxPause,1,1200},
     {eBool,"TX Stop: %s",ToggleBool,&SystemInfo.bStopImmediately,0,0,0,"Immediate","Finish Cycle"},
     {eBool,"Radio Pause: %s",ToggleBool,&SystemInfo.bSleepWhilePausing,0,0,0,"Sleep","Awake"},
     {eExit,PreviousMenu},
