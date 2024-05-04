@@ -1,6 +1,6 @@
 #pragma once
 
-const char* FOX_Version = "0.23";
+const char* FOX_Version = "0.24";
 
 const char* StartFileName = "START.FOX";
 // some config things
@@ -138,7 +138,6 @@ typedef struct SYSTEM_INFO {
     // radio settings
     char cRadioCallSign[21] = "CALLSIGN";       // ID to transmit
     char cBeaconString[31] = "BEACON";          // beacon string to send
-    char cSerialNumber[13] = "G2023XX";         // fox serial number
 	int nTxTime = 1 * 60;                       // tx time in seconds
 	int nTxPause = 5 * 60;                      // tx pause time in seconds
     bool bSleepWhilePausing = false;            // turn the radio off while pausing
@@ -337,7 +336,6 @@ MenuItem SystemMenu[] = {
     //{eMenu,"WiFi Settings",{.menu = WiFiMenu}},
     {eText,"New Version BIN file",CheckUpdateBin},
     {eText,"Reset All Settings",FactorySettings},
-    //{eEditText,"Serial #: %s",NULL,SystemInfo.cSerialNumber ,1,sizeof(SystemInfo.cSerialNumber) - 1},
     {eExit,PreviousMenu},
     // make sure this one is last
     {eTerminate}
@@ -423,8 +421,8 @@ MenuItem RadioMenu[] = {
 #else
     {eTextInt,"TX: %d.%03d MHz",GetIntegerValue,&SystemInfo.nFrequency,134000,174000,3},
 #endif
-    {eEditText,"Call Sign: %s",GetText,SystemInfo.cRadioCallSign,1,sizeof(SystemInfo.cRadioCallSign) - 1},
     {eEditText,"Beacon: %s",GetText,SystemInfo.cBeaconString,1,sizeof(SystemInfo.cBeaconString) - 1},
+    {eEditText,"Call Sign: %s",GetText,SystemInfo.cRadioCallSign,1,sizeof(SystemInfo.cRadioCallSign) - 1},
     {eBool,"Play Audio File: %s",ToggleBool,&SystemInfo.bPlayAudioFile,0,0,0,"Yes","No"},
     {eIfEqual,"",NULL,&SystemInfo.bPlayAudioFile,true},
         {eEditText,"Audio File: %s",GetAudioFile,SystemInfo.cAudioFile,1,sizeof(SystemInfo.cAudioFile) - 1},

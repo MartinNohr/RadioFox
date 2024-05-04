@@ -313,7 +313,7 @@ void TaskRunRadio(void* parameter)
 			cStatusText = "Pause";
 		// set string if not transmitting
 		else if (!IsTransmitEnabled && !bWaitingForStop) {
-			cStatusText = "Not Transmitting";
+			cStatusText = "Transmit Off";
 			secondsLeft = 0;
 			delayedSeconds = 0;
 		}
@@ -345,7 +345,8 @@ void TaskRunRadio(void* parameter)
 			sprintf(fmt, "%03d MHz ", SystemInfo.nFrequency % 1000);
 			DisplayLine(lineNo++, String(SystemInfo.nFrequency / 1000) + "." + fmt + (SystemInfo.bTxPowerLow ? "Lo" : "Hi") + " Power", SystemInfo.menuTextColor);
 			DisplayLine(lineNo++, String("RX Offset: ") + RxOffsetModeText[SystemInfo.nRfOffset] + " kHz", SystemInfo.menuTextColor);
-			//DisplayLine(lineNo++, String("Audio: ") + SystemInfo.cAudioFile, SystemInfo.menuTextColor);
+			if (SystemInfo.bPlayAudioFile)
+				DisplayLine(lineNo++, String("Music: ") + SystemInfo.cAudioFile, SystemInfo.menuTextColor);
 		}
 		if (secondsLeft > 0)
 			--secondsLeft;
@@ -411,7 +412,7 @@ void TaskShowBattery(void* parameters)
 			ReadBattery(&raw);
 			ShowBattery(NULL);
 		}
-		ulTaskNotifyTake(pdTRUE, pdMS_TO_TICKS(15 * 1000));
+		ulTaskNotifyTake(pdTRUE, pdMS_TO_TICKS(10 * 1000));
 	}
 }
 
@@ -2357,13 +2358,9 @@ int ReadBattery(int* raw)
 	static float eSmooth = 0.0;
 	int percent;
 	float nextLevel;
-	for (int tries = 0; tries < 5; ++tries) {
+	// take extra passes the first time to read a more accurate value
+	for (int tries = 0; tries < (bFirstTime ? 50 : 5); ++tries) {
 		nextLevel = (float)analogRead(BATTERY_SENSOR_GPIO);
-		// first time set eSmooth to current value
-		if (bFirstTime) {
-			eSmooth = nextLevel;
-			bFirstTime = false;
-		}
 		// calculate the next value
 		eSmooth = (alpha * eSmooth) + ((1 - alpha) * nextLevel);
 		// calculate the %
@@ -2374,8 +2371,9 @@ int ReadBattery(int* raw)
 		else {
 			percent = (eSmooth - BatteryInfo.nBatteryLowLevel) * 100 / (BatteryInfo.nBatteryFullLevel - BatteryInfo.nBatteryLowLevel);
 		}
-		delay(2);
+		vTaskDelay(pdMS_TO_TICKS(2));
 	}
+	bFirstTime = false;
 	if (raw)
 		*raw = (int)eSmooth;
 	if (percent == 0) {
