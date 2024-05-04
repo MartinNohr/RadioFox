@@ -1,6 +1,6 @@
 #pragma once
 
-const char* FOX_Version = "0.25";
+const char* FOX_Version = "0.26";
 
 const char* StartFileName = "START.FOX";
 // some config things
@@ -138,8 +138,17 @@ typedef struct SYSTEM_INFO {
     // radio settings
     char cRadioCallSign[21] = "CALLSIGN";       // ID to transmit
     char cBeaconString[31] = "BEACON";          // beacon string to send
-	int nTxTime = 1 * 60;                       // tx time in seconds
-	int nTxPause = 5 * 60;                      // tx pause time in seconds
+    // transmit timers
+    bool bUseFixedTimers = true;                // fixed or random timers
+	int nTxTimeFixed = 1 * 60;                  // tx time in seconds
+	int nTxPauseFixed = 5 * 60;                 // tx pause time in seconds
+
+    // for random timers
+    int nTxTimeMin = 30;
+    int nTxTimeMax = 1 * 60;
+    int nTxPauseMin = 1 * 60;
+    int nTxPauseMax = 10 * 60;
+
     bool bSleepWhilePausing = false;            // turn the radio off while pausing
     bool bTxPowerLow = false;                   // tx power control
     int nBandWidth = 0;                         // 0 for 12.5k and 1 for 25k
@@ -400,8 +409,16 @@ MenuItem RadioMenuMore[] = {
 MenuItem RadioTimersMenu[] = {
     {eExit,"Radio Timers"},
     {eTextInt,"Start Delay: %d Min",GetIntegerValue,&SystemInfo.nStartDelayTimer,0,120},
-    {eTextInt,"TX Send: %d Sec",GetIntegerValue,&SystemInfo.nTxTime,1,90},  // too much xmit time causes hot radio
-    {eTextInt,"TX Pause: %d Sec",GetIntegerValue,&SystemInfo.nTxPause,1,1200},
+    {eBool,"Timer Mode: %s",ToggleBool,&SystemInfo.bUseFixedTimers,0,0,0,"Fixed","Random"},
+    {eIfEqual,"",NULL,&SystemInfo.bUseFixedTimers,true},
+        {eTextInt,"TX Send: %d Sec",GetIntegerValue,&SystemInfo.nTxTimeFixed,10,90},  // too much xmit time causes hot radio
+        {eTextInt,"TX Pause: %d Sec",GetIntegerValue,&SystemInfo.nTxPauseFixed,1,1200},
+    {eElse},
+        {eTextInt,"TX Send Min: %d Sec",GetIntegerValue,&SystemInfo.nTxTimeMin,10,90},  // too much xmit time causes hot radio
+        {eTextInt,"TX Send Max: %d Sec",GetIntegerValue,&SystemInfo.nTxTimeMax,10,90},  // too much xmit time causes hot radio
+        {eTextInt,"TX Pause Min: %d Sec",GetIntegerValue,&SystemInfo.nTxPauseMin,1,1200},
+        {eTextInt,"TX Pause Max: %d Sec",GetIntegerValue,&SystemInfo.nTxPauseMax,1,1200},
+    {eEndif},
     {eBool,"TX Stop: %s",ToggleBool,&SystemInfo.bStopImmediately,0,0,0,"Immediate","Finish Cycle"},
     {eBool,"Radio Pause: %s",ToggleBool,&SystemInfo.bSleepWhilePausing,0,0,0,"Sleep","Awake"},
     {eExit,PreviousMenu},

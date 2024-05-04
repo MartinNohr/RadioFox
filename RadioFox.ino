@@ -216,9 +216,31 @@ void TaskRunTransmit(void* parameter)
 	//Serial.println(String("xmit high water: ") + freestack);
 }
 
+// return random between two numbers, including both of them
+int GetRandomBetween(int one, int two)
+{
+	int delta = abs(one - two);
+	++delta;	// include the larger one
+	return (rand() % delta) + min(one, two);
+}
+
+// return the next pause time
+int NextTxTime()
+{
+	return SystemInfo.bUseFixedTimers ? SystemInfo.nTxTimeFixed : GetRandomBetween(SystemInfo.nTxTimeMin, SystemInfo.nTxTimeMax);
+}
+
+// return the next tx time
+int NextPauseTime()
+{
+	return SystemInfo.bUseFixedTimers ? SystemInfo.nTxPauseFixed : GetRandomBetween(SystemInfo.nTxPauseMin, SystemInfo.nTxPauseMax);
+}
+
 // all the timing and screen display is done here
 void TaskRunRadio(void* parameter)
 {
+	// init the random generator used for timers
+	srand(analogRead(BATTERY_SENSOR_GPIO));
 	const char* cStatusText = NULL;
 	uint32_t status = 0;
 	bool bTransmitting = false;
@@ -273,7 +295,7 @@ void TaskRunRadio(void* parameter)
 					// it must be a string they sent us
 					cStatusText = (const char*)status;
 					txCount++;
-					secondsLeft = SystemInfo.nTxTime;
+					secondsLeft = NextTxTime();;
 				}
 				else {
 					// tell the xmitter to stop
@@ -297,7 +319,7 @@ void TaskRunRadio(void* parameter)
 			// check if the xmitter is finished
 			if (!TaskRunTransmitHandle) {
 				bWaitingForStop = false;
-				secondsLeft = SystemInfo.nTxPause;
+				secondsLeft = NextPauseTime();
 				// sleep radio if required
 				if (SystemInfo.bSleepWhilePausing) {
 					RadioEnable(false);
@@ -322,7 +344,7 @@ void TaskRunRadio(void* parameter)
 			char fmt[20];
 			String str = cStatusText;
 			if (bWaitingForStop) {
-				str = cStatusText + String(": Stopping");
+				str = cStatusText + String(": Stopping Transmit");
 			}
 			else {
 				if (delayedSeconds) {
@@ -724,6 +746,7 @@ void setup()
 	while (!Serial.availableForWrite()) {
 		delay(10);
 	}
+	//******
 	//esp_chip_info_t data;
 	//esp_chip_info(&data);
 	//Serial.println(String("chip:") + data.model + " features:" + String(data.features, 2) + " cores:" + data.cores);
