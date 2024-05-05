@@ -344,7 +344,7 @@ void TaskRunRadio(void* parameter)
 			char fmt[20];
 			String str = cStatusText;
 			if (bWaitingForStop) {
-				str = cStatusText + String(": Stopping Transmit");
+				str = cStatusText + String(": Stopping");
 			}
 			else {
 				if (delayedSeconds) {

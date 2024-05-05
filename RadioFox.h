@@ -412,12 +412,12 @@ MenuItem RadioTimersMenu[] = {
     {eBool,"Timer Mode: %s",ToggleBool,&SystemInfo.bUseFixedTimers,0,0,0,"Fixed","Random"},
     {eIfEqual,"",NULL,&SystemInfo.bUseFixedTimers,true},
         {eTextInt,"TX Send: %d Sec",GetIntegerValue,&SystemInfo.nTxTimeFixed,10,90},  // too much xmit time causes hot radio
-        {eTextInt,"TX Pause: %d Sec",GetIntegerValue,&SystemInfo.nTxPauseFixed,1,1200},
+        {eTextInt,"TX Pause: %d Sec",GetIntegerValue,&SystemInfo.nTxPauseFixed,10,1200},
     {eElse},
         {eTextInt,"TX Send Min: %d Sec",GetIntegerValue,&SystemInfo.nTxTimeMin,10,90},  // too much xmit time causes hot radio
         {eTextInt,"TX Send Max: %d Sec",GetIntegerValue,&SystemInfo.nTxTimeMax,10,90},  // too much xmit time causes hot radio
-        {eTextInt,"TX Pause Min: %d Sec",GetIntegerValue,&SystemInfo.nTxPauseMin,1,1200},
-        {eTextInt,"TX Pause Max: %d Sec",GetIntegerValue,&SystemInfo.nTxPauseMax,1,1200},
+        {eTextInt,"TX Pause Min: %d Sec",GetIntegerValue,&SystemInfo.nTxPauseMin,10,1200},
+        {eTextInt,"TX Pause Max: %d Sec",GetIntegerValue,&SystemInfo.nTxPauseMax,10,1200},
     {eEndif},
     {eBool,"TX Stop: %s",ToggleBool,&SystemInfo.bStopImmediately,0,0,0,"Immediate","Finish Cycle"},
     {eBool,"Radio Pause: %s",ToggleBool,&SystemInfo.bSleepWhilePausing,0,0,0,"Sleep","Awake"},
