@@ -1189,6 +1189,9 @@ void GetSelectChoiceList(MenuItem* menu)
 {
 	// holds the current selection
 	int nTextIndex = *(int*)menu->value;
+	// just to be safe
+	if (nTextIndex < 0)
+		nTextIndex = 0;
 	// holds the list starting index
 	int nStartIndex = nTextIndex;
 	// see if we need adjust the start
@@ -1205,7 +1208,7 @@ void GetSelectChoiceList(MenuItem* menu)
 		if (bRedraw) {
 			String line;
 			bool hilite;
-			for (int ix = 0; ix < menu->max && ix < nMenuLineCount - 1; ++ix) {
+			for (int ix = 0; ix <= menu->max && ix < nMenuLineCount - 1; ++ix) {
 				// high light the current selection
 				hilite = (nTextIndex - nStartIndex) == ix;
 				line = menu->nameList[ix + nStartIndex];
@@ -1254,7 +1257,8 @@ void GetSelectChoiceList(MenuItem* menu)
 			*(int*)menu->value = nTextIndex;
 			done = true;
 			break;
-		case BTN_SELECT:	// use this to cancel
+		case BTN_SELECT:	// use this to cancel and return -1
+			*(int*)menu->value = -1;
 			done = true;
 			break;
 		}
@@ -1828,17 +1832,191 @@ bool CompareNames(const String & a, const String & b)
 	return a1.compareTo(b1) < 0;
 }
 
-// save the eeprom settings
-void SaveEepromSettings(MenuItem * menu)
+#define MAX_SETTINGS_NAME_LENGTH 13
+// get a filename from the user to save the settings in
+String GetFilename()
 {
-	SaveLoadSettings(true, false);
+	static String text = "";
+	ClearScreen();
+	String letters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-_$#()@";
+	CRotaryDialButton::Button button = BTN_NONE;
+	bool done = false;
+	DisplayLine(5, "Rotate dial to select, Click appends char", SystemInfo.menuTextColor);
+	DisplayLine(6, "Long press dial exits, BTN0 deletes last char, BTN0 Long clears text", SystemInfo.menuTextColor);
+	int nLetterIndex = 0;
+	// redraw screen only when necessary
+	bool bRedraw = true;
+	const int partA = 18;	// first line
+	do {
+		if (bRedraw) {
+			DisplayLine(0, text, SystemInfo.menuTextColor);
+			// draw the text
+			DisplayLine(1, letters.substring(0, partA), SystemInfo.menuTextColor);
+			DisplayLine(2, letters.substring(partA, partA * 2), SystemInfo.menuTextColor);
+			DisplayLine(3, letters.substring(partA * 2), SystemInfo.menuTextColor);
+			// figure out which letter to hilite
+			int y = nLetterIndex / partA;
+			y = constrain(y, 0, 2);
+			int x = tft.textWidth(letters.substring(y * partA, nLetterIndex));
+			char ch[2] = { 0 };
+			ch[0] = letters[nLetterIndex];
+			if (SystemInfo.bMenuStar) {
+				tft.drawChar(x + 1, tft.fontHeight() * (y + 2) - 6, letters[nLetterIndex], TFT_WHITE, TFT_BLACK, 1);
+			}
+			else {
+				tft.fillRect(x + 1, tft.fontHeight() * (y + 1) - 4, tft.textWidth(ch), (y + 2) + tft.fontHeight(), SystemInfo.menuTextColor);
+				tft.drawChar(x + 1, tft.fontHeight() * (y + 2) - 6, letters[nLetterIndex], TFT_BLACK, TFT_BLACK, 1);
+			}
+			bRedraw = false;
+		}
+		button = ReadButton();
+		switch (button) {
+		case BTN_NONE:
+		case BTN_B1_CLICK:
+		case BTN_B2_LONG:
+		case BTN_B1_LONG:
+			break;
+		case BTN_LEFT:
+			if (nLetterIndex)
+				--nLetterIndex;
+			else
+				nLetterIndex = letters.length() - 1;
+			bRedraw = true;
+			break;
+		case BTN_RIGHT:
+			if (nLetterIndex < letters.length() - 1)
+				++nLetterIndex;
+			else
+				nLetterIndex = 0;
+			bRedraw = true;
+			break;
+		case BTN_SELECT:	// add a letter if room
+			if (text.length() < MAX_SETTINGS_NAME_LENGTH) {
+				text += letters[nLetterIndex];
+				bRedraw = true;
+			}
+			break;
+		case BTN_B0_CLICK:	// delete last character
+			if (text.length())
+				text = text.substring(0, text.length() - 1);
+			bRedraw = true;
+			break;
+		case BTN_B0_LONG:	// clear the text
+			text.clear();
+			bRedraw = true;
+			break;
+		case BTN_LONG:
+			done = true;
+			break;
+		}
+	} while (!done);
+	return text;
 }
 
-// load eeprom settings
-void LoadEepromSettings(MenuItem * menu)
+// Save the settings in a named file
+void SaveSettingsInFile(MenuItem*)
 {
-	SaveLoadSettings(false, false);
+	// get the filename
+	String fname = GetFilename();
+	if (fname.length() == 0)
+		return;
+	// open the file and save the settings
+	FsFile binFile;
+	// first check if the file exists
+	if (SD.exists("/" + fname + ".RFS") && !GetYesNo("Replace\n" + fname + "?")) {
+		WriteMessage(fname + "\nnot changed");
+		return;
+	}
+	// if we get here, write the file
+	binFile = SD.open("/" + fname + ".RFS", O_WRONLY | O_CREAT | O_TRUNC);
+	if (binFile.getError() == 0) {
+		binFile.write(&SystemInfo, sizeof(SystemInfo));
+		binFile.close();
+		WriteMessage(fname + "\nsaved");
+	}
 }
+
+// get the name from the SD list
+String GetSettingsFilename()
+{
+	int index = 0;
+	// read from the root dir
+	FsFile root = SD.open("/", O_RDONLY);
+	FsFile file;
+	std::vector<String> namelist;
+	while ((file = root.openNextFile()) != NULL) {
+		if (file.isFile()) {
+			char fname[100];
+			String sfname;
+			file.getName(fname, sizeof(fname));
+			sfname = fname;
+			if (sfname.endsWith(".RFS")) {
+				sfname = sfname.substring(0, sfname.length() - 4);
+				namelist.push_back(sfname);
+				//Serial.println(sfname);
+			}
+			file.close();
+		}
+	}
+	root.close();
+	if (namelist.size() == 0) {
+		WriteMessage("No saved settings");
+		return "";
+	}
+	const char** list;
+	list = (const char**)calloc(sizeof(char*), namelist.size());
+	if (list == NULL) {
+		WriteMessage("failed to alloc file list", true);
+		return "";
+	}
+
+	for (int ix = 0; ix < namelist.size(); ++ix) {
+		list[ix] = namelist[ix].c_str();
+	}
+	MenuItem mi = { eList, "File: %s", GetSelectChoice, &index, 0, namelist.size() - 1, 0, NULL, NULL, NULL, list };
+	GetSelectChoiceList(&mi);
+	free(list);
+	return (index == -1) ? "" : namelist[index];
+}
+
+// load the settings from a named file
+void LoadSettingsFromFile(MenuItem*)
+{
+	FsFile file;
+	String fname = GetSettingsFilename();
+	if (fname.length()) {
+		if ((file = SD.open("/" + fname + ".RFS", O_RDONLY)) != NULL) {
+			file.read(&SystemInfo, sizeof(SystemInfo));
+			file.close();
+			WriteMessage("loaded\n" + fname);
+		}
+	}
+}
+
+// Delete a settings file
+void DeleteSettingsFile(MenuItem*)
+{
+	String fname = GetSettingsFilename();
+	String fullname = "/" + fname + ".RFS";
+	if (fname.length()) {
+		if (SD.exists(fullname)) {
+			SD.remove(fullname);
+			WriteMessage("deleted\n" + fname);
+		}
+	}
+}
+
+//// save the eeprom settings
+//void SaveEepromSettings(MenuItem * menu)
+//{
+//	SaveLoadSettings(true, false);
+//}
+//
+//// load eeprom settings
+//void LoadEepromSettings(MenuItem * menu)
+//{
+//	SaveLoadSettings(false, false);
+//}
 
 // get a yes/no response
 bool GetYesNo(String msg)
@@ -2720,36 +2898,36 @@ void GetText(MenuItem* menu)
 	}
 }
 
-// display the USB voltage
-void ShowUsbVoltage(MenuItem* menu)
-{
-	ClearScreen();
-	DisplayLine(nMenuLineCount - 1, "Click/Dial=Cancel", SystemInfo.menuTextColor);
-	CRotaryDialButton::Button button = BTN_NONE;
-	bool done = false;
-	do {
-		float bat = GetUsbVoltage();
-		String str;
-		str = String("Voltage: ") + bat;
-		DisplayLine(0, str);
-		button = ReadButton();
-		switch (button) {
-		case BTN_NONE:
-			break;
-		case BTN_B1_CLICK:
-		case BTN_B2_LONG:
-		case BTN_B1_LONG:
-		case BTN_B0_CLICK:
-		case BTN_B0_LONG:
-		case BTN_RIGHT:
-		case BTN_SELECT:
-			// anything cancels
-			done = true;
-			break;
-		}
-		vTaskDelay(pdMS_TO_TICKS(500));
-	} while (!done);
-}
+//// display the USB voltage
+//void ShowUsbVoltage(MenuItem* menu)
+//{
+//	ClearScreen();
+//	DisplayLine(nMenuLineCount - 1, "Click/Dial=Cancel", SystemInfo.menuTextColor);
+//	CRotaryDialButton::Button button = BTN_NONE;
+//	bool done = false;
+//	do {
+//		float bat = GetUsbVoltage();
+//		String str;
+//		str = String("Voltage: ") + bat;
+//		DisplayLine(0, str);
+//		button = ReadButton();
+//		switch (button) {
+//		case BTN_NONE:
+//			break;
+//		case BTN_B1_CLICK:
+//		case BTN_B2_LONG:
+//		case BTN_B1_LONG:
+//		case BTN_B0_CLICK:
+//		case BTN_B0_LONG:
+//		case BTN_RIGHT:
+//		case BTN_SELECT:
+//			// anything cancels
+//			done = true;
+//			break;
+//		}
+//		vTaskDelay(pdMS_TO_TICKS(500));
+//	} while (!done);
+//}
 
 // get an audio file from the SD card
 void GetAudioFile(MenuItem* menu)
@@ -3052,22 +3230,22 @@ void sendDash() {
 	//   Serial.print("-");
 }
 
-// get USB voltage on TTGO
-float GetUsbVoltage()
-{
-	//analogSetPinAttenuation(digitalPinToDacChannel(6), ADC_0db);
-	//analogReadResolution(12);
-	//float measurement = analogReadMilliVolts(6);
-	//float voltage = (measurement / 4095.0) * 7.26;
-	//return voltage;
-	uint16_t v1 = analogRead(34);
-	uint16_t v2 = analogRead(14);
-
-	float battery_voltage = ((float)v1 / 4095.0) * 2.0 * 3.3 * (1100 / 1000.0);
-	float other_voltage = ((float)v2 / 4095.0) * 2.0 * 3.3 * (1100 / 1000.0);
-	//return other_voltage;
-	return battery_voltage;
-}
+//// get USB voltage on TTGO
+//float GetUsbVoltage()
+//{
+//	//analogSetPinAttenuation(digitalPinToDacChannel(6), ADC_0db);
+//	//analogReadResolution(12);
+//	//float measurement = analogReadMilliVolts(6);
+//	//float voltage = (measurement / 4095.0) * 7.26;
+//	//return voltage;
+//	uint16_t v1 = analogRead(34);
+//	uint16_t v2 = analogRead(14);
+//
+//	float battery_voltage = ((float)v1 / 4095.0) * 2.0 * 3.3 * (1100 / 1000.0);
+//	float other_voltage = ((float)v2 / 4095.0) * 2.0 * 3.3 * (1100 / 1000.0);
+//	//return other_voltage;
+//	return battery_voltage;
+//}
 
 // enable or disable radio
 void RadioEnable(bool bEnable)

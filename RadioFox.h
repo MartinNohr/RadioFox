@@ -1,6 +1,6 @@
 #pragma once
 
-const char* FOX_Version = "0.26";
+const char* FOX_Version = "0.27";
 
 const char* StartFileName = "START.FOX";
 // some config things
@@ -113,13 +113,14 @@ void GetFileNamesFromSD(std::vector<String>& FileNames, String ext = "", String 
 
 bool bWebRunning = false;                 // set while running from web
 
-// display dim modes, make sure sensor mode is last
+// display dim modes, make sure sensor mode is last (NOTE: no sensor on Radio Fox PCB)
 enum DISPLAY_DIM_MODES { DISPLAY_DIM_MODE_NONE, DISPLAY_DIM_MODE_TIME};
 const char* DisplayDimModeText[] = { "None","Timer"};
 
 // NOTE: update CompareRadioSettings if anything important is changed that needs the radio to initialized
 typedef struct SYSTEM_INFO {
     uint16_t menuTextColor = TFT_WHITE;
+    uint16_t menuHiLiteColor = TFT_BLUE;
     bool bMenuStar = false;
     int nPreviewScrollCols = 20;                // now many columns to scroll with dial during preview
     int nDisplayBrightness = 100;               // this is in %
@@ -150,7 +151,7 @@ typedef struct SYSTEM_INFO {
     int nTxPauseMax = 10 * 60;
 
     bool bSleepWhilePausing = false;            // turn the radio off while pausing
-    bool bTxPowerLow = false;                   // tx power control
+    bool bTxPowerLow = true;                    // tx power control
     int nBandWidth = 0;                         // 0 for 12.5k and 1 for 25k
 #if RADIO_UHF
     int nFrequency = 400000;                    // UHF radio frequency in kHz
@@ -234,7 +235,7 @@ typedef struct MenuItem {
     };
     const void* value;                  // associated variable
     long min;                           // the minimum value, also used for ifequal, min length for string
-    long max;                           // the maximum value, also size to compare for if, max length for string
+    long max;                           // the maximum value, also size to compare for if, max length for string or eList
     int decimals;                       // 0 for int, 1 for 0.1, 2 for 0.01 etc
     const char* on;                     // text for boolean true
     const char* off;                    // text for boolean false
@@ -249,8 +250,8 @@ void FactorySettings(MenuItem* menu);
 void EraseFlash(MenuItem* menu);
 void EraseStartFile(MenuItem* menu);
 void CheckUpdateBin(MenuItem* menu);
-void SaveEepromSettings(MenuItem* menu);
-void LoadEepromSettings(MenuItem* menu);
+//void SaveEepromSettings(MenuItem* menu);
+//void LoadEepromSettings(MenuItem* menu);
 void GetIntegerValue(MenuItem* menu);
 void GetSelectChoice(MenuItem* menu);
 void GetSelectChoiceList(MenuItem* menu);
@@ -265,10 +266,14 @@ void GetNetworkName(MenuItem* menu);
 //void ChangeNetCredentials(MenuItem* menu);
 void GetText(MenuItem* menu);
 void GetAudioFile(MenuItem* menu);
-void ShowUsbVoltage(MenuItem* menu);
+//void ShowUsbVoltage(MenuItem* menu);
 void CancelWaitTimers(MenuItem*);
 void SetLowBattery(MenuItem*);
 void SetHighBattery(MenuItem*);
+// settings in files
+void SaveSettingsInFile(MenuItem*);
+void LoadSettingsFromFile(MenuItem*);
+void DeleteSettingsFile(MenuItem*);
 
 const char* PreviousMenu = "Back";
 MenuItem BatteryMenu[] = {
@@ -349,9 +354,12 @@ MenuItem SystemMenu[] = {
     // make sure this one is last
     {eTerminate}
 };
-MenuItem EepromMenu[] = {
+MenuItem SaveSettingsMenu[] = {
     {eExit,"Saved Settings"},
-    {eText,"Save Current Settings",SaveEepromSettings},
+    {eText,"Save Settings File",SaveSettingsInFile},
+    {eText,"Load Settings File",LoadSettingsFromFile},
+    {eText,"Delete Settings File",DeleteSettingsFile},
+    //{eText,"Save Current Settings",SaveEepromSettings},
     {eText,"Reset All Settings",FactorySettings},
     {eText,"Format EEPROM",EraseFlash},
     {eExit,PreviousMenu},
@@ -454,7 +462,7 @@ MenuItem MainMenu[] = {
     {eMenu,"Radio Timers",{.menu = RadioTimersMenu}},
     {eMenu,"More Radio Settings",{.menu = RadioMenuMore}},
     {eText,"Cancel Waits/TX Now",CancelWaitTimers},
-    {eMenu,"Saved Settings",{.menu = EepromMenu}},
+    {eMenu,"Saved Settings",{.menu = SaveSettingsMenu}},
     {eMenu,"System Settings",{.menu = SystemMenu}},
     {eReboot,"Reboot"},
     // make sure this one is last
