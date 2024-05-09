@@ -1926,8 +1926,10 @@ void SaveSettingsInFile(MenuItem*)
 {
 	// get the filename
 	String fname = GetFilename();
-	if (fname.length() == 0)
+	if (fname.length() == 0) {
+		WriteMessage("no file saved");
 		return;
+	}
 	// open the file and save the settings
 	FsFile binFile;
 	// first check if the file exists
@@ -1941,6 +1943,9 @@ void SaveSettingsInFile(MenuItem*)
 		binFile.write(&SystemInfo, sizeof(SystemInfo));
 		binFile.close();
 		WriteMessage(fname + "\nsaved");
+	}
+	else {
+		WriteMessage(fname + "\nnot saved");
 	}
 }
 
@@ -1996,8 +2001,14 @@ void LoadSettingsFromFile(MenuItem*)
 		if ((file = SD.open("/" + fname + ".RFS", O_RDONLY)) != NULL) {
 			file.read(&SystemInfo, sizeof(SystemInfo));
 			file.close();
-			WriteMessage("loaded\n" + fname);
+			WriteMessage(fname + "\nloaded");
 		}
+		else {
+			WriteMessage(fname + "\nnot loaded");
+		}
+	}
+	else {
+		WriteMessage("no file selected");
 	}
 }
 
@@ -2008,9 +2019,17 @@ void DeleteSettingsFile(MenuItem*)
 	String fullname = "/" + fname + ".RFS";
 	if (fname.length()) {
 		if (SD.exists(fullname)) {
-			SD.remove(fullname);
-			WriteMessage("deleted\n" + fname);
+			if (GetYesNo("delete: \n" + fname)) {
+				SD.remove(fullname);
+				WriteMessage(fname + "\ndeleted");
+			}
+			else {
+				WriteMessage(fname + "\nnot deleted");
+			}
 		}
+	}
+	else {
+		WriteMessage("no file selected");
 	}
 }
 
@@ -3045,12 +3064,6 @@ void ToggleWebServer(MenuItem* menu)
 	bool bWas = *(bool*)menu->value;
 	ToggleBool(menu);
 	bControllerReboot = (bWas != *(bool*)menu->value);
-}
-
-void EraseStartFile(MenuItem* menu)
-{
-	//if (GetYesNo("Erase START.MIW?"))
-	//	WriteOrDeleteConfigFile("", true, true, false);
 }
 
 // read the files from the card
