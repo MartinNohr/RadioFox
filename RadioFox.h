@@ -1,6 +1,6 @@
 #pragma once
 
-const char* FOX_Version = "0.27";
+const char* FOX_Version = "0.28";
 
 const char* StartFileName = "START.FOX";
 // some config things
@@ -119,6 +119,7 @@ const char* DisplayDimModeText[] = { "None","Timer"};
 
 // NOTE: update CompareRadioSettings if anything important is changed that needs the radio to initialized
 typedef struct SYSTEM_INFO {
+    int nSystemInfoVersion = 1;                 // change as necessary
     uint16_t menuTextColor = TFT_WHITE;
     uint16_t menuHiLiteColor = TFT_BLUE;
     bool bMenuStar = false;
@@ -210,7 +211,7 @@ enum eDisplayOperation {
     eText,              // handle text with optional %s value, display only
     eTextInt,           // handle text with optional %d value
     eEditText,          // edit a text string
-    eChooseFile,        // choose a file from the SD card
+    //eChooseFile,        // choose a file from the SD card
     eBool,              // handle bool using %s and on/off values
     eMenu,              // load another menu
     eExit,              // closes this menu, handles optional %d or %s in string

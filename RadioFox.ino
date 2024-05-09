@@ -959,7 +959,7 @@ void RunMenus(int button)
 				case eText:
 				case eTextInt:
 				case eEditText:
-				case eChooseFile:
+				//case eChooseFile:
 				case eBool:
 				case eList:
 					g_bMenuChanged = true;
@@ -1071,11 +1071,11 @@ void ShowMenu(struct MenuItem* menu)
 		case eTextInt:
 		case eText:
 		case eEditText:
-		case eChooseFile:
+		//case eChooseFile:
 			bMenuValid[menix] = true;
 			if (menu->value) {
 				val = *(int*)menu->value;
-				if (menu->op == eText || menu->op == eEditText || menu->op == eChooseFile) {
+				if (menu->op == eText || menu->op == eEditText /*|| menu->op == eChooseFile*/) {
 					sprintf(line, menu->text, (char*)(menu->value));
 				}
 				else if (menu->op == eTextInt) {
@@ -1091,6 +1091,7 @@ void ShowMenu(struct MenuItem* menu)
 		case eList:
 			bMenuValid[menix] = true;
 			val = *(int*)menu->value;
+			Serial.println(String("val:") + val);
 			sprintf(line, menu->text, menu->nameList[val]);
 			// next line
 			++y;
@@ -1184,11 +1185,16 @@ void GetSelectChoice(MenuItem * menu)
 	ResetTextLines();
 }
 
+// some people need to know if this was a cancel (simple click) return but function must be void
+// YEAH! I know this is a terrible way to do this, but the function has to return void for the menu system
+bool g_bGetSelectChoiceListCancel;
 // make a selection from the supplied text list in the menu
 void GetSelectChoiceList(MenuItem* menu)
 {
+	g_bGetSelectChoiceListCancel = false;
 	// holds the current selection
 	int nTextIndex = *(int*)menu->value;
+	int nOriginal = nTextIndex;
 	// just to be safe
 	if (nTextIndex < 0)
 		nTextIndex = 0;
@@ -1256,10 +1262,12 @@ void GetSelectChoiceList(MenuItem* menu)
 		case BTN_LONG:	// set the new index
 			*(int*)menu->value = nTextIndex;
 			done = true;
+			g_bGetSelectChoiceListCancel = false;
 			break;
-		case BTN_SELECT:	// use this to cancel and return -1
-			*(int*)menu->value = -1;
+		case BTN_SELECT:	// use this to cancel and return original value
+			*(int*)menu->value = nOriginal;
 			done = true;
+			g_bGetSelectChoiceListCancel = true;
 			break;
 		}
 	} while (!done);
@@ -1976,7 +1984,7 @@ String GetSettingsFilename()
 	MenuItem mi = { eList, "File: %s", GetSelectChoice, &index, 0, namelist.size() - 1, 0, NULL, NULL, NULL, list };
 	GetSelectChoiceList(&mi);
 	free(list);
-	return (index == -1) ? "" : namelist[index];
+	return g_bGetSelectChoiceListCancel ? "" : namelist[index];
 }
 
 // load the settings from a named file
@@ -2486,7 +2494,7 @@ String MenuToHtml(MenuItem * pMenu, bool bActive, int nLevel)
 		switch (menu->op) {
 		case eText:
 		case eEditText:
-		case eChooseFile:
+		//case eChooseFile:
 			str += String("<p>") + line + "</p>";
 			break;
 		case eTextInt:
