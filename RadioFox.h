@@ -1,6 +1,6 @@
 #pragma once
 
-const char* FOX_Version = "0.29";
+const char* FOX_Version = "0.30";
 
 const char* StartFileName = "START.FOX";
 // some config things
@@ -272,6 +272,7 @@ void CancelWaitTimers(MenuItem*);
 void SetLowBattery(MenuItem*);
 void SetHighBattery(MenuItem*);
 // settings in files
+void CreateSettingsFile(MenuItem*);
 void SaveSettingsInFile(MenuItem*);
 void LoadSettingsFromFile(MenuItem*);
 void DeleteSettingsFile(MenuItem*);
@@ -350,19 +351,18 @@ MenuItem SystemMenu[] = {
     //{eText,"5V Measurement",ShowUsbVoltage},
     //{eMenu,"WiFi Settings",{.menu = WiFiMenu}},
     {eText,"New Version BIN file",CheckUpdateBin},
-    {eText,"Reset All Settings",FactorySettings},
+    {eText,"Factory Settings",FactorySettings},
+    {eText,"Format EEPROM",EraseFlash},
     {eExit,PreviousMenu},
     // make sure this one is last
     {eTerminate}
 };
 MenuItem SaveSettingsMenu[] = {
-    {eExit,"Saved Settings"},
-    {eText,"Save Settings File",SaveSettingsInFile},
-    {eText,"Load Settings File",LoadSettingsFromFile},
-    {eText,"Delete Settings File",DeleteSettingsFile},
-    //{eText,"Save Current Settings",SaveEepromSettings},
-    {eText,"Reset All Settings",FactorySettings},
-    {eText,"Format EEPROM",EraseFlash},
+    {eExit,"Saved Settings Files"},
+    {eText,"Create File",CreateSettingsFile},
+    {eText,"Save/Update File",SaveSettingsInFile},
+    {eText,"Load File",LoadSettingsFromFile},
+    {eText,"Delete File",DeleteSettingsFile},
     {eExit,PreviousMenu},
     // make sure this one is last
     {eTerminate}
@@ -463,7 +463,7 @@ MenuItem MainMenu[] = {
     {eMenu,"Radio Timers",{.menu = RadioTimersMenu}},
     {eMenu,"More Radio Settings",{.menu = RadioMenuMore}},
     {eText,"Cancel Waits/TX Now",CancelWaitTimers},
-    {eMenu,"Saved Settings",{.menu = SaveSettingsMenu}},
+    {eMenu,"Saved Settings Files",{.menu = SaveSettingsMenu}},
     {eMenu,"System Settings",{.menu = SystemMenu}},
     {eReboot,"Reboot"},
     // make sure this one is last

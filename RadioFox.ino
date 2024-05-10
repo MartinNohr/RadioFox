@@ -1185,13 +1185,17 @@ void GetSelectChoice(MenuItem * menu)
 	ResetTextLines();
 }
 
-// some people need to know if this was a cancel (simple click) return but function must be void
-// YEAH! I know this is a terrible way to do this, but the function has to return void for the menu system
-bool g_bGetSelectChoiceListCancel;
 // make a selection from the supplied text list in the menu
 void GetSelectChoiceList(MenuItem* menu)
 {
-	g_bGetSelectChoiceListCancel = false;
+	GetSelectChoiceListHelper(menu);
+}
+
+// some people need to know if this was a cancel (simple click) return but function must be void
+// return false if click for no choice, true if chosen
+bool GetSelectChoiceListHelper(MenuItem* menu)
+{
+	bool bRetval = true;
 	// holds the current selection
 	int nTextIndex = *(int*)menu->value;
 	int nOriginal = nTextIndex;
@@ -1262,16 +1266,17 @@ void GetSelectChoiceList(MenuItem* menu)
 		case BTN_LONG:	// set the new index
 			*(int*)menu->value = nTextIndex;
 			done = true;
-			g_bGetSelectChoiceListCancel = false;
+			bRetval = true;
 			break;
 		case BTN_SELECT:	// use this to cancel and return original value
 			*(int*)menu->value = nOriginal;
 			done = true;
-			g_bGetSelectChoiceListCancel = true;
+			bRetval = false;
 			break;
 		}
 	} while (!done);
 	ResetTextLines();
+	return bRetval;
 }
 
 // get integer values
@@ -1921,8 +1926,36 @@ String GetFilename()
 	return text;
 }
 
-// Save the settings in a named file
-void SaveSettingsInFile(MenuItem*)
+// get the name from the SD list
+String GetSettingsFilename()
+{
+	int index = 0;
+	std::vector<String> namelist;
+	GetFileNamesFromSD(namelist, "RFS");
+	if (namelist.size() == 0) {
+		WriteMessage("No saved settings");
+		return "";
+	}
+	const char** list;
+	list = (const char**)calloc(sizeof(char*), namelist.size());
+	if (list == NULL) {
+		WriteMessage("failed to alloc file list", true);
+		return "";
+	}
+
+	for (int ix = 0; ix < namelist.size(); ++ix) {
+		// remove the extension
+		namelist[ix] = namelist[ix].substring(0, namelist[ix].length() - 4);
+		list[ix] = namelist[ix].c_str();
+	}
+	MenuItem mi = { eList, "File: %s", GetSelectChoice, &index, 0, namelist.size() - 1, 0, NULL, NULL, NULL, list };
+	bool bChosen = GetSelectChoiceListHelper(&mi);
+	free(list);
+	return bChosen ? namelist[index] : "";
+}
+
+// create and save the settings in a named file
+void CreateSettingsFile(MenuItem*)
 {
 	// get the filename
 	String fname = GetFilename();
@@ -1949,47 +1982,32 @@ void SaveSettingsInFile(MenuItem*)
 	}
 }
 
-// get the name from the SD list
-String GetSettingsFilename()
+// Save or update the settings in a named file
+void SaveSettingsInFile(MenuItem*)
 {
-	int index = 0;
-	// read from the root dir
-	FsFile root = SD.open("/", O_RDONLY);
-	FsFile file;
-	std::vector<String> namelist;
-	while ((file = root.openNextFile()) != NULL) {
-		if (file.isFile()) {
-			char fname[100];
-			String sfname;
-			file.getName(fname, sizeof(fname));
-			sfname = fname;
-			if (sfname.endsWith(".RFS")) {
-				sfname = sfname.substring(0, sfname.length() - 4);
-				namelist.push_back(sfname);
-				//Serial.println(sfname);
-			}
-			file.close();
-		}
+	// get the filename
+	String fname = GetSettingsFilename();
+	if (fname.length() == 0) {
+		WriteMessage("no file saved");
+		return;
 	}
-	root.close();
-	if (namelist.size() == 0) {
-		WriteMessage("No saved settings");
-		return "";
+	// open the file and save the settings
+	FsFile binFile;
+	// first check if the file exists
+	if (SD.exists("/" + fname + ".RFS") && !GetYesNo("Replace\n" + fname + "?")) {
+		WriteMessage(fname + "\nnot changed");
+		return;
 	}
-	const char** list;
-	list = (const char**)calloc(sizeof(char*), namelist.size());
-	if (list == NULL) {
-		WriteMessage("failed to alloc file list", true);
-		return "";
+	// if we get here, write the file
+	binFile = SD.open("/" + fname + ".RFS", O_WRONLY | O_CREAT | O_TRUNC);
+	if (binFile.getError() == 0) {
+		binFile.write(&SystemInfo, sizeof(SystemInfo));
+		binFile.close();
+		WriteMessage(fname + "\nsaved");
 	}
-
-	for (int ix = 0; ix < namelist.size(); ++ix) {
-		list[ix] = namelist[ix].c_str();
+	else {
+		WriteMessage(fname + "\nnot saved");
 	}
-	MenuItem mi = { eList, "File: %s", GetSelectChoice, &index, 0, namelist.size() - 1, 0, NULL, NULL, NULL, list };
-	GetSelectChoiceList(&mi);
-	free(list);
-	return g_bGetSelectChoiceListCancel ? "" : namelist[index];
 }
 
 // load the settings from a named file
