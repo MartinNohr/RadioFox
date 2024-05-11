@@ -1229,7 +1229,7 @@ bool GetSelectChoiceListHelper(MenuItem* menu)
 					DisplayLine(ix, line, SystemInfo.menuTextColor);
 				}
 				else {
-					DisplayLine(ix, line, hilite ? TFT_BLACK : SystemInfo.menuTextColor, hilite ? SystemInfo.menuTextColor : TFT_BLACK);
+					DisplayLine(ix, line, hilite ? TFT_BLACK : SystemInfo.menuTextColor, hilite ? SystemInfo.menuHiLiteColor : TFT_BLACK);
 				}
 			}
 			bRedraw = false;
@@ -1428,33 +1428,69 @@ int FindMenuColor(uint16_t col)
 
 void SetMenuColor(MenuItem * menu)
 {
+	bool bHiLiteColor = false;
 	int maxIndex = sizeof(ColorList) / sizeof(*ColorList) - 1;
-	int colorIndex = FindMenuColor(SystemInfo.menuTextColor);
+	int nTextColorIndex = FindMenuColor(SystemInfo.menuTextColor);
+	int nHiLiteColorIndex = FindMenuColor(SystemInfo.menuHiLiteColor);
+	int nSavedTextColorIndex = nTextColorIndex;
+	int nSavedHiLiteColorIndex = nHiLiteColorIndex;
 	ClearScreen();
-	DisplayLine(4, "Rotate change value", SystemInfo.menuTextColor);
-	DisplayLine(5, "Long Press Exit", SystemInfo.menuTextColor);
+	DisplayLine(4, "Long B0 reset", SystemInfo.menuTextColor);
+	DisplayLine(5, "Rotate change value", SystemInfo.menuTextColor);
+	DisplayLine(6, "Long Press Accept", SystemInfo.menuTextColor);
 	bool done = false;
-	bool change = true;
+	bool bChanged = true;
+	int* npColor;
 	while (!done) {
-		if (change) {
+		npColor = bHiLiteColor ? &nHiLiteColorIndex : &nTextColorIndex;
+		if (bChanged) {
+			DisplayLine(3, String("B0 Change to ") + (bHiLiteColor ? "Text" : "HiLite"), ColorList[nSavedTextColorIndex]);
 			DisplayLine(0, "Text Color", SystemInfo.menuTextColor);
-			change = false;
+			DisplayLine(1, "HiLite Color", SystemInfo.menuTextColor, SystemInfo.menuHiLiteColor);
+			bChanged = false;
 		}
 		switch (ReadButton()) {
 		case CRotaryDialButton::BTN_LONGPRESS:
 			done = true;
 			break;
 		case CRotaryDialButton::BTN_RIGHT:
-			change = true;
-			colorIndex = ++colorIndex;
+			bChanged = true;
+			if (*npColor < maxIndex) {
+				++(*npColor);
+				// check if the same, if so fix it by skipping or going back
+				if (nTextColorIndex == nHiLiteColorIndex) {
+					if (*npColor < maxIndex)
+						++(*npColor);
+					else
+						--(*npColor);
+				}
+			}
 			break;
 		case CRotaryDialButton::BTN_LEFT:
-			change = true;
-			colorIndex = --colorIndex;
+			bChanged = true;
+			if (*npColor > 0) {
+				--(*npColor);
+				// check if the same, if so fix it by skipping or going back
+				if (nTextColorIndex == nHiLiteColorIndex) {
+					if (*npColor > 0)
+						--(*npColor);
+					else
+						++(*npColor);
+				}
+			}
+			break;
+		case CRotaryDialButton::BTN0_CLICK:
+			bChanged = true;
+			bHiLiteColor = !bHiLiteColor;
+			break;
+		case CRotaryDialButton::BTN0_LONGPRESS:
+			nHiLiteColorIndex = nSavedHiLiteColorIndex;
+			nTextColorIndex = nSavedTextColorIndex;
+			bChanged = true;
 			break;
 		}
-		colorIndex = constrain(colorIndex, 0, maxIndex);
-		SystemInfo.menuTextColor = ColorList[colorIndex];
+		SystemInfo.menuTextColor = ColorList[nTextColorIndex];
+		SystemInfo.menuHiLiteColor = ColorList[nHiLiteColorIndex];
 	}
 }
 
@@ -1760,7 +1796,7 @@ void DisplayMenuLine(int lineNum, int displine, String text)
 			DisplayLine(displine, mline, SystemInfo.menuTextColor, TFT_BLACK);
 		}
 		else {
-			DisplayLine(displine, mline, hilite ? TFT_BLACK : SystemInfo.menuTextColor, hilite ? SystemInfo.menuTextColor : TFT_BLACK);
+			DisplayLine(displine, mline, hilite ? TFT_BLACK : SystemInfo.menuTextColor, hilite ? SystemInfo.menuHiLiteColor : TFT_BLACK);
 		}
 	}
 }
@@ -3026,7 +3062,7 @@ void GetAudioFile(MenuItem* menu)
 						DisplayLine(ix, line, SystemInfo.menuTextColor);
 					}
 					else {
-						DisplayLine(ix, line, hilite ? TFT_BLACK : SystemInfo.menuTextColor, hilite ? SystemInfo.menuTextColor : TFT_BLACK);
+						DisplayLine(ix, line, hilite ? TFT_BLACK : SystemInfo.menuTextColor, hilite ? SystemInfo.menuHiLiteColor : TFT_BLACK);
 					}
 				}
 				bRedraw = false;

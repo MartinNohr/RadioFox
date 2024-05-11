@@ -1,6 +1,6 @@
 #pragma once
 
-const char* FOX_Version = "0.31";
+const char* FOX_Version = "0.32";
 
 const char* StartFileName = "START.FOX";
 // some config things
@@ -324,8 +324,8 @@ MenuItem DisplayMenu[] = {
         {eTextInt,"Display Dim Time: %d S",GetIntegerValue,&SystemInfo.nDisplayDimTime,0,120},
     {eEndif},
     {eMenu,"Sideways Scroll Settings",{.menu = SidewaysScrollMenu}},
-    {eBool,"Menu Choice: %s",ToggleBool,&SystemInfo.bMenuStar,0,0,0,"*","Color"},
-    {eText,"Text Color",SetMenuColor},
+    {eBool,"Menu Selection: %s",ToggleBool,&SystemInfo.bMenuStar,0,0,0,"*","Color"},
+    {eText,"Text/HiLite Colors",SetMenuColor},
     //{eBool,"Menu Wrap: %s",ToggleBool,&SystemInfo.bAllowMenuWrap,0,0,0,"Yes","No"},
     {eExit,PreviousMenu},
     // make sure this one is last
