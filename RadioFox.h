@@ -1,6 +1,6 @@
 #pragma once
 
-const char* FOX_Version = "0.32";
+const char* FOX_Version = "1.00";
 
 const char* StartFileName = "START.FOX";
 // some config things
@@ -121,7 +121,7 @@ const char* DisplayDimModeText[] = { "None","Timer"};
 typedef struct SYSTEM_INFO {
     int nSystemInfoVersion = 1;                 // change as necessary
     uint16_t menuTextColor = TFT_WHITE;
-    uint16_t menuHiLiteColor = TFT_BLUE;
+    uint16_t menuHiLiteColor = TFT_WHITE;
     bool bMenuStar = false;
     int nPreviewScrollCols = 20;                // now many columns to scroll with dial during preview
     int nDisplayBrightness = 100;               // this is in %

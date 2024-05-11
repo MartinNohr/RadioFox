@@ -1435,18 +1435,27 @@ void SetMenuColor(MenuItem * menu)
 	int nSavedTextColorIndex = nTextColorIndex;
 	int nSavedHiLiteColorIndex = nHiLiteColorIndex;
 	ClearScreen();
-	DisplayLine(4, "Long B0 reset", SystemInfo.menuTextColor);
-	DisplayLine(5, "Rotate change value", SystemInfo.menuTextColor);
-	DisplayLine(6, "Long Press Accept", SystemInfo.menuTextColor);
+	DisplayLine(3, "Rotate change value", SystemInfo.menuTextColor);
+	DisplayLine(5, "Long B0 reset", SystemInfo.menuTextColor);
+	DisplayLine(6, "Long Press Accept / Click Cancel", SystemInfo.menuTextColor);
 	bool done = false;
 	bool bChanged = true;
 	int* npColor;
+	String prefix0, prefix1;
 	while (!done) {
 		npColor = bHiLiteColor ? &nHiLiteColorIndex : &nTextColorIndex;
 		if (bChanged) {
-			DisplayLine(3, String("B0 Change to ") + (bHiLiteColor ? "Text" : "HiLite"), ColorList[nSavedTextColorIndex]);
-			DisplayLine(0, "Text Color", SystemInfo.menuTextColor);
-			DisplayLine(1, "HiLite Color", SystemInfo.menuTextColor, SystemInfo.menuHiLiteColor);
+			if (bHiLiteColor) {
+				prefix0 = "     ";
+				prefix1 = "--> ";
+			}
+			else {
+				prefix0 = "--> ";
+				prefix1 = "     ";
+			}
+			DisplayLine(4, String("B0 Change to ") + (bHiLiteColor ? "Text" : "HiLite"), ColorList[nSavedTextColorIndex]);
+			DisplayLine(0, prefix0 + "Text Color", SystemInfo.menuTextColor);
+			DisplayLine(1, prefix1 + "HiLite Color", TFT_BLACK, SystemInfo.menuHiLiteColor);
 			bChanged = false;
 		}
 		switch (ReadButton()) {
@@ -1457,26 +1466,12 @@ void SetMenuColor(MenuItem * menu)
 			bChanged = true;
 			if (*npColor < maxIndex) {
 				++(*npColor);
-				// check if the same, if so fix it by skipping or going back
-				if (nTextColorIndex == nHiLiteColorIndex) {
-					if (*npColor < maxIndex)
-						++(*npColor);
-					else
-						--(*npColor);
-				}
 			}
 			break;
 		case CRotaryDialButton::BTN_LEFT:
 			bChanged = true;
 			if (*npColor > 0) {
 				--(*npColor);
-				// check if the same, if so fix it by skipping or going back
-				if (nTextColorIndex == nHiLiteColorIndex) {
-					if (*npColor > 0)
-						--(*npColor);
-					else
-						++(*npColor);
-				}
 			}
 			break;
 		case CRotaryDialButton::BTN0_CLICK:
@@ -1487,6 +1482,11 @@ void SetMenuColor(MenuItem * menu)
 			nHiLiteColorIndex = nSavedHiLiteColorIndex;
 			nTextColorIndex = nSavedTextColorIndex;
 			bChanged = true;
+			break;
+		case CRotaryDialButton::BTN_CLICK:
+			nHiLiteColorIndex = nSavedHiLiteColorIndex;
+			nTextColorIndex = nSavedTextColorIndex;
+			done = true;
 			break;
 		}
 		SystemInfo.menuTextColor = ColorList[nTextColorIndex];
