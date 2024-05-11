@@ -1437,7 +1437,7 @@ void SetMenuColor(MenuItem * menu)
 	ClearScreen();
 	DisplayLine(3, "Rotate change value", SystemInfo.menuTextColor);
 	DisplayLine(5, "Long B0 reset", SystemInfo.menuTextColor);
-	DisplayLine(6, "Long Press Accept / Click Cancel", SystemInfo.menuTextColor);
+	DisplayLine(6, "Long=OK Click=Cancel", SystemInfo.menuTextColor);
 	bool done = false;
 	bool bChanged = true;
 	int* npColor;
