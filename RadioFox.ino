@@ -357,15 +357,15 @@ void TaskRunRadio(void* parameter)
 				}
 			}
 			if (IsRadioReady) {
-				DisplayLine(lineNo++, str);
+				DisplayLine(lineNo++, str, SystemInfo.menuTextColor);
 			}
 			else {
-				DisplayLine(lineNo++, "Waiting for Radio");
+				DisplayLine(lineNo++, "Waiting for Radio", SystemInfo.menuTextColor);
 			}
-			DisplayLine(lineNo++, String("TX Count: ") + txCount);
+			DisplayLine(lineNo++, String("TX Count: ") + txCount, SystemInfo.menuTextColor);
 			DisplayLine(lineNo++, "ID: " + String(SystemInfo.cBeaconString) + " " + SystemInfo.cRadioCallSign, SystemInfo.menuTextColor);
 			if (SystemInfo.bPlayAudioFile)
-				DisplayLine(lineNo++, "Music: " + String(SystemInfo.cAudioFile));
+				DisplayLine(lineNo++, "Music: " + String(SystemInfo.cAudioFile), SystemInfo.menuTextColor);
 			sprintf(fmt, "%03d MHz ", SystemInfo.nFrequency % 1000);
 			DisplayLine(lineNo++, String(SystemInfo.nFrequency / 1000) + "." + fmt + (SystemInfo.bTxPowerLow ? "Lo" : "Hi") + " Power", SystemInfo.menuTextColor);
 			DisplayLine(lineNo++, String("RX Offset: ") + RxOffsetModeText[SystemInfo.nRfOffset] + " kHz", SystemInfo.menuTextColor);
