@@ -1,6 +1,6 @@
 #pragma once
 
-const char* FOX_Version = "0.30";
+const char* FOX_Version = "0.31";
 
 const char* StartFileName = "START.FOX";
 // some config things
@@ -179,13 +179,13 @@ typedef struct SYSTEM_INFO {
     //
 };
 RTC_DATA_ATTR SYSTEM_INFO SystemInfo;
-//#define LOW_BATTERY_VALUE ((int)(SystemInfo.nBatteryFullLevel*3.2/4.2))
 
 typedef struct BATTERY_INFO {
-    int nBatteryFullLevel = 3500;               // 100% battery
-    int nBatteryLowLevel = 2700;                // the low battery
+    int nBatteryFullLevel = 3490;               // 100% battery
+    //int nBatteryLowLevel = 2700;                // the low battery
 };
 RTC_DATA_ATTR BATTERY_INFO BatteryInfo;
+#define LOW_BATTERY_VALUE ((int)(BatteryInfo.nBatteryFullLevel*3.25/4.2))
 
 // settings
 bool bSdCardValid = false;              // set to true when card is found
@@ -251,7 +251,7 @@ void FactorySettings(MenuItem* menu);
 void EraseFlash(MenuItem* menu);
 void EraseStartFile(MenuItem* menu);
 void CheckUpdateBin(MenuItem* menu);
-//void SaveEepromSettings(MenuItem* menu);
+void SaveEepromSettings(MenuItem* menu);
 //void LoadEepromSettings(MenuItem* menu);
 void GetIntegerValue(MenuItem* menu);
 void GetSelectChoice(MenuItem* menu);
@@ -284,8 +284,8 @@ MenuItem BatteryMenu[] = {
     //{eTextInt,"Reset Calibration",ResetBattery},
     {eTextInt,"Full Battery: %d",GetIntegerValue,&BatteryInfo.nBatteryFullLevel,2000,4000},
     {eTextInt,"Set Full Battery",SetHighBattery},
-    {eTextInt,"Low Battery: %d",GetIntegerValue,&BatteryInfo.nBatteryLowLevel,2000,4000},
-    {eTextInt,"Set Low Battery",SetLowBattery},
+    //{eTextInt,"Low Battery: %d",GetIntegerValue,&BatteryInfo.nBatteryLowLevel,2000,4000},
+    //{eTextInt,"Set Low Battery",SetLowBattery},
     {eText,"Read Battery Raw Data",ShowBattery},
     {eExit,PreviousMenu},
     // make sure this one is last
@@ -465,6 +465,7 @@ MenuItem MainMenu[] = {
     {eText,"Cancel Waits/TX Now",CancelWaitTimers},
     {eMenu,"Saved Settings Files",{.menu = SaveSettingsMenu}},
     {eMenu,"System Settings",{.menu = SystemMenu}},
+    {eText,"Save Current Settings",SaveEepromSettings},
     {eReboot,"Reboot"},
     // make sure this one is last
 {eTerminate}

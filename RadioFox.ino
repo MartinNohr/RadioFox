@@ -174,11 +174,12 @@ void TaskRunTransmit(void* parameter)
 		TaskHandle_t* pTaskHandle;
 		bool* bRunThis;	// NULL to always run, else a boolean address
 	} RFTaskList[] = {
-		{"Music",TaskSendMusic,&TaskSendMusicHandle,&SystemInfo.bPlayAudioFile},
 		{"ID",TaskSendBeacon,&TaskSendBeaconHandle,NULL},
+		{"Music",TaskSendMusic,&TaskSendMusicHandle,&SystemInfo.bPlayAudioFile},
 	};
 	bool bDone = false;
 	while (IsRadioReady && IsTransmitEnabled && !bDone && ulTaskNotifyTake(pdTRUE, 0) == 0) {
+		int nLoopCount = 0;
 		for (const struct RFTaskEntry& pte : RFTaskList) {
 			// see if this should be run, NULL or *true means do it
 			if (pte.bRunThis == NULL || *pte.bRunThis) {
@@ -201,6 +202,7 @@ void TaskRunTransmit(void* parameter)
 				if (bDone || !IsTransmitEnabled)
 					break;
 			}
+			++nLoopCount;
 		}
 		vTaskDelay(pdMS_TO_TICKS(500));
 	}
@@ -224,13 +226,13 @@ int GetRandomBetween(int one, int two)
 	return (rand() % delta) + min(one, two);
 }
 
-// return the next pause time
+// return the next tx time
 int NextTxTime()
 {
 	return SystemInfo.bUseFixedTimers ? SystemInfo.nTxTimeFixed : GetRandomBetween(SystemInfo.nTxTimeMin, SystemInfo.nTxTimeMax);
 }
 
-// return the next tx time
+// return the next pause time
 int NextPauseTime()
 {
 	return SystemInfo.bUseFixedTimers ? SystemInfo.nTxPauseFixed : GetRandomBetween(SystemInfo.nTxPauseMin, SystemInfo.nTxPauseMax);
@@ -295,7 +297,7 @@ void TaskRunRadio(void* parameter)
 					// it must be a string they sent us
 					cStatusText = (const char*)status;
 					txCount++;
-					secondsLeft = NextTxTime();;
+					secondsLeft = NextTxTime();
 				}
 				else {
 					// tell the xmitter to stop
@@ -2051,12 +2053,12 @@ void DeleteSettingsFile(MenuItem*)
 	}
 }
 
-//// save the eeprom settings
-//void SaveEepromSettings(MenuItem * menu)
-//{
-//	SaveLoadSettings(true, false);
-//}
-//
+// save the eeprom settings
+void SaveEepromSettings(MenuItem * menu)
+{
+	SaveLoadSettings(true, false);
+}
+
 //// load eeprom settings
 //void LoadEepromSettings(MenuItem * menu)
 //{
@@ -2610,10 +2612,10 @@ int ReadBattery(int* raw)
 		// calculate the %
 		if (eSmooth >= BatteryInfo.nBatteryFullLevel)
 			percent = 100;
-		else if (eSmooth <= BatteryInfo.nBatteryLowLevel)
+		else if (eSmooth <= LOW_BATTERY_VALUE)
 			percent = 0;
 		else {
-			percent = (eSmooth - BatteryInfo.nBatteryLowLevel) * 100 / (BatteryInfo.nBatteryFullLevel - BatteryInfo.nBatteryLowLevel);
+			percent = (eSmooth - LOW_BATTERY_VALUE) * 100 / (BatteryInfo.nBatteryFullLevel - LOW_BATTERY_VALUE);
 		}
 		vTaskDelay(pdMS_TO_TICKS(2));
 	}
@@ -2692,11 +2694,11 @@ void ShowBattery(MenuItem* menu)
 	}
 }
 
-// set the low battery level from the current value
-void SetLowBattery(MenuItem*)
-{
-	ReadBattery(&BatteryInfo.nBatteryLowLevel);
-}
+//// set the low battery level from the current value
+//void SetLowBattery(MenuItem*)
+//{
+//	ReadBattery(&BatteryInfo.nBatteryLowLevel);
+//}
 
 // set the high battery level from the current value
 void SetHighBattery(MenuItem*)
