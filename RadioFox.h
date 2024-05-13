@@ -294,7 +294,7 @@ MenuItem BatteryMenu[] = {
 MenuItem SidewaysScrollMenu[] = {
     {eExit,"Sideways Scrolling"},
     {eTextInt,"Speed: %d mS",GetIntegerValue,&SystemInfo.nSidewayScrollSpeed,1,1000},
-    {eTextInt,"Pause: %d",GetIntegerValue,&SystemInfo.nSidewaysScrollPause,1,100},
+    {eTextInt,"Pause: %d mS",GetIntegerValue,&SystemInfo.nSidewaysScrollPause,1,100},
     {eTextInt,"Reverse Speed: %dx",GetIntegerValue,&SystemInfo.nSidewaysScrollReverse,1,20},
     {eExit,PreviousMenu},
     // make sure this one is last
