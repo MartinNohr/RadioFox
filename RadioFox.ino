@@ -391,6 +391,7 @@ void CancelWaitTimers(MenuItem*)
 }
 
 // show the transmit animation while sending
+#define TX_CIRCLE_SIZE 10
 void TaskXmitDisplay(void* parameters)
 {
 	// use this to make task run periodically
@@ -403,14 +404,14 @@ void TaskXmitDisplay(void* parameters)
 	while (true) {
 		if (!g_bSettingsMode) {
 			if (xSemaphoreTake(MutexDisplayHandle, portMAX_DELAY) == pdTRUE) {
-				cycle = cycle % 6;
+				cycle = cycle % TX_CIRCLE_SIZE;
 				if (!IsTransmitting)
 					cycle = 0;
 				if (cycle) {
-					tft.drawCircle(5, tft.height() - 6, cycle, TFT_RED);
+					tft.drawCircle(10, tft.height() - TX_CIRCLE_SIZE, cycle, TFT_RED);
 				}
 				else {
-					tft.fillCircle(5, tft.height() - 6, 6, TFT_BLACK);
+					tft.fillCircle(10, tft.height() - TX_CIRCLE_SIZE, TX_CIRCLE_SIZE, TFT_BLACK);
 				}
 				++cycle;
 				xSemaphoreGive(MutexDisplayHandle);
@@ -435,6 +436,21 @@ void TaskShowBattery(void* parameters)
 			ShowBattery(NULL);
 		}
 		ulTaskNotifyTake(pdTRUE, pdMS_TO_TICKS(10 * 1000));
+	}
+}
+
+// display a received character on the bottom line
+void DisplayBottomChar(char ch)
+{
+	if (!g_bSettingsMode) {
+		if (xSemaphoreTake(MutexDisplayHandle, portMAX_DELAY) == pdTRUE) {
+			tft.setTextColor(TFT_GREEN);
+			tft.setTextSize(2);
+			// add ' ' to ensure spot is cleared for shorter letters like 'l'
+			tft.drawString(String(ch) + ' ', tft.width() / 4, tft.height() - 16);
+			tft.setTextSize(1);
+			xSemaphoreGive(MutexDisplayHandle);
+		}
 	}
 }
 
@@ -471,6 +487,8 @@ void TaskDTMF(void* parameter)
 			if ((millis() > enableTimer) && ch != '*') {
 				continue;
 			}
+			// display it
+			DisplayBottomChar(ch);
 			// enable for the timer active seconds
 			enableTimer = millis() + SystemInfo.nDtmfEnableTimer * 1000;
 			bool bValidCommand = true;
