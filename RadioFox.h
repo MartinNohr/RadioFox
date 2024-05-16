@@ -1,6 +1,6 @@
 #pragma once
 
-const char* FOX_Version = "1.01";
+const char* FOX_Version = "1.02";
 
 const char* StartFileName = "START.FOX";
 // some config things
@@ -506,6 +506,7 @@ EventGroupHandle_t gRadioEventsHandle;
 #define RadioEventEnableTransmit 0x04   // transmit enabled
 #define RadioEventIsTransmitting 0x08   // keep track of transmitting or not
 #define RadioEventCancelWaits 0x10      // clear the delay and pause timers
+#define RadioEventFailed 0x20           // flag if radio fails
 // some useful macros
 #define IsRadioReady ((xEventGroupGetBits(gRadioEventsHandle) & RadioEventReady) != 0)
 #define IsTransmitEnabled ((xEventGroupGetBits(gRadioEventsHandle) & RadioEventEnableTransmit) != 0)

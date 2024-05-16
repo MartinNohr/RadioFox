@@ -1911,7 +1911,7 @@ String GetFilename()
 	CRotaryDialButton::Button button = BTN_NONE;
 	bool done = false;
 	DisplayLine(5, "Rotate dial to select, Click appends char", SystemInfo.menuTextColor);
-	DisplayLine(6, "Long press dial exits, BTN0 deletes last char, BTN0 Long clears text", SystemInfo.menuTextColor);
+	DisplayLine(6, "Long press dial exits, B0 deletes last char, B0 Long clears text", SystemInfo.menuTextColor);
 	int nLetterIndex = 0;
 	// redraw screen only when necessary
 	bool bRedraw = true;
@@ -2912,11 +2912,11 @@ void GetText(MenuItem* menu)
 		bool done = false;
 		if (menu->op == eBool) {
 			DisplayLine(5, "Rotate dial to select, Click appends char, '|' separates OR fields", SystemInfo.menuTextColor);
-			DisplayLine(6, "Long press dial exits, BTN0 deletes last char, BTN0 Long clears text", SystemInfo.menuTextColor);
+			DisplayLine(6, "Long press dial exits, B0 deletes last char, B0 Long clears text", SystemInfo.menuTextColor);
 		}
 		else {
-			DisplayLine(5, "Rotate dial to select, Click appends char, BTN1 Long toggles case", SystemInfo.menuTextColor);
-			DisplayLine(6, "Long press dial exits, BTN0 deletes last char, BTN0 Long clears text", SystemInfo.menuTextColor);
+			DisplayLine(5, "Rotate dial to select, Click appends char, B1 Long toggles case", SystemInfo.menuTextColor);
+			DisplayLine(6, "Long press dial exits, B0 deletes last char, B0 Long clears text", SystemInfo.menuTextColor);
 		}
 		int nLetterIndex = 0;
 		// redraw screen only when necessary
