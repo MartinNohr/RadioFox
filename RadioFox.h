@@ -1,6 +1,6 @@
 #pragma once
 
-const char* FOX_Version = "1.02";
+const char* FOX_Version = "1.03";
 
 const char* StartFileName = "START.FOX";
 // some config things

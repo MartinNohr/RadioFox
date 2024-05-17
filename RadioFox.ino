@@ -291,8 +291,12 @@ void TaskRunRadio(void* parameter)
 						xTaskCreate(TaskRunTransmit, "XMITFOX", 2000, NULL, 2, &TaskRunTransmitHandle);
 					}
 					// wait for it to start and let us know
+					int nWaitCounter = 50;
 					while ((status = ulTaskNotifyTake(pdTRUE, 0)) == 0) {
 						vTaskDelay(pdMS_TO_TICKS(10));
+						if (--nWaitCounter <= 0) {
+							break;
+						}
 					}
 					// it must be a string they sent us
 					cStatusText = (const char*)status;
