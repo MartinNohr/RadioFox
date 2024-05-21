@@ -1719,7 +1719,9 @@ bool CheckCancel(bool bLeaveButton)
 
 void setupSDcard()
 {
-	bSdCardValid = false;
+	// see if the card is there, I.E. already initialized
+	if (SD.fatType())
+		return;
 #if USE_STANDARD_SD
 	gpio_set_direction((gpio_num_t)SDcsPin, GPIO_MODE_OUTPUT);
 	delay(50);
@@ -1741,11 +1743,12 @@ void setupSDcard()
 #define SD_CONFIG SdSpiConfig(SDcsPin, /*DEDICATED_SPI*/SHARED_SPI, SD_SCK_MHZ(10))
 	SPI.begin(SDSckPin, SDMisoPin, SDMosiPin, SDcsPin);	// SCK,MISO,MOSI,CS
 	if (!SD.begin(SD_CONFIG)) {
-		Serial.println("SD initialization failed.");
-		uint8_t err = SD.card()->errorCode();
-		Serial.println("err: " + String(err));
+		//Serial.println(String("etype:") + SD.fatType());
+		WriteMessage("SD card failure:", true);
 		return;
 	}
+	//Serial.println(String("type:") + SD.fatType());
+	bSdCardValid = true;
 	//Serial.println("Mounted SD card");
 	//SD.printFatType(&Serial);
 
@@ -2293,7 +2296,7 @@ void load_page_header(bool bRefresh) {
 	webpage += "a{font-size:75%;}";
 	webpage += "p{font-size:75%;}";
 	webpage += "</style></head><body>";
-	webpage += "<body><h1>MIW Server<br>";
+	webpage += "<body><h1>Fox Server<br>";
 	webpage + "</h1>";
 }
 
@@ -2336,10 +2339,10 @@ void SendHTML_Stop() {
 void HomePage() {
 	bWebRunning = false;
 	SendHTML_Header();
-	//webpage += "<a href='/download'><button style=\"width:auto\">Download</button></a>";
-	//webpage += "<a href='/upload'><button style=\"width:auto\">Upload</button></a>";
-	//webpage += "<a href='/settings'><button style='width:auto'>Settings</button></a>";
-	//webpage += "<a href='/utilities'><button style='width:auto'>Utilities</button></a>";
+	webpage += "<a href='/download'><button style=\"width:auto\">Download</button></a>";
+	webpage += "<a href='/upload'><button style=\"width:auto\">Upload</button></a>";
+	webpage += "<a href='/settings'><button style='width:auto'>Settings</button></a>";
+	webpage += "<a href='/utilities'><button style='width:auto'>Utilities</button></a>";
 	webpage += "<br><h2>" + String("Folder: ") + "/" + "</h2>";
 	webpage += "<a href='/runimage'><button style='width:90%;font-size:200%;color:#00ff00'>";
 	webpage += String("Run File:<br>") + "/" + "</button></a>";
@@ -2374,7 +2377,7 @@ struct WEB_SETTINGS {
 typedef WEB_SETTINGS WebSettings;
 WebSettings WebSettingsPage[] = {
 	{(WEB_SETTINGS_TYPE)WST_TEXT_ONLY,NULL,true,"Image Settings",NULL},
-	//{WST_BOOL,NULL,true,"Use Fixed Image Time","use_fixed_time",&ImgInfo.bFixedTime},
+	{WST_BOOL,NULL,true,"Enable Transmit","enable_transmit",&SystemInfo.bXmitEnable},
 	//{WST_NUMBER,&ImgInfo.bFixedTime,true,"Fixed Time Value (S)","fixed_time",&ImgInfo.nFixedImageTime,4,0},
 	//{WST_NUMBER,&ImgInfo.bFixedTime,false,"Column Time(mS)","column_time",&ImgInfo.nFrameHold,4,0},
 	//{WST_SLIDER,&ImgInfo.bFixedTime,false,"Column Time(mS)","column_time_slider",&ImgInfo.nFrameHold,4,0,0,500},
@@ -3147,6 +3150,7 @@ void ToggleWebServer(MenuItem* menu)
 // read the files from the card
 void GetFileNamesFromSD(std::vector<String>& FileNames, String ext, String dir)
 {
+	setupSDcard();
 	ext.toUpperCase();
 	ext = "." + ext;
 	bool worked = true;

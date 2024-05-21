@@ -79,10 +79,7 @@
     </Text>
   </ItemGroup>
   <ItemGroup>
-    <None Include="Release\RadioFox.bin">
-      <Filter>Resource Files</Filter>
-    </None>
-    <None Include="Release\RadioFox.ino.lilygo_t_display.bin">
+    <None Include="Release\RadioFox.ino.ttgo-t1.bin">
       <Filter>Resource Files</Filter>
     </None>
   </ItemGroup>
