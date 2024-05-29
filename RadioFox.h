@@ -1,6 +1,6 @@
 #pragma once
 
-const char* FOX_Version = "1.04";
+const char* FOX_Version = "1.05";
 
 const char* StartFileName = "START.FOX";
 // some config things
@@ -118,8 +118,9 @@ enum DISPLAY_DIM_MODES { DISPLAY_DIM_MODE_NONE, DISPLAY_DIM_MODE_TIME};
 const char* DisplayDimModeText[] = { "None","Timer"};
 
 // NOTE: update CompareRadioSettings if anything important is changed that needs the radio to initialized
+// Version 2: added morse buzzer frequency
 typedef struct SYSTEM_INFO {
-    int nSystemInfoVersion = 1;                 // change as necessary
+    int nSystemInfoVersion = 2;                 // change as necessary
     uint16_t menuTextColor = TFT_WHITE;
     uint16_t menuHiLiteColor = TFT_WHITE;
     bool bMenuStar = false;
@@ -176,6 +177,7 @@ typedef struct SYSTEM_INFO {
     bool bStopImmediately = true;               // set to true to cancel transmitting without waiting to finish
     int nDtmfEnableTimer = 10;                  // the number of seconds after '*' that DTMF commands will work
     int nStartDelayTimer = 0;                   // seconds before the first transmission
+    int nBuzzerFrequency = 700;                 // the morse pitch
     //
 };
 RTC_DATA_ATTR SYSTEM_INFO SystemInfo;
@@ -454,6 +456,7 @@ MenuItem RadioMenu[] = {
         {eEditText,"Audio File: %s",GetAudioFile,SystemInfo.cAudioFile,1,sizeof(SystemInfo.cAudioFile) - 1},
     {eEndif},
     {eTextInt,"Morse Interval: %d mS",GetIntegerValue,&SystemInfo.nMorseInterval,50,500},
+    {eTextInt,"Morse Pitch: %d Hz",GetIntegerValue,&SystemInfo.nBuzzerFrequency,300,3000},
     {eExit,PreviousMenu},
     // make sure this one is last
     {eTerminate}

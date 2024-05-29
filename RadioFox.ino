@@ -3318,7 +3318,7 @@ void sendEndOfWord() {
 
 // basic functions - Morse code concepts
 void sendDot() {
-	ledcWriteTone(toneChannel, BUZZER_FREQUENCY);
+	ledcWriteTone(toneChannel, SystemInfo.nBuzzerFrequency);
 	vTaskDelay(pdMS_TO_TICKS(1 * SystemInfo.nMorseInterval));
 	ledcWriteTone(toneChannel, 0);
 	vTaskDelay(pdMS_TO_TICKS(1 * SystemInfo.nMorseInterval));
@@ -3326,7 +3326,7 @@ void sendDot() {
 }
 
 void sendDash() {
-	ledcWriteTone(toneChannel, BUZZER_FREQUENCY);
+	ledcWriteTone(toneChannel, SystemInfo.nBuzzerFrequency);
 	vTaskDelay(pdMS_TO_TICKS(3 * SystemInfo.nMorseInterval));
 	ledcWriteTone(toneChannel, 0);
 	vTaskDelay(pdMS_TO_TICKS(1 * SystemInfo.nMorseInterval));

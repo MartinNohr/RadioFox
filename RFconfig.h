@@ -17,8 +17,6 @@
 #define USE_STANDARD_SD 0
 // battery level
 #define HAS_BATTERY_LEVEL 1
-// cw pitch
-#define BUZZER_FREQUENCY 700
 
 #define PTT_TALK 0
 #define PTT_LISTEN 1
