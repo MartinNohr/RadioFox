@@ -4,10 +4,10 @@
  Author:	Sven Schumacher & Martin Nohr
  Call Sign: VE6IDK & KK7JTE
 */
-#include <phoneDTMF.h>
+#include "RadioFox.h"
+#include <PhoneDTMF.h>
 #include "pitches.h"
 #include <EEPROM.h>
-#include "RadioFox.h"
 
 PhoneDTMF dtmf = PhoneDTMF();
 
@@ -783,7 +783,7 @@ void setup()
 	tft.setFreeFont(&Dialog_bold_16);
 	tft.setTextSize(1);
 	tft.setTextPadding(tft.width());
-	nMenuLineCount = tft.height() / tft.fontHeight();
+	nMenuLineCount = (tft.height() + 1) / tft.fontHeight();
 	TextLines.resize(nMenuLineCount);
 	// start the tone generator, freq=0 gives error on Serial port during boot, so just set to 1000
 	ledcSetup(toneChannel, 1000, 8);
