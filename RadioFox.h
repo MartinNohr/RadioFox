@@ -451,7 +451,7 @@ MenuItem RadioMenu[] = {
 #if RADIO_UHF
     {eTextInt,"TX: %d.%03d MHz",GetIntegerValue,&SystemInfo.nFrequency,400000,480000,3},
 #else
-    {eBool,"Beacon Frequency: %s",ToggleBool,&SystemInfo.bBeaconMode,0,0,0,"Yes","No"},
+    {eBool,"Beacon Frequency Mode: %s",ToggleBool,&SystemInfo.bBeaconMode,0,0,0,"Yes","No"},
     {eIfEqual,"",NULL,&SystemInfo.bBeaconMode,true},
         {eTextInt,"TX: %d.%03d MHz",GetIntegerValue,&SystemInfo.nFrequency,144275,144300,3},
     {eElse},

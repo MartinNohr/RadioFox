@@ -4,7 +4,6 @@
  Author:	Sven Schumacher & Martin Nohr
  Call Sign: VE6IDK & KK7JTE
 */
-#include <dummy.h>
 #include "RadioFox.h"
 #include <PhoneDTMF.h>
 #include "pitches.h"
