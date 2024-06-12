@@ -1,6 +1,6 @@
 #pragma once
 
-const char* FOX_Version = "1.05";
+const char* FOX_Version = "1.06";
 
 const char* StartFileName = "START.FOX";
 // some config things
@@ -14,6 +14,9 @@ const char* StartFileName = "START.FOX";
 //#include <User_Setups/Setup25_TTGO_T_Display.h>    // Setup file for ESP32 and TTGO T-Display ST7789V SPI bus TFT
 //#include <User_Setups/Setup206_LilyGo_T_Display_S3.h>     // For the LilyGo T-Display S3 based ESP32S3 with ST7789 170 x 320 TFT
 
+//#include <freertos/FreeRTOS.h>
+//#include <freertos/task.h>
+//#include <driver/gpio.h>
 #include <Update.h>
 
 #include "RFconfig.h"
@@ -178,6 +181,7 @@ typedef struct SYSTEM_INFO {
     int nDtmfEnableTimer = 10;                  // the number of seconds after '*' that DTMF commands will work
     int nStartDelayTimer = 0;                   // seconds before the first transmission
     int nBuzzerFrequency = 700;                 // the morse pitch
+    bool bBeaconMode = false;                   // limit the frequency for beacon use
     //
 };
 RTC_DATA_ATTR SYSTEM_INFO SystemInfo;
@@ -447,9 +451,14 @@ MenuItem RadioMenu[] = {
 #if RADIO_UHF
     {eTextInt,"TX: %d.%03d MHz",GetIntegerValue,&SystemInfo.nFrequency,400000,480000,3},
 #else
-    {eTextInt,"TX: %d.%03d MHz",GetIntegerValue,&SystemInfo.nFrequency,134000,174000,3},
+    {eBool,"Beacon Frequency: %s",ToggleBool,&SystemInfo.bBeaconMode,0,0,0,"Yes","No"},
+    {eIfEqual,"",NULL,&SystemInfo.bBeaconMode,true},
+        {eTextInt,"TX: %d.%03d MHz",GetIntegerValue,&SystemInfo.nFrequency,144275,144300,3},
+    {eElse},
+        {eTextInt,"TX: %d.%03d MHz",GetIntegerValue,&SystemInfo.nFrequency,134000,174000,3},
+    {eEndif},
 #endif
-    {eEditText,"Beacon: %s",GetText,SystemInfo.cBeaconString,1,sizeof(SystemInfo.cBeaconString) - 1},
+    {eEditText,"Beacon ID: %s",GetText,SystemInfo.cBeaconString,1,sizeof(SystemInfo.cBeaconString) - 1},
     {eEditText,"Call Sign: %s",GetText,SystemInfo.cRadioCallSign,1,sizeof(SystemInfo.cRadioCallSign) - 1},
     {eBool,"Play Audio File: %s",ToggleBool,&SystemInfo.bPlayAudioFile,0,0,0,"Yes","No"},
     {eIfEqual,"",NULL,&SystemInfo.bPlayAudioFile,true},

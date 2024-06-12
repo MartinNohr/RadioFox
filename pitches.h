@@ -1,6 +1,7 @@
 /*************************************************
  * Public Constants
  *************************************************/
+#include <string>
 #include <map>
 std::map<std::string, int> mapNotes {
 	{ "NOTE_B0",   31 },
