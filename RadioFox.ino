@@ -252,11 +252,17 @@ void TaskRunRadio(void* parameter)
 	bool bWasXmit = false;
 	// use this to make task run every second
 	TickType_t xLastWakeTime;
+	// run every second
 	const TickType_t xFrequency = pdMS_TO_TICKS(1000);
 	// Initialize the xLastWakeTime variable with the current time.
 	xLastWakeTime = xTaskGetTickCount();
 	int delayedSeconds = 0;
+	// keep the time we transmit and pause in here
+	unsigned long TxTime = 0;
 	while (true) {
+		if (IsTransmitEnabled) {
+			++TxTime;
+		}
 		if (!IsRadioReady && bWasXmit) {
 			// stop the radio
 			delayedSeconds = secondsLeft = 0;
@@ -373,6 +379,8 @@ void TaskRunRadio(void* parameter)
 			sprintf(fmt, "%03d MHz ", SystemInfo.nFrequency % 1000);
 			DisplayLine(lineNo++, String(SystemInfo.nFrequency / 1000) + "." + fmt + (SystemInfo.bTxPowerLow ? "Lo" : "Hi") + " Power", SystemInfo.menuTextColor);
 			DisplayLine(lineNo++, String("RX Offset: ") + RxOffsetModeText[SystemInfo.nRfOffset] + " kHz", SystemInfo.menuTextColor);
+			// show total on time
+			DisplayLine(lineNo++, String("Run Time: ") + (TxTime / (60 * 60)) + ":" + (TxTime / 60) % 60 + ":" + TxTime % 60);
 		}
 		if (secondsLeft > 0)
 			--secondsLeft;

@@ -83,5 +83,6 @@
     <None Include="Release\RadioFox.ino.lilygo_t_display.bin">
       <Filter>Resource Files</Filter>
     </None>
+    <None Include="RadioFox.docx" />
   </ItemGroup>
 </Project>
