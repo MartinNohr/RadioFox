@@ -1,6 +1,6 @@
 #pragma once
 
-const char* FOX_Version = "1.08";
+const char* FOX_Version = "1.09";
 
 const char* StartFileName = "START.FOX";
 // some config things
@@ -136,8 +136,8 @@ typedef struct SYSTEM_INFO {
     int bShowBatteryLevel = HAS_BATTERY_LEVEL;  // display the battery level on the bottom line
     bool bCriticalBatteryLevel = false;         // set when battery is too low
     CRotaryDialButton::ROTARY_DIAL_SETTINGS DialSettings;
-    int eDisplayDimMode = DISPLAY_DIM_MODE_NONE;// 0 is none, 1 is dimtime, 2 is light sensor
-    int nDisplayDimTime = 0;                    // seconds before lcd is dimmed
+    int eDisplayDimMode = DISPLAY_DIM_MODE_NONE;// 0 is none, 1 is dimtime
+    int nDisplayDimTime = 5;                    // seconds before lcd is dimmed
     int nDisplayDimValue = 10;                  // the value to dim to
     int nPreviewAutoScroll = 0;                 // mSec for preview autoscroll, 0 means no scroll
     bool bRunWebServer = false;                 // run the web server

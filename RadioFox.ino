@@ -372,15 +372,16 @@ void TaskRunRadio(void* parameter)
 			else {
 				DisplayLine(lineNo++, "Waiting for Radio", SystemInfo.menuTextColor);
 			}
-			DisplayLine(lineNo++, String("TX Count: ") + txCount, SystemInfo.menuTextColor);
+			// show cycle count and time active (HH:MM)
+			char tm[12];
+			sprintf(tm, "%2d:%02d", (TxTime / (60 * 60)), (TxTime / 60) % 60);
+			DisplayLine(lineNo++, String(String("Count: ") + txCount + "  Time: " + tm), SystemInfo.menuTextColor);
 			DisplayLine(lineNo++, "ID: " + String(SystemInfo.cBeaconString) + " " + SystemInfo.cRadioCallSign, SystemInfo.menuTextColor);
 			if (SystemInfo.bPlayAudioFile)
 				DisplayLine(lineNo++, "Music: " + String(SystemInfo.cAudioFile), SystemInfo.menuTextColor);
 			sprintf(fmt, "%03d MHz ", SystemInfo.nFrequency % 1000);
 			DisplayLine(lineNo++, String(SystemInfo.nFrequency / 1000) + "." + fmt + (SystemInfo.bTxPowerLow ? "Lo" : "Hi") + " Power", SystemInfo.menuTextColor);
 			DisplayLine(lineNo++, String("RX Offset: ") + RxOffsetModeText[SystemInfo.nRfOffset] + " kHz", SystemInfo.menuTextColor);
-			// show total on time
-			DisplayLine(lineNo++, String("Run Time: ") + (TxTime / (60 * 60)) + ":" + (TxTime / 60) % 60 + ":" + TxTime % 60);
 		}
 		if (secondsLeft > 0)
 			--secondsLeft;
