@@ -1030,6 +1030,10 @@ void RunMenus(int button)
 		++menuix;
 	}
 	// if no match, and we are in a submenu, go back one level, or if bExit is set
+	if (bExit && MenuStack.size() == 1) {
+		g_bSettingsMode = false;
+		ClearScreen();
+	}
 	if (bExit || (!g_bMenuChanged && MenuStack.size() > 1)) {
 		UpMenuLevel(false);
 	}

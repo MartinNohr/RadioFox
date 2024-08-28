@@ -1,6 +1,6 @@
 #pragma once
 
-const char* FOX_Version = "1.09";
+const char* FOX_Version = "1.10";
 
 const char* StartFileName = "START.FOX";
 // some config things
@@ -471,6 +471,7 @@ MenuItem RadioMenu[] = {
     {eTerminate}
 };
 MenuItem MainMenu[] = {
+    {eExit,"Main Screen"},
     {eMenu,"Radio Settings",{.menu = RadioMenu}},
     {eMenu,"Radio Timers",{.menu = RadioTimersMenu}},
     {eMenu,"More Radio Settings",{.menu = RadioMenuMore}},
@@ -479,6 +480,7 @@ MenuItem MainMenu[] = {
     {eMenu,"System Settings",{.menu = SystemMenu}},
     {eText,"Save Current Settings",SaveEepromSettings},
     {eReboot,"Reboot"},
+    {eExit,"Main Screen"},
     // make sure this one is last
 {eTerminate}
 };
