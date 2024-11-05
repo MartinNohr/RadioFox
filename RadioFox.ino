@@ -77,6 +77,30 @@ void TaskScrollSideways(void* params)
 	}
 }
 
+// send the latitude and longitude
+void TaskSendLatLong(void* parameter)
+{
+	// format the latitude and longitude
+	String sendThese[2];
+	// format the values of Lat and Long
+	char tmp[40];
+	sprintf(tmp, "Latitude:%.6f", SystemInfo.fLatitude);
+	sendThese[0] = tmp;
+	sprintf(tmp, "Longitude:%.6f", SystemInfo.fLongitude);
+	sendThese[1] = tmp;
+	for (String str : sendThese) {
+		for (char ch : str) {
+			sendLetter(ch);
+		}
+		if (!IsTransmitting) {
+			break;
+		}
+	}
+	// terminate this task
+	TaskSendBeaconHandle = NULL;
+	vTaskDelete(NULL);
+}
+
 void TaskSendBeacon(void* parameter)
 {
 	// take copies in case they get changed while we are here
@@ -176,6 +200,7 @@ void TaskRunTransmit(void* parameter)
 	} RFTaskList[] = {
 		{"ID",TaskSendBeacon,&TaskSendBeaconHandle,NULL},
 		{"Music",TaskSendMusic,&TaskSendMusicHandle,&SystemInfo.bPlayAudioFile},
+		{"GPS",TaskSendLatLong,&TaskSendGpsHandle,&SystemInfo.bBeaconMode},
 	};
 	bool bDone = false;
 	while (IsRadioReady && IsTransmitEnabled && !bDone && ulTaskNotifyTake(pdTRUE, 0) == 0) {
@@ -797,6 +822,17 @@ void setup()
 	// start the tone generator, freq=0 gives error on Serial port during boot, so just set to 1000
 	ledcSetup(toneChannel, 1000, 8);
 	ledcAttachPin(AUDIO_OUT_PORT, toneChannel);
+	//ledcAttachChannel(digitalPinToGPIONumber(AUDIO_OUT_PORT), 1000, 8, toneChannel);
+
+
+	//ledcAttachChannel(digitalPinToGPIONumber(TFT_BL), pwmFreq, pwmResolution, pwmLedChannelTFT);
+	//ledcWrite(digitalPinToGPIONumber(TFT_BL), 100);
+
+	////ledcSetup(pwmLedChannelTFT, pwmFreq, pwmResolution);
+	////ledcAttachPin(TFT_BL, pwmLedChannelTFT);
+	////ledcWrite(pwmLedChannelTFT, 100);
+
+
 	// the next two lines don't seem to make any difference, but leave them here just in case in the future
 	//ledcWrite(toneChannel, 127);
 	//ledcWriteTone(toneChannel, 0);
@@ -810,9 +846,12 @@ void setup()
 	// configure LCD PWM functionality
 	pinMode(TFT_ENABLE, OUTPUT);
 	digitalWrite(TFT_ENABLE, 1);
-	ledcSetup(ledChannel, freq, resolution);
+
 	// attach the channel to the GPIO to be controlled
+	ledcSetup(ledChannel, freq, resolution);
 	ledcAttachPin(TFT_ENABLE, ledChannel);
+	//ledcAttachChannel(digitalPinToGPIONumber(TFT_ENABLE), freq, resolution, ledChannel);
+
 	CRotaryDialButton::begin((gpio_num_t)DIAL_A, (gpio_num_t)DIAL_B, (gpio_num_t)DIAL_BTN, (gpio_num_t)0, (gpio_num_t)35, (gpio_num_t)-1, (gpio_num_t)-1, &SystemInfo.DialSettings);
 	// we know that this is a toggle switch type
 	SystemInfo.DialSettings.m_bToggleDial = true;
@@ -991,6 +1030,7 @@ void RunMenus(int button)
 					break;
 				case eText:
 				case eTextInt:
+				case eTextFloat:
 				case eEditText:
 				//case eChooseFile:
 				case eBool:
@@ -1106,6 +1146,7 @@ void ShowMenu(struct MenuItem* menu)
 		bool exists = false;
 		switch (menu->op) {
 		case eTextInt:
+		case eTextFloat:
 		case eText:
 		case eEditText:
 		//case eChooseFile:
@@ -1117,6 +1158,10 @@ void ShowMenu(struct MenuItem* menu)
 				}
 				else if (menu->op == eTextInt) {
 					sprintf(line, menu->text, (int)(val / pow10(menu->decimals)), val % (int)(pow10(menu->decimals)));
+				}
+				else if (menu->op == eTextFloat) {
+					double fval = *(double*)menu->value;
+					sprintf(line, menu->text, fval);
 				}
 			}
 			else {
@@ -1329,7 +1374,7 @@ void GetIntegerValue(MenuItem * menu)
 	bool done = false;
 	const char* fmt;
 	if (menu->decimals) {
-		static char fmtInfo[30];
+		static char fmtInfo[50];
 		//String st = String("%ld.%0") + menu->decimals + "ld";
 		sprintf(fmtInfo,"%%ld.%%0%dld",menu->decimals);
 		fmt = fmtInfo;
@@ -1337,11 +1382,11 @@ void GetIntegerValue(MenuItem * menu)
 	else {
 		fmt = "%ld";
 	}
-	char minstr[20], maxstr[20], valstr[20];
+	char minstr[50], maxstr[50], valstr[50];
 	sprintf(line, menu->text, *(int*)menu->value / (int)pow10(menu->decimals), *(int*)menu->value % (int)pow10(menu->decimals));
 	DisplayLine(0, line, SystemInfo.menuTextColor);
-	sprintf(minstr, fmt, menu->min / (int)pow10(menu->decimals), menu->min % (int)pow10(menu->decimals));
-	sprintf(maxstr, fmt, menu->max / (int)pow10(menu->decimals), menu->max % (int)pow10(menu->decimals));
+	sprintf(minstr, fmt, menu->min / (int)pow10(menu->decimals), abs(menu->min % (int)pow10(menu->decimals)));
+	sprintf(maxstr, fmt, menu->max / (int)pow10(menu->decimals), abs(menu->max % (int)pow10(menu->decimals)));
 	DisplayLine(1, String(minstr) + " to " + String(maxstr), SystemInfo.menuTextColor);
 	DisplayLine(5, "Long Press B0 to reset", SystemInfo.menuTextColor);
 	DisplayLine(6, "Long Press to Accept", SystemInfo.menuTextColor);
@@ -1353,8 +1398,9 @@ void GetIntegerValue(MenuItem * menu)
 			*(int*)menu->value = constrain(*(int*)menu->value, menu->min, menu->max);
 			// show slider bar
 			tft.fillRect(0, 2 * tft.fontHeight(), tft.width() - 1, 6, TFT_BLACK);
-			DrawProgressBar(0, 2 * tft.fontHeight() + 4, tft.width() - 1, 12, map(*(int*)menu->value, menu->min, menu->max, 0, 100), true);
-			sprintf(valstr, fmt, *(int*)menu->value / (int)pow10(menu->decimals), *(int*)menu->value % (int)pow10(menu->decimals));
+			if (menu->min >= 0)
+				DrawProgressBar(0, 2 * tft.fontHeight() + 4, tft.width() - 1, 12, map(*(int*)menu->value, menu->min, menu->max, 0, 100), true);
+			sprintf(valstr, fmt, *(int*)menu->value / (int)pow10(menu->decimals), abs(*(int*)menu->value % (int)pow10(menu->decimals)));
 			DisplayLine(3, String("New Value: ") + valstr, SystemInfo.menuTextColor);
 			sprintf(valstr, fmt, stepSize / (int)pow10(menu->decimals), stepSize % (int)pow10(menu->decimals));
 			DisplayLine(4, stepSize == -1 ? "Reset: long press (Click +)" : "Step: " + String(valstr) + " (Click +)", SystemInfo.menuTextColor);
@@ -1383,6 +1429,7 @@ void GetIntegerValue(MenuItem * menu)
 				stepSize *= 10;
 			}
 			if (stepSize > (menu->max / 2)) {
+				Serial.println("setting stepsize=-1");
 				stepSize = -1;
 			}
 			break;
@@ -1393,6 +1440,88 @@ void GetIntegerValue(MenuItem * menu)
 		case BTN_LONG:
 			if (stepSize == -1) {
 				*(int*)menu->value = originalValue;
+				stepSize = 1;
+			}
+			else {
+				done = true;
+			}
+			break;
+		}
+		bChange = (button != BTN_NONE);
+	} while (!done);
+}
+
+// get double float values
+void GetFloatValue(MenuItem* menu)
+{
+	ClearScreen();
+	// -1 means to reset to original
+	int stepSize = 1;
+	double originalValue = *(double*)menu->value;
+	//Serial.println("int: " + String(menu->text) + String(*(int*)menu->value));
+	char line[50];
+	CRotaryDialButton::Button button = BTN_NONE;
+	bool done = false;
+	const char* fmt;
+	static char fmtInfo[50];
+	sprintf(fmtInfo, "%%.%df", menu->decimals);
+	fmt = fmtInfo;
+	char minstr[50], maxstr[50], valstr[50];
+	sprintf(line, menu->text, *(double*)menu->value);
+	DisplayLine(0, line, SystemInfo.menuTextColor);
+	sprintf(minstr, fmt, menu->fmin);
+	sprintf(maxstr, fmt, menu->fmax);
+	DisplayLine(1, String(minstr) + " to " + String(maxstr), SystemInfo.menuTextColor);
+	DisplayLine(5, "Long Press B0 to reset", SystemInfo.menuTextColor);
+	DisplayLine(6, "Long Press to Accept", SystemInfo.menuTextColor);
+	double oldVal = *(double*)menu->value;
+	bool bChange = true;
+	do {
+		if (bChange) {
+			// make sure within limits
+			*(double*)menu->value = constrain(*(double*)menu->value, menu->fmin, menu->fmax);
+			// show slider bar
+			tft.fillRect(0, 2 * tft.fontHeight(), tft.width() - 1, 6, TFT_BLACK);
+			//DrawProgressBar(0, 2 * tft.fontHeight() + 4, tft.width() - 1, 12, map(*(int*)menu->value, menu->min, menu->max, 0, 100), true);
+			sprintf(valstr, fmt, *(double*)menu->value);
+			DisplayLine(3, String("New Value: ") + valstr, SystemInfo.menuTextColor);
+			sprintf(valstr, fmt, pow10(stepSize - 1 - menu->decimals));
+			DisplayLine(4, stepSize == -1 ? "Reset: long press (Click +)" : "Step: " + String(valstr) + " (Click +)", SystemInfo.menuTextColor);
+			if (menu->change != NULL && oldVal != *(double*)menu->value) {
+				(*menu->change)(menu, 0);
+				oldVal = *(double*)menu->value;
+			}
+			bChange = false;
+		}
+		button = ReadButton();
+		switch (button) {
+		case BTN_LEFT:
+			if (stepSize != -1)
+				*(double*)menu->value -= pow10(stepSize - 1 - menu->decimals);
+			break;
+		case BTN_RIGHT:
+			if (stepSize != -1)
+				*(double*)menu->value += pow10(stepSize - 1 - menu->decimals);
+			break;
+		case BTN_SELECT:
+		case BTN_B0_CLICK:
+			if (stepSize == -1) {
+				stepSize = 1;
+			}
+			else {
+				++stepSize;
+			}
+			if (stepSize != -1 && pow10(stepSize - 1 - menu->decimals) > (log10(menu->fmax) + menu->decimals) + 3) {
+				stepSize = -1;
+			}
+			break;
+		case BTN_B0_LONG:	// reset
+			*(double*)menu->value = originalValue;
+			stepSize = 1;
+			break;
+		case BTN_LONG:
+			if (stepSize == -1) {
+				*(double*)menu->value = originalValue;
 				stepSize = 1;
 			}
 			else {
@@ -2610,6 +2739,9 @@ String MenuToHtml(MenuItem * pMenu, bool bActive, int nLevel)
 		//case eChooseFile:
 			str += String("<p>") + line + "</p>";
 			break;
+		case eTextFloat:
+			// TODO handle floats
+			break;
 		case eTextInt:
 			str += "<label>" + line;
 			stmp = String(*(int*)(menu->value));
@@ -3299,6 +3431,9 @@ void sendLetter(char c) {
 	}
 	else if (c == ' ') {
 		pm = " ";
+	}
+	else if (c == '.') {
+		pm = "._._._";
 	}
 	if (pm)
 		sendMorseCode(pm);

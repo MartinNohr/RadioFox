@@ -1,6 +1,6 @@
 #pragma once
 
-const char* FOX_Version = "1.10";
+const char* FOX_Version = "1.11";
 
 const char* StartFileName = "START.FOX";
 // some config things
@@ -181,7 +181,10 @@ typedef struct SYSTEM_INFO {
     int nDtmfEnableTimer = 10;                  // the number of seconds after '*' that DTMF commands will work
     int nStartDelayTimer = 0;                   // seconds before the first transmission
     int nBuzzerFrequency = 700;                 // the morse pitch
+    // beacon settings
     bool bBeaconMode = false;                   // limit the frequency for beacon use
+    double fLatitude = 0.0;                     // 6 decimals +-180 degrees
+    double fLongitude = 0.0;                    // 6 decimals +-180 degrees
     //
 };
 RTC_DATA_ATTR SYSTEM_INFO SystemInfo;
@@ -216,6 +219,7 @@ enum eDisplayOperation {
     eTerminate = 0,     // must be last in a menu, (or use {})
     eText,              // handle text with optional %s value, display only
     eTextInt,           // handle text with optional %d value
+    eTextFloat,         // handle double float values
     eEditText,          // edit a text string
     //eChooseFile,        // choose a file from the SD card
     eBool,              // handle bool using %s and on/off values
@@ -241,8 +245,14 @@ typedef struct MenuItem {
         BuiltInItem* builtin;           // builtin items
     };
     const void* value;                  // associated variable
-    long min;                           // the minimum value, also used for ifequal, min length for string
-    long max;                           // the maximum value, also size to compare for if, max length for string or eList
+    union {
+        long min;                           // the minimum value, also used for ifequal, min length for string
+        double fmin;
+    };
+    union {
+        long max;                           // the maximum value, also size to compare for if, max length for string or eList
+        double fmax;
+    };
     int decimals;                       // 0 for int, 1 for 0.1, 2 for 0.01 etc
     const char* on;                     // text for boolean true
     const char* off;                    // text for boolean false
@@ -260,6 +270,7 @@ void CheckUpdateBin(MenuItem* menu);
 void SaveEepromSettings(MenuItem* menu);
 //void LoadEepromSettings(MenuItem* menu);
 void GetIntegerValue(MenuItem* menu);
+void GetFloatValue(MenuItem* menu);
 void GetSelectChoice(MenuItem* menu);
 void GetSelectChoiceList(MenuItem* menu);
 void ToggleBool(MenuItem* menu);
@@ -450,10 +461,12 @@ MenuItem RadioMenu[] = {
     {eBool,"TX Power: %s",ToggleBool,&SystemInfo.bTxPowerLow,0,0,0,"Low","High"},
 #if RADIO_UHF
     {eTextInt,"TX: %d.%03d MHz",GetIntegerValue,&SystemInfo.nFrequency,400000,480000,3},
-#else
-    {eBool,"Beacon Frequency: %s",ToggleBool,&SystemInfo.bBeaconMode,0,0,0,"Yes","No"},
+#else   // VHF here
+    {eBool,"Beacon Mode: %s",ToggleBool,&SystemInfo.bBeaconMode,0,0,0,"Yes","No"},
     {eIfEqual,"",NULL,&SystemInfo.bBeaconMode,true},
         {eTextInt,"TX: %d.%03d MHz",GetIntegerValue,&SystemInfo.nFrequency,144275,144300,3},
+		{eTextFloat,"Latitude: %.6f",GetFloatValue,&SystemInfo.fLatitude,{.fmin = -180.0},{.fmax = 180.0},6},
+		{eTextFloat,"Longitude: %.6f",GetFloatValue,&SystemInfo.fLongitude,{.fmin = -180.0},{.fmax = 180.0},6},
     {eElse},
         {eTextInt,"TX: %d.%03d MHz",GetIntegerValue,&SystemInfo.nFrequency,134000,174000,3},
     {eEndif},
@@ -532,6 +545,7 @@ TaskHandle_t TaskRunRadioHandle;
 TaskHandle_t TaskRunTransmitHandle;
 TaskHandle_t TaskSendBeaconHandle;
 TaskHandle_t TaskSendMusicHandle;
+TaskHandle_t TaskSendGpsHandle;
 TaskHandle_t TaskShowBatteryHandle;
 TaskHandle_t TaskDTMFHandle;
 TaskHandle_t TaskScrollSidewaysHandle;
