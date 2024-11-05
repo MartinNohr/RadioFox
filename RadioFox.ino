@@ -78,15 +78,15 @@ void TaskScrollSideways(void* params)
 }
 
 // send the latitude and longitude
-void TaskSendLatLong(void* parameter)
+void TaskSendGPS(void* parameter)
 {
 	// format the latitude and longitude
 	String sendThese[2];
 	// format the values of Lat and Long
 	char tmp[40];
-	sprintf(tmp, "Latitude:%.6f", SystemInfo.fLatitude);
+	sprintf(tmp, "Lat%.6f", SystemInfo.fLatitude);
 	sendThese[0] = tmp;
-	sprintf(tmp, "Longitude:%.6f", SystemInfo.fLongitude);
+	sprintf(tmp, "Long%.6f", SystemInfo.fLongitude);
 	sendThese[1] = tmp;
 	for (String str : sendThese) {
 		for (char ch : str) {
@@ -101,6 +101,7 @@ void TaskSendLatLong(void* parameter)
 	vTaskDelete(NULL);
 }
 
+// send the radio id followed by the callsign
 void TaskSendRadio(void* parameter)
 {
 	// take copies in case they get changed while we are here
@@ -199,8 +200,8 @@ void TaskRunTransmit(void* parameter)
 		bool* bRunThis;	// NULL to always run, else a boolean address
 	} RFTaskList[] = {
 		{"Radio",TaskSendRadio,&TaskSendRadioHandle,NULL},
+		{"GPS",TaskSendGPS,&TaskSendGpsHandle,&SystemInfo.bBeaconMode},
 		{"Music",TaskSendMusic,&TaskSendMusicHandle,&SystemInfo.bPlayAudioFile},
-		{"GPS",TaskSendLatLong,&TaskSendGpsHandle,&SystemInfo.bBeaconMode},
 	};
 	bool bDone = false;
 	while (IsRadioReady && IsTransmitEnabled && !bDone && ulTaskNotifyTake(pdTRUE, 0) == 0) {
