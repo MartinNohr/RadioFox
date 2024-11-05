@@ -97,15 +97,15 @@ void TaskSendLatLong(void* parameter)
 		}
 	}
 	// terminate this task
-	TaskSendBeaconHandle = NULL;
+	TaskSendRadioHandle = NULL;
 	vTaskDelete(NULL);
 }
 
-void TaskSendBeacon(void* parameter)
+void TaskSendRadio(void* parameter)
 {
 	// take copies in case they get changed while we are here
 	String sendThese[2];
-	sendThese[0] = SystemInfo.cBeaconString;
+	sendThese[0] = SystemInfo.cRadioString;
 	sendThese[1] = SystemInfo.cRadioCallSign;
 	for (String str : sendThese) {
 		for (char ch : str) {
@@ -116,7 +116,7 @@ void TaskSendBeacon(void* parameter)
 		}
 	}
 	// terminate this task
-	TaskSendBeaconHandle = NULL;
+	TaskSendRadioHandle = NULL;
 	vTaskDelete(NULL);
 }
 
@@ -198,7 +198,7 @@ void TaskRunTransmit(void* parameter)
 		TaskHandle_t* pTaskHandle;
 		bool* bRunThis;	// NULL to always run, else a boolean address
 	} RFTaskList[] = {
-		{"ID",TaskSendBeacon,&TaskSendBeaconHandle,NULL},
+		{"Radio",TaskSendRadio,&TaskSendRadioHandle,NULL},
 		{"Music",TaskSendMusic,&TaskSendMusicHandle,&SystemInfo.bPlayAudioFile},
 		{"GPS",TaskSendLatLong,&TaskSendGpsHandle,&SystemInfo.bBeaconMode},
 	};
@@ -401,7 +401,7 @@ void TaskRunRadio(void* parameter)
 			char tm[12];
 			sprintf(tm, "%2d:%02d", (TxTime / (60 * 60)), (TxTime / 60) % 60);
 			DisplayLine(lineNo++, String(String("Count: ") + txCount + "  Time: " + tm), SystemInfo.menuTextColor);
-			DisplayLine(lineNo++, "ID: " + String(SystemInfo.cBeaconString) + " " + SystemInfo.cRadioCallSign, SystemInfo.menuTextColor);
+			DisplayLine(lineNo++, String(SystemInfo.cRadioString) + " " + SystemInfo.cRadioCallSign + " " + (SystemInfo.bBeaconMode ? "GPS" : ""), SystemInfo.menuTextColor);
 			if (SystemInfo.bPlayAudioFile)
 				DisplayLine(lineNo++, "Music: " + String(SystemInfo.cAudioFile), SystemInfo.menuTextColor);
 			sprintf(fmt, "%03d MHz ", SystemInfo.nFrequency % 1000);
@@ -1456,7 +1456,7 @@ void GetFloatValue(MenuItem* menu)
 {
 	ClearScreen();
 	// -1 means to reset to original
-	int stepSize = 1;
+	int stepSize = log10(menu->fmax) + menu->decimals - 1;
 	double originalValue = *(double*)menu->value;
 	//Serial.println("int: " + String(menu->text) + String(*(int*)menu->value));
 	char line[50];
@@ -1485,7 +1485,7 @@ void GetFloatValue(MenuItem* menu)
 			//DrawProgressBar(0, 2 * tft.fontHeight() + 4, tft.width() - 1, 12, map(*(int*)menu->value, menu->min, menu->max, 0, 100), true);
 			sprintf(valstr, fmt, *(double*)menu->value);
 			DisplayLine(3, String("New Value: ") + valstr, SystemInfo.menuTextColor);
-			sprintf(valstr, fmt, pow10(stepSize - 1 - menu->decimals));
+			sprintf(valstr, fmt, pow10(stepSize - menu->decimals));
 			DisplayLine(4, stepSize == -1 ? "Reset: long press (Click +)" : "Step: " + String(valstr) + " (Click +)", SystemInfo.menuTextColor);
 			if (menu->change != NULL && oldVal != *(double*)menu->value) {
 				(*menu->change)(menu, 0);
@@ -1497,22 +1497,19 @@ void GetFloatValue(MenuItem* menu)
 		switch (button) {
 		case BTN_LEFT:
 			if (stepSize != -1)
-				*(double*)menu->value -= pow10(stepSize - 1 - menu->decimals);
+				*(double*)menu->value -= pow10(stepSize - menu->decimals);
 			break;
 		case BTN_RIGHT:
 			if (stepSize != -1)
-				*(double*)menu->value += pow10(stepSize - 1 - menu->decimals);
+				*(double*)menu->value += pow10(stepSize - menu->decimals);
 			break;
 		case BTN_SELECT:
 		case BTN_B0_CLICK:
 			if (stepSize == -1) {
-				stepSize = 1;
+				stepSize = log10(menu->fmax) + menu->decimals - 1;
 			}
 			else {
-				++stepSize;
-			}
-			if (stepSize != -1 && pow10(stepSize - 1 - menu->decimals) > (log10(menu->fmax) + menu->decimals) + 3) {
-				stepSize = -1;
+				--stepSize;
 			}
 			break;
 		case BTN_B0_LONG:	// reset

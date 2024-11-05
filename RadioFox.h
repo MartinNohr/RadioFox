@@ -143,7 +143,7 @@ typedef struct SYSTEM_INFO {
     bool bRunWebServer = false;                 // run the web server
     // radio settings
     char cRadioCallSign[21] = "CALLSIGN";       // ID to transmit
-    char cBeaconString[31] = "BEACON";          // beacon string to send
+    char cRadioString[31] = "RADIO";            // Radio ID string to send
     // transmit timers
     bool bUseFixedTimers = true;                // fixed or random timers
 	int nTxTimeFixed = 1 * 60;                  // tx time in seconds
@@ -181,8 +181,8 @@ typedef struct SYSTEM_INFO {
     int nDtmfEnableTimer = 10;                  // the number of seconds after '*' that DTMF commands will work
     int nStartDelayTimer = 0;                   // seconds before the first transmission
     int nBuzzerFrequency = 700;                 // the morse pitch
-    // beacon settings
-    bool bBeaconMode = false;                   // limit the frequency for beacon use
+    // beacon mode settings
+    bool bBeaconMode = false;                   // limit the frequency for beacon use and turn GPS info on
     double fLatitude = 0.0;                     // 6 decimals +-180 degrees
     double fLongitude = 0.0;                    // 6 decimals +-180 degrees
     //
@@ -471,7 +471,7 @@ MenuItem RadioMenu[] = {
         {eTextInt,"TX: %d.%03d MHz",GetIntegerValue,&SystemInfo.nFrequency,134000,174000,3},
     {eEndif},
 #endif
-    {eEditText,"Beacon ID: %s",GetText,SystemInfo.cBeaconString,1,sizeof(SystemInfo.cBeaconString) - 1},
+    {eEditText,"Radio ID: %s",GetText,SystemInfo.cRadioString,1,sizeof(SystemInfo.cRadioString) - 1},
     {eEditText,"Call Sign: %s",GetText,SystemInfo.cRadioCallSign,1,sizeof(SystemInfo.cRadioCallSign) - 1},
     {eBool,"Play Audio File: %s",ToggleBool,&SystemInfo.bPlayAudioFile,0,0,0,"Yes","No"},
     {eIfEqual,"",NULL,&SystemInfo.bPlayAudioFile,true},
@@ -543,7 +543,7 @@ EventGroupHandle_t gRadioEventsHandle;
 // task handles for running the radio parts
 TaskHandle_t TaskRunRadioHandle;
 TaskHandle_t TaskRunTransmitHandle;
-TaskHandle_t TaskSendBeaconHandle;
+TaskHandle_t TaskSendRadioHandle;
 TaskHandle_t TaskSendMusicHandle;
 TaskHandle_t TaskSendGpsHandle;
 TaskHandle_t TaskShowBatteryHandle;
