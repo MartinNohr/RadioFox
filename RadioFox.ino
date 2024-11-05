@@ -97,7 +97,7 @@ void TaskSendGPS(void* parameter)
 		}
 	}
 	// terminate this task
-	TaskSendRadioHandle = NULL;
+	TaskSendGpsHandle = NULL;
 	vTaskDelete(NULL);
 }
 
@@ -199,7 +199,7 @@ void TaskRunTransmit(void* parameter)
 		TaskHandle_t* pTaskHandle;
 		bool* bRunThis;	// NULL to always run, else a boolean address
 	} RFTaskList[] = {
-		{"Radio",TaskSendRadio,&TaskSendRadioHandle,NULL},
+		{"ID+Call",TaskSendRadio,&TaskSendRadioHandle,NULL},
 		{"GPS",TaskSendGPS,&TaskSendGpsHandle,&SystemInfo.bBeaconMode},
 		{"Music",TaskSendMusic,&TaskSendMusicHandle,&SystemInfo.bPlayAudioFile},
 	};
