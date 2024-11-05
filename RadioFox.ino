@@ -1457,7 +1457,7 @@ void GetFloatValue(MenuItem* menu)
 {
 	ClearScreen();
 	// -1 means to reset to original
-	int stepSize = log10(menu->fmax) + menu->decimals - 1;
+	int stepSize = log10(menu->fmax) + menu->decimals;
 	double originalValue = *(double*)menu->value;
 	//Serial.println("int: " + String(menu->text) + String(*(int*)menu->value));
 	char line[50];
@@ -1507,7 +1507,7 @@ void GetFloatValue(MenuItem* menu)
 		case BTN_SELECT:
 		case BTN_B0_CLICK:
 			if (stepSize == -1) {
-				stepSize = log10(menu->fmax) + menu->decimals - 1;
+				stepSize = log10(menu->fmax) + menu->decimals;
 			}
 			else {
 				--stepSize;
@@ -2934,7 +2934,8 @@ void ShowUpdateProgress(size_t x, size_t total)
 // see if there is an update bin file in the SD slot
 void CheckUpdateBin(MenuItem * menu)
 {
-	const char* binFileName = "/RadioFox.ino.ttgo-t1.bin";
+	//const char* binFileName = "/RadioFox.ino.ttgo-t1.bin";
+	const char* binFileName = "/RadioFox.bin";
 	if (SD.exists(binFileName)) {
 		if (GetYesNo("Load New Firmware?")) {
 			ClearScreen();
@@ -2966,7 +2967,7 @@ void CheckUpdateBin(MenuItem * menu)
 			}
 		}
 	else {
-		WriteMessage("No RadioFox.BIN", true);
+		WriteMessage(String("No: ") + binFileName, true);
 	}
 }
 
