@@ -1399,8 +1399,7 @@ void GetIntegerValue(MenuItem * menu)
 			*(int*)menu->value = constrain(*(int*)menu->value, menu->min, menu->max);
 			// show slider bar
 			tft.fillRect(0, 2 * tft.fontHeight(), tft.width() - 1, 6, TFT_BLACK);
-			if (menu->min >= 0)
-				DrawProgressBar(0, 2 * tft.fontHeight() + 4, tft.width() - 1, 12, map(*(int*)menu->value, menu->min, menu->max, 0, 100), true);
+			DrawProgressBar(0, 2 * tft.fontHeight() + 4, tft.width() - 1, 12, map(*(int*)menu->value, menu->min, menu->max, 0, 100), true);
 			sprintf(valstr, fmt, *(int*)menu->value / (int)pow10(menu->decimals), abs(*(int*)menu->value % (int)pow10(menu->decimals)));
 			DisplayLine(3, String("New Value: ") + valstr, SystemInfo.menuTextColor);
 			sprintf(valstr, fmt, stepSize / (int)pow10(menu->decimals), stepSize % (int)pow10(menu->decimals));
@@ -1457,7 +1456,7 @@ void GetFloatValue(MenuItem* menu)
 {
 	ClearScreen();
 	// -1 means to reset to original
-	int stepSize = log10(menu->fmax) + menu->decimals;
+	int stepSize = 0;
 	double originalValue = *(double*)menu->value;
 	//Serial.println("int: " + String(menu->text) + String(*(int*)menu->value));
 	char line[50];
@@ -1483,7 +1482,7 @@ void GetFloatValue(MenuItem* menu)
 			*(double*)menu->value = constrain(*(double*)menu->value, menu->fmin, menu->fmax);
 			// show slider bar
 			tft.fillRect(0, 2 * tft.fontHeight(), tft.width() - 1, 6, TFT_BLACK);
-			//DrawProgressBar(0, 2 * tft.fontHeight() + 4, tft.width() - 1, 12, map(*(int*)menu->value, menu->min, menu->max, 0, 100), true);
+			//DrawProgressBar(0, 2 * tft.fontHeight() + 4, tft.width() - 1, 12, map(*(double*)menu->value, menu->fmin, menu->fmax, 0, 100), true);
 			sprintf(valstr, fmt, *(double*)menu->value);
 			DisplayLine(3, String("New Value: ") + valstr, SystemInfo.menuTextColor);
 			sprintf(valstr, fmt, pow10(stepSize - menu->decimals));
@@ -1506,11 +1505,9 @@ void GetFloatValue(MenuItem* menu)
 			break;
 		case BTN_SELECT:
 		case BTN_B0_CLICK:
-			if (stepSize == -1) {
-				stepSize = log10(menu->fmax) + menu->decimals;
-			}
-			else {
-				--stepSize;
+			++stepSize;
+			if (stepSize > log10(menu->fmax) + menu->decimals) {
+				stepSize = -1;
 			}
 			break;
 		case BTN_B0_LONG:	// reset
