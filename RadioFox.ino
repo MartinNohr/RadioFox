@@ -1482,7 +1482,8 @@ void GetFloatValue(MenuItem* menu)
 			*(double*)menu->value = constrain(*(double*)menu->value, menu->fmin, menu->fmax);
 			// show slider bar
 			tft.fillRect(0, 2 * tft.fontHeight(), tft.width() - 1, 6, TFT_BLACK);
-			//DrawProgressBar(0, 2 * tft.fontHeight() + 4, tft.width() - 1, 12, map(*(double*)menu->value, menu->fmin, menu->fmax, 0, 100), true);
+			long pc = map(*(double*)menu->value, menu->fmin, menu->fmax, 0, 100);
+			DrawProgressBar(0, 2 * tft.fontHeight() + 4, tft.width() - 1, 12, pc, true);
 			sprintf(valstr, fmt, *(double*)menu->value);
 			DisplayLine(3, String("New Value: ") + valstr, SystemInfo.menuTextColor);
 			sprintf(valstr, fmt, pow10(stepSize - menu->decimals));
@@ -2306,13 +2307,16 @@ bool GetYesNo(String msg)
 // draw a progress bar
 void DrawProgressBar(int x, int y, int dx, int dy, int percent, bool rect)
 {
-	if (rect)
-		tft.drawRoundRect(x, y, dx, dy, 2, SystemInfo.menuTextColor);
-	int fill = (dx - 2) * percent / 100;
-	// fill the filled part
-	tft.fillRect(x + 1, y + 1, fill, dy - 2, TFT_DARKGREEN);
-	// blank the empty part
-	tft.fillRect(x + 1 + fill, y + 1, dx - 2 - fill, dy - 2, TFT_BLACK);
+	if (xSemaphoreTake(MutexDisplayHandle, portMAX_DELAY) == pdTRUE) {
+		if (rect)
+			tft.drawRoundRect(x, y, dx, dy, 2, SystemInfo.menuTextColor);
+		int fill = (dx - 2) * percent / 100;
+		// fill the filled part
+		tft.fillRect(x + 1, y + 1, fill, dy - 2, TFT_DARKGREEN);
+		// blank the empty part
+		tft.fillRect(x + 1 + fill, y + 1, dx - 2 - fill, dy - 2, TFT_BLACK);
+		xSemaphoreGive(MutexDisplayHandle);
+	}
 }
 
 // save/load battery settings
@@ -2916,7 +2920,10 @@ void ShowProgressBar(int percent)
 	int y = (tft.fontHeight() + 4);
 	int h = 8;
 	if (percent == 0) {
-		tft.fillRect(0, y, x, h, TFT_BLACK);
+		if (xSemaphoreTake(MutexDisplayHandle, portMAX_DELAY) == pdTRUE) {
+			tft.fillRect(0, y, x, h, TFT_BLACK);
+			xSemaphoreGive(MutexDisplayHandle);
+		}
 	}
 	DrawProgressBar(0, y, x, h, percent, true);
 	lastpercent = percent;
