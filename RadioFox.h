@@ -185,6 +185,7 @@ typedef struct SYSTEM_INFO {
     bool bBeaconMode = false;                   // limit the frequency for beacon use and turn GPS info on
     double fLatitude = 0.0;                     // 6 decimals +-180 degrees
     double fLongitude = 0.0;                    // 6 decimals +-180 degrees
+    bool bSendGPS = false;                      // enable GPS transmission, bBeaconMode must be on
     //
 };
 RTC_DATA_ATTR SYSTEM_INFO SystemInfo;
@@ -451,6 +452,8 @@ MenuItem RadioTimersMenu[] = {
     // make sure this one is last
     {eTerminate}
 };
+#define BEACON_LOW_FREQUENCY 144275
+#define BEACON_HIGH_FREQUENCY 144300
 MenuItem RadioMenu[] = {
 #if RADIO_UHF
     {eExit,"UHF Radio Settings"},
@@ -464,9 +467,12 @@ MenuItem RadioMenu[] = {
 #else   // VHF here
     {eBool,"Beacon Mode: %s",ToggleBool,&SystemInfo.bBeaconMode,0,0,0,"Yes","No"},
     {eIfEqual,"",NULL,&SystemInfo.bBeaconMode,true},
-        {eTextInt,"TX: %d.%03d MHz",GetIntegerValue,&SystemInfo.nFrequency,144275,144300,3},
-		{eTextFloat,"Latitude: %.6f",GetFloatValue,&SystemInfo.fLatitude,{.fmin = -180.0},{.fmax = 180.0},6},
-		{eTextFloat,"Longitude: %.6f",GetFloatValue,&SystemInfo.fLongitude,{.fmin = -180.0},{.fmax = 180.0},6},
+        {eBool,"Send GPS: %s",ToggleBool,&SystemInfo.bSendGPS,0,0,0,"Yes","No"},
+        {eTextInt,"TX: %d.%03d MHz",GetIntegerValue,&SystemInfo.nFrequency,BEACON_LOW_FREQUENCY,BEACON_HIGH_FREQUENCY,3},
+        {eIfEqual,"",NULL,&SystemInfo.bSendGPS,true},
+            {eTextFloat,"Latitude: %.6f",GetFloatValue,&SystemInfo.fLatitude,{.fmin = -180.0},{.fmax = 180.0},6},
+		    {eTextFloat,"Longitude: %.6f",GetFloatValue,&SystemInfo.fLongitude,{.fmin = -180.0},{.fmax = 180.0},6},
+        {eEndif},
     {eElse},
         {eTextInt,"TX: %d.%03d MHz",GetIntegerValue,&SystemInfo.nFrequency,134000,174000,3},
     {eEndif},

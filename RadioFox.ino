@@ -197,18 +197,21 @@ void TaskRunTransmit(void* parameter)
 		char* name;
 		void (*task)(void* pArgs);
 		TaskHandle_t* pTaskHandle;
-		bool* bRunThis;	// NULL to always run, else a boolean address
+		bool* bRunThis1;	// NULL to always run, else a boolean address
+		bool* bRunThis2;	// if this is here, they must both be true
 	} RFTaskList[] = {
-		{"ID+Call",TaskSendRadio,&TaskSendRadioHandle,NULL},
-		{"GPS",TaskSendGPS,&TaskSendGpsHandle,&SystemInfo.bBeaconMode},
-		{"Music",TaskSendMusic,&TaskSendMusicHandle,&SystemInfo.bPlayAudioFile},
+		{"ID+Call",TaskSendRadio,&TaskSendRadioHandle,NULL,NULL},
+		{"GPS",TaskSendGPS,&TaskSendGpsHandle,&SystemInfo.bBeaconMode,&SystemInfo.bSendGPS},
+		{"Music",TaskSendMusic,&TaskSendMusicHandle,&SystemInfo.bPlayAudioFile,NULL},
 	};
 	bool bDone = false;
 	while (IsRadioReady && IsTransmitEnabled && !bDone && ulTaskNotifyTake(pdTRUE, 0) == 0) {
 		int nLoopCount = 0;
 		for (const struct RFTaskEntry& pte : RFTaskList) {
+			bool b1 = pte.bRunThis1 ? *pte.bRunThis1 : true;
+			bool b2 = pte.bRunThis2 ? *pte.bRunThis2 : true;
 			// see if this should be run, NULL or *true means do it
-			if (pte.bRunThis == NULL || *pte.bRunThis) {
+			if (b1 && b2) {
 				// send the name for display
 				xTaskNotify(TaskRunRadioHandle, (uint32_t)pte.name, eSetValueWithOverwrite);
 				// start the task
@@ -757,6 +760,17 @@ void TaskMenu(void* params)
 	for (;;) {
 		if (g_bSettingsMode) {
 			HandleMenus();
+			// check for some conditions that must be adjusted
+			if (SystemInfo.bBeaconMode) {
+				// only certain frequencies are allowed in Beacon mode
+				if (SystemInfo.nFrequency < BEACON_LOW_FREQUENCY || SystemInfo.nFrequency > BEACON_HIGH_FREQUENCY) {
+					SystemInfo.nFrequency = BEACON_LOW_FREQUENCY;
+				}
+			}
+			// if beacon mode off, make sure the send GPS flag is off
+			if (!SystemInfo.bBeaconMode) {
+				SystemInfo.bSendGPS = false;
+			}
 		}
 		else {
 			HandleRunMode();
