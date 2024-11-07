@@ -405,7 +405,7 @@ void TaskRunRadio(void* parameter)
 			char tm[12];
 			sprintf(tm, "%2d:%02d", (TxTime / (60 * 60)), (TxTime / 60) % 60);
 			DisplayLine(lineNo++, String(String("Count: ") + txCount + "  Time: " + tm), SystemInfo.menuTextColor);
-			DisplayLine(lineNo++, String(SystemInfo.cRadioString) + " " + SystemInfo.cRadioCallSign + " " + (SystemInfo.bBeaconMode ? "GPS" : ""), SystemInfo.menuTextColor);
+			DisplayLine(lineNo++, String(SystemInfo.cRadioString) + " " + SystemInfo.cRadioCallSign + " " + ((SystemInfo.bBeaconMode && SystemInfo.bSendGPS) ? "GPS" : ""), SystemInfo.menuTextColor);
 			if (SystemInfo.bPlayAudioFile)
 				DisplayLine(lineNo++, "Music: " + String(SystemInfo.cAudioFile), SystemInfo.menuTextColor);
 			sprintf(fmt, "%03d MHz ", SystemInfo.nFrequency % 1000);
