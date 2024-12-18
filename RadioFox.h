@@ -1,6 +1,6 @@
 #pragma once
 
-const char* FOX_Version = "1.11";
+const char* FOX_Version = "1.12";
 
 const char* StartFileName = "START.FOX";
 // some config things
@@ -465,16 +465,18 @@ MenuItem RadioMenu[] = {
 #if RADIO_UHF
     {eTextInt,"TX: %d.%03d MHz",GetIntegerValue,&SystemInfo.nFrequency,400000,480000,3},
 #else   // VHF here
+    {eIfEqual,"",NULL,&SystemInfo.bBeaconMode,true},
+        {eTextInt,"TX: %d.%03d MHz",GetIntegerValue,&SystemInfo.nFrequency,BEACON_LOW_FREQUENCY,BEACON_HIGH_FREQUENCY,3},
+    {eElse},
+        {eTextInt,"TX: %d.%03d MHz",GetIntegerValue,&SystemInfo.nFrequency,134000,174000,3},
+    {eEndif},
     {eBool,"Beacon Mode: %s",ToggleBool,&SystemInfo.bBeaconMode,0,0,0,"Yes","No"},
     {eIfEqual,"",NULL,&SystemInfo.bBeaconMode,true},
         {eBool,"Send GPS: %s",ToggleBool,&SystemInfo.bSendGPS,0,0,0,"Yes","No"},
-        {eTextInt,"TX: %d.%03d MHz",GetIntegerValue,&SystemInfo.nFrequency,BEACON_LOW_FREQUENCY,BEACON_HIGH_FREQUENCY,3},
         {eIfEqual,"",NULL,&SystemInfo.bSendGPS,true},
             {eTextFloat,"Latitude: %.6f",GetFloatValue,&SystemInfo.fLatitude,{.fmin = -180.0},{.fmax = 180.0},6},
 		    {eTextFloat,"Longitude: %.6f",GetFloatValue,&SystemInfo.fLongitude,{.fmin = -180.0},{.fmax = 180.0},6},
         {eEndif},
-    {eElse},
-        {eTextInt,"TX: %d.%03d MHz",GetIntegerValue,&SystemInfo.nFrequency,134000,174000,3},
     {eEndif},
 #endif
     {eEditText,"Radio ID: %s",GetText,SystemInfo.cRadioString,1,sizeof(SystemInfo.cRadioString) - 1},
