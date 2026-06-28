@@ -4,6 +4,7 @@
  Author:	Sven Schumacher & Martin Nohr
  Call Sign: VE6IDK & KK7JTE
 */
+#include <Arduino.h>
 #include "RadioFox.h"
 #include <PhoneDTMF.h>
 #include "pitches.h"
@@ -2231,7 +2232,7 @@ void LoadSettingsFromFile(MenuItem*)
 	FsFile file;
 	String fname = GetSettingsFilename();
 	if (fname.length()) {
-		if ((file = SD.open("/" + fname + ".RFS", O_RDONLY)) != NULL) {
+		if ((file = SD.open(String("/") + fname + ".RFS", O_RDONLY)) != NULL) {
 			file.read(&SystemInfo, sizeof(SystemInfo));
 			file.close();
 			WriteMessage(fname + "\nloaded");
@@ -2522,8 +2523,8 @@ struct WEB_SETTINGS {
 	WEB_SETTINGS_TYPE type;		// what type of data
 	bool* display;				// if not NULL, compare with displayTest to display this line
 	bool displayTest;			// compare with display to see if this line should display or not
-	char* text;					// show on page
-	char* name;					// the data name
+	const char* text;			// show on page
+	const char* name;			// the data name
 	void* data;					// a pointer to the data
 	int width;					// how wide to make the field
 	int decimals;				// decimals for floats, although stored as ints, also used for max string length
