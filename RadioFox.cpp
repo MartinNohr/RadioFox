@@ -13,62 +13,77 @@
 PhoneDTMF dtmf = PhoneDTMF();
 
 // timer called every second
-void periodic_Second_timer_callback(void* arg)
+void periodic_Second_timer_callback(void *arg)
 {
-	if (SystemInfo.eDisplayDimMode == DISPLAY_DIM_MODE_TIME && displayDimTimer) {
+	if (SystemInfo.eDisplayDimMode == DISPLAY_DIM_MODE_TIME && displayDimTimer)
+	{
 		--displayDimTimer;
-		if (displayDimTimer == 0) {
+		if (displayDimTimer == 0)
+		{
 			displayDimNow = true;
 		}
 	}
 }
 
-TFT_eSprite LineSprite = TFT_eSprite(&tft);  // Create Sprite object "LineSprite" with pointer to "tft" object
+TFT_eSprite LineSprite = TFT_eSprite(&tft); // Create Sprite object "LineSprite" with pointer to "tft" object
 #define BATTERY_BAR_HEIGHT 5
-TFT_eSprite BatterySprite = TFT_eSprite(&tft);  // Create Sprite object "BatterySprite" with pointer to "tft" object
+TFT_eSprite BatterySprite = TFT_eSprite(&tft); // Create Sprite object "BatterySprite" with pointer to "tft" object
 
 // handle the sideways scrolling of long lines
-void TaskScrollSideways(void* params)
+void TaskScrollSideways(void *params)
 {
 	// use this to make task run every second
 	TickType_t xLastWakeTime;
 	const TickType_t xFrequency = pdMS_TO_TICKS(SystemInfo.nSidewayScrollSpeed);
 	// Initialize the xLastWakeTime variable with the current time.
 	xLastWakeTime = xTaskGetTickCount();
-	for (;;) {
-		for (int ix = 0; ix < nMenuLineCount; ++ix) {
+	for (;;)
+	{
+		for (int ix = 0; ix < nMenuLineCount; ++ix)
+		{
 			// see if we need to restart because the screen was cleared
-			if (ulTaskNotifyTake(pdTRUE, 0) != 0) {
+			if (ulTaskNotifyTake(pdTRUE, 0) != 0)
+			{
 				break;
 			}
 			int offset = TextLines[ix].nRollOffset;
-			if (TextLines[ix].nRollLength) {
-				if (TextLines[ix].nRollOffset == 0 && TextLines[ix].nRollDirection == 0) {
+			if (TextLines[ix].nRollLength)
+			{
+				if (TextLines[ix].nRollOffset == 0 && TextLines[ix].nRollDirection == 0)
+				{
 					TextLines[ix].nRollDirection = SystemInfo.nSidewaysScrollPause;
 					continue;
 				}
-				if (TextLines[ix].nRollDirection > 1) {
+				if (TextLines[ix].nRollDirection > 1)
+				{
 					--TextLines[ix].nRollDirection;
 				}
-				if (TextLines[ix].nRollDirection == 1) {
+				if (TextLines[ix].nRollDirection == 1)
+				{
 					++TextLines[ix].nRollOffset;
 				}
-				if (TextLines[ix].nRollOffset >= (TextLines[ix].nRollLength - tft.width()) && TextLines[ix].nRollDirection > 0) {
+				if (TextLines[ix].nRollOffset >= (TextLines[ix].nRollLength - tft.width()) && TextLines[ix].nRollDirection > 0)
+				{
 					TextLines[ix].nRollDirection = -SystemInfo.nSidewaysScrollPause;
 				}
-				if (TextLines[ix].nRollDirection < -1) {
+				if (TextLines[ix].nRollDirection < -1)
+				{
 					++TextLines[ix].nRollDirection;
 				}
-				if (TextLines[ix].nRollDirection == -1) {
+				if (TextLines[ix].nRollDirection == -1)
+				{
 					TextLines[ix].nRollOffset -= SystemInfo.nSidewaysScrollReverse;
-					if (TextLines[ix].nRollOffset < 0) {
+					if (TextLines[ix].nRollOffset < 0)
+					{
 						TextLines[ix].nRollOffset = 0;
 					}
-					if (TextLines[ix].nRollOffset == 0) {
+					if (TextLines[ix].nRollOffset == 0)
+					{
 						TextLines[ix].nRollDirection = 0;
 					}
 				}
-				if (offset != TextLines[ix].nRollOffset) {
+				if (offset != TextLines[ix].nRollOffset)
+				{
 					DisplayLine(ix, TextLines[ix].Line, TextLines[ix].foreColor, TextLines[ix].backColor);
 				}
 			}
@@ -79,7 +94,7 @@ void TaskScrollSideways(void* params)
 }
 
 // send the latitude and longitude
-void TaskSendGPS(void* parameter)
+void TaskSendGPS(void *parameter)
 {
 	// format the latitude and longitude
 	String sendThese[2];
@@ -89,11 +104,14 @@ void TaskSendGPS(void* parameter)
 	sendThese[0] = tmp;
 	sprintf(tmp, "Long%.6f", SystemInfo.fLongitude);
 	sendThese[1] = tmp;
-	for (String str : sendThese) {
-		for (char ch : str) {
+	for (String str : sendThese)
+	{
+		for (char ch : str)
+		{
 			sendLetter(ch);
 		}
-		if (!IsTransmitting) {
+		if (!IsTransmitting)
+		{
 			break;
 		}
 	}
@@ -103,17 +121,20 @@ void TaskSendGPS(void* parameter)
 }
 
 // send the radio id followed by the callsign
-void TaskSendRadio(void* parameter)
+void TaskSendRadio(void *parameter)
 {
 	// take copies in case they get changed while we are here
 	String sendThese[2];
 	sendThese[0] = SystemInfo.cRadioString;
 	sendThese[1] = SystemInfo.cRadioCallSign;
-	for (String str : sendThese) {
-		for (char ch : str) {
+	for (String str : sendThese)
+	{
+		for (char ch : str)
+		{
 			sendLetter(ch);
 		}
-		if (!IsTransmitting) {
+		if (!IsTransmitting)
+		{
 			break;
 		}
 	}
@@ -122,14 +143,16 @@ void TaskSendRadio(void* parameter)
 	vTaskDelete(NULL);
 }
 
-//task to send the music
-void TaskSendMusic(void* parameter)
+// task to send the music
+void TaskSendMusic(void *parameter)
 {
-	if (SD.exists(SystemInfo.cAudioFile)) {
+	if (SD.exists(SystemInfo.cAudioFile))
+	{
 		// open the audio file and start reading lines from it
 		FsFile audioFile;
 		audioFile = SD.open(SystemInfo.cAudioFile);
-		if (audioFile.getError() == 0) {
+		if (audioFile.getError() == 0)
+		{
 			// put some defaults in just in case they are missing in the music file
 			int noteLength = 90;
 			int tempo = 145;
@@ -139,7 +162,8 @@ void TaskSendMusic(void* parameter)
 			audioFile.readStringUntil('~');
 			// read tokens until done
 			String key, value;
-			while ((key = audioFile.readStringUntil(','))) {
+			while ((key = audioFile.readStringUntil(',')))
+			{
 				// clean the key
 				key.trim();
 				key.toUpperCase();
@@ -150,28 +174,32 @@ void TaskSendMusic(void* parameter)
 				if (value.isEmpty())
 					break;
 				// check for tempo setting
-				if (key.equals("TEMPO")) {
+				if (key.equals("TEMPO"))
+				{
 					// set the tempo
 					tempo = value.toInt();
 					wholenote = (60000 * 4) / tempo;
 				}
-				else if (key.equals("LENGTH")) {
+				else if (key.equals("LENGTH"))
+				{
 					noteLength = value.toInt();
 				}
-				else {
+				else
+				{
 					// process the notes and durations
 					int note = mapNotes[key.c_str()];
 					int divider = value.toInt();
 					int duration = wholenote / divider;
 					// negative duration means times 1.5 (dotted note)
-					if (duration < 0) {
+					if (duration < 0)
+					{
 						// dotted notes are represented with negative durations!!
 						duration *= -1.5;
 					}
 					// we only play the note for noteLength % of the duration, leaving the rest as a pause
-					ledcWriteTone(toneChannel, note);
+					ledcWriteTone(AUDIO_OUT_PORT, note);
 					vTaskDelay(pdMS_TO_TICKS((float)duration * noteLength / 100.0));
-					ledcWriteTone(toneChannel, 0);
+					ledcWriteTone(AUDIO_OUT_PORT, 0);
 					vTaskDelay(pdMS_TO_TICKS((float)duration * ((100 - noteLength) / 100.0)));
 				}
 			}
@@ -184,9 +212,10 @@ void TaskSendMusic(void* parameter)
 }
 
 // this controls the radio sending operations
-void TaskRunTransmit(void* parameter)
+void TaskRunTransmit(void *parameter)
 {
-	if (IsTransmitEnabled && IsRadioReady) {
+	if (IsTransmitEnabled && IsRadioReady)
+	{
 		gpio_set_level((gpio_num_t)PTT_PORT, PTT_TALK);
 		xEventGroupSetBits(gRadioEventsHandle, RadioEventIsTransmitting);
 	}
@@ -194,33 +223,39 @@ void TaskRunTransmit(void* parameter)
 	// wait for PTT to take effect
 	vTaskDelay(pdMS_TO_TICKS(500));
 	// a list of our tasks to run
-	static const struct RFTaskEntry {
-		char* name;
-		void (*task)(void* pArgs);
-		TaskHandle_t* pTaskHandle;
-		bool* bRunThis1;	// NULL to always run, else a boolean address
-		bool* bRunThis2;	// if this is here, they must both be true
+	static const struct RFTaskEntry
+	{
+		const char *name;
+		void (*task)(void *pArgs);
+		TaskHandle_t *pTaskHandle;
+		bool *bRunThis1; // NULL to always run, else a boolean address
+		bool *bRunThis2; // if this is here, they must both be true
 	} RFTaskList[] = {
-		{"ID+Call",TaskSendRadio,&TaskSendRadioHandle,NULL,NULL},
-		{"GPS",TaskSendGPS,&TaskSendGpsHandle,&SystemInfo.bBeaconMode,&SystemInfo.bSendGPS},
-		{"Music",TaskSendMusic,&TaskSendMusicHandle,&SystemInfo.bPlayAudioFile,NULL},
+		{"ID+Call", TaskSendRadio, &TaskSendRadioHandle, NULL, NULL},
+		{"GPS", TaskSendGPS, &TaskSendGpsHandle, &SystemInfo.bBeaconMode, &SystemInfo.bSendGPS},
+		{"Music", TaskSendMusic, &TaskSendMusicHandle, &SystemInfo.bPlayAudioFile, NULL},
 	};
 	bool bDone = false;
-	while (IsRadioReady && IsTransmitEnabled && !bDone && ulTaskNotifyTake(pdTRUE, 0) == 0) {
+	while (IsRadioReady && IsTransmitEnabled && !bDone && ulTaskNotifyTake(pdTRUE, 0) == 0)
+	{
 		int nLoopCount = 0;
-		for (const struct RFTaskEntry& pte : RFTaskList) {
+		for (const struct RFTaskEntry &pte : RFTaskList)
+		{
 			bool b1 = pte.bRunThis1 ? *pte.bRunThis1 : true;
 			bool b2 = pte.bRunThis2 ? *pte.bRunThis2 : true;
 			// see if this should be run, NULL or *true means do it
-			if (b1 && b2) {
+			if (b1 && b2)
+			{
 				// send the name for display
 				xTaskNotify(TaskRunRadioHandle, (uint32_t)pte.name, eSetValueWithOverwrite);
 				// start the task
 				xTaskCreate(pte.task, pte.name, 2000, NULL, 6, pte.pTaskHandle);
 				// wait for it to complete or be cancelled
-				while (*pte.pTaskHandle) {
+				while (*pte.pTaskHandle)
+				{
 					// check for timeout or cancel task
-					if (SystemInfo.bStopImmediately && ulTaskNotifyTake(pdTRUE, 0)) {
+					if (SystemInfo.bStopImmediately && ulTaskNotifyTake(pdTRUE, 0))
+					{
 						if (*pte.pTaskHandle)
 							vTaskDelete(*pte.pTaskHandle);
 						*pte.pTaskHandle = NULL;
@@ -237,22 +272,22 @@ void TaskRunTransmit(void* parameter)
 		vTaskDelay(pdMS_TO_TICKS(500));
 	}
 	// Turn off the output tone also
-	ledcWriteTone(toneChannel, 0);
+	ledcWriteTone(AUDIO_OUT_PORT, 0);
 	// turn PTT off here
 	gpio_set_level((gpio_num_t)PTT_PORT, PTT_LISTEN);
 	xEventGroupClearBits(gRadioEventsHandle, RadioEventIsTransmitting);
 	// stop this task after clearing the handle
 	TaskRunTransmitHandle = NULL;
 	vTaskDelete(NULL);
-	//int freestack = uxTaskGetStackHighWaterMark(NULL);
-	//Serial.println(String("xmit high water: ") + freestack);
+	// int freestack = uxTaskGetStackHighWaterMark(NULL);
+	// Serial.println(String("xmit high water: ") + freestack);
 }
 
 // return random between two numbers, including both of them
 int GetRandomBetween(int one, int two)
 {
 	int delta = abs(one - two);
-	++delta;	// include the larger one
+	++delta; // include the larger one
 	return (rand() % delta) + min(one, two);
 }
 
@@ -269,11 +304,11 @@ int NextPauseTime()
 }
 
 // all the timing and screen display is done here
-void TaskRunRadio(void* parameter)
+void TaskRunRadio(void *parameter)
 {
 	// init the random generator used for timers
 	srand(analogRead(BATTERY_SENSOR_GPIO));
-	const char* cStatusText = NULL;
+	const char *cStatusText = NULL;
 	uint32_t status = 0;
 	bool bTransmitting = false;
 	int secondsLeft = 0;
@@ -289,17 +324,22 @@ void TaskRunRadio(void* parameter)
 	int delayedSeconds = 0;
 	// keep the time we transmit and pause in here
 	unsigned long TxTime = 0;
-	while (true) {
-		if (IsTransmitEnabled) {
+	while (true)
+	{
+		if (IsTransmitEnabled)
+		{
 			++TxTime;
 		}
-		if (!IsRadioReady && bWasXmit) {
+		if (!IsRadioReady && bWasXmit)
+		{
 			// stop the radio
 			delayedSeconds = secondsLeft = 0;
 		}
-		if (IsTransmitEnabled || TaskRunTransmitHandle) {
+		if (IsTransmitEnabled || TaskRunTransmitHandle)
+		{
 			bool bTx = IsTransmitEnabled;
-			if (bWasXmit != IsTransmitEnabled) {
+			if (bWasXmit != IsTransmitEnabled)
+			{
 				// tell the xmitter to stop
 				if (TaskRunTransmitHandle && bWasXmit)
 					xTaskNotify(TaskRunTransmitHandle, 1, eSetValueWithOverwrite);
@@ -309,18 +349,23 @@ void TaskRunRadio(void* parameter)
 				bWasXmit = IsTransmitEnabled;
 				// make sure we start right away or after the delay specified
 				secondsLeft = 0;
-				if (SystemInfo.nStartDelayTimer) {
+				if (SystemInfo.nStartDelayTimer)
+				{
 					delayedSeconds = SystemInfo.nStartDelayTimer * 60;
 				}
 			}
 			// see if the timer has run out and we need to change state
-			if (secondsLeft == 0 && delayedSeconds == 0) {
+			if (secondsLeft == 0 && delayedSeconds == 0)
+			{
 				bTransmitting = !bTransmitting;
-				if (bTransmitting) {
+				if (bTransmitting)
+				{
 					bWaitingForStop = false;
 					// start the xmitter task, only one copy to be safe
-					if (TaskRunTransmitHandle == NULL) {
-						if (SystemInfo.bSleepWhilePausing) {
+					if (TaskRunTransmitHandle == NULL)
+					{
+						if (SystemInfo.bSleepWhilePausing)
+						{
 							RadioEnable(true);
 							vTaskDelay(pdMS_TO_TICKS(250));
 						}
@@ -328,18 +373,21 @@ void TaskRunRadio(void* parameter)
 					}
 					// wait for it to start and let us know
 					int nWaitCounter = 50;
-					while ((status = ulTaskNotifyTake(pdTRUE, 0)) == 0) {
+					while ((status = ulTaskNotifyTake(pdTRUE, 0)) == 0)
+					{
 						vTaskDelay(pdMS_TO_TICKS(10));
-						if (--nWaitCounter <= 0) {
+						if (--nWaitCounter <= 0)
+						{
 							break;
 						}
 					}
 					// it must be a string they sent us
-					cStatusText = (const char*)status;
+					cStatusText = (const char *)status;
 					txCount++;
 					secondsLeft = NextTxTime();
 				}
-				else {
+				else
+				{
 					// tell the xmitter to stop
 					if (TaskRunTransmitHandle)
 						xTaskNotify(TaskRunTransmitHandle, 1, eSetValueWithOverwrite);
@@ -353,17 +401,21 @@ void TaskRunRadio(void* parameter)
 			// see if the task sent us anything
 			status = ulTaskNotifyTake(pdTRUE, 0);
 			// check if this is a string pointer
-			if (status) {
-				cStatusText = (const char*)status;
+			if (status)
+			{
+				cStatusText = (const char *)status;
 			}
 		}
-		if (bWaitingForStop) {
+		if (bWaitingForStop)
+		{
 			// check if the xmitter is finished
-			if (!TaskRunTransmitHandle) {
+			if (!TaskRunTransmitHandle)
+			{
 				bWaitingForStop = false;
 				secondsLeft = NextPauseTime();
 				// sleep radio if required
-				if (SystemInfo.bSleepWhilePausing) {
+				if (SystemInfo.bSleepWhilePausing)
+				{
 					RadioEnable(false);
 				}
 			}
@@ -376,30 +428,38 @@ void TaskRunRadio(void* parameter)
 		else if (IsTransmitEnabled && !bTransmitting && !bWaitingForStop)
 			cStatusText = "Pause";
 		// set string if not transmitting
-		else if (!IsTransmitEnabled && !bWaitingForStop) {
+		else if (!IsTransmitEnabled && !bWaitingForStop)
+		{
 			cStatusText = "Transmit Off";
 			secondsLeft = 0;
 			delayedSeconds = 0;
 		}
-		if (!g_bSettingsMode) {
+		if (!g_bSettingsMode)
+		{
 			int lineNo = 0;
 			char fmt[20];
 			String str = cStatusText;
-			if (bWaitingForStop) {
+			if (bWaitingForStop)
+			{
 				str = cStatusText + String(": Stopping");
 			}
-			else {
-				if (delayedSeconds) {
+			else
+			{
+				if (delayedSeconds)
+				{
 					str += String(": ") + (delayedSeconds / 60) + " Min " + (delayedSeconds % 60) + " Sec";
 				}
-				else if (secondsLeft) {
+				else if (secondsLeft)
+				{
 					str += String(": ") + (secondsLeft / 60) + " Min " + (secondsLeft % 60) + " Sec";
 				}
 			}
-			if (IsRadioReady) {
+			if (IsRadioReady)
+			{
 				DisplayLine(lineNo++, str, SystemInfo.menuTextColor);
 			}
-			else {
+			else
+			{
 				DisplayLine(lineNo++, "Waiting for Radio", SystemInfo.menuTextColor);
 			}
 			// show cycle count and time active (HH:MM)
@@ -418,7 +478,8 @@ void TaskRunRadio(void* parameter)
 		if (delayedSeconds > 0)
 			--delayedSeconds;
 		// see if we need to cancel the pauses
-		if (IsCancelWaits) {
+		if (IsCancelWaits)
+		{
 			delayedSeconds = secondsLeft = 0;
 			xEventGroupClearBits(gRadioEventsHandle, RadioEventCancelWaits);
 		}
@@ -428,14 +489,14 @@ void TaskRunRadio(void* parameter)
 }
 
 // cancel the radio wait timers
-void CancelWaitTimers(MenuItem*)
+void CancelWaitTimers(MenuItem *)
 {
 	xEventGroupSetBits(gRadioEventsHandle, RadioEventCancelWaits);
 }
 
 // show the transmit animation while sending
 #define TX_CIRCLE_SIZE 10
-void TaskXmitDisplay(void* parameters)
+void TaskXmitDisplay(void *parameters)
 {
 	// use this to make task run periodically
 	TickType_t xLastWakeTime;
@@ -444,23 +505,29 @@ void TaskXmitDisplay(void* parameters)
 	xLastWakeTime = xTaskGetTickCount();
 
 	int cycle = 0;
-	while (true) {
-		if (!g_bSettingsMode) {
-			if (xSemaphoreTake(MutexDisplayHandle, portMAX_DELAY) == pdTRUE) {
+	while (true)
+	{
+		if (!g_bSettingsMode)
+		{
+			if (xSemaphoreTake(MutexDisplayHandle, portMAX_DELAY) == pdTRUE)
+			{
 				cycle = cycle % TX_CIRCLE_SIZE;
 				if (!IsTransmitting)
 					cycle = 0;
-				if (cycle) {
+				if (cycle)
+				{
 					tft.drawCircle(10, tft.height() - TX_CIRCLE_SIZE, cycle, TFT_RED);
 				}
-				else {
+				else
+				{
 					tft.fillCircle(10, tft.height() - TX_CIRCLE_SIZE, TX_CIRCLE_SIZE, TFT_BLACK);
 				}
 				++cycle;
 				xSemaphoreGive(MutexDisplayHandle);
 			}
 		}
-		else {
+		else
+		{
 			cycle = 0;
 		}
 		// Wait for the next cycle if nothing happened this time
@@ -469,11 +536,13 @@ void TaskXmitDisplay(void* parameters)
 }
 
 // show the battery every 60 seconds
-void TaskShowBattery(void* parameters)
+void TaskShowBattery(void *parameters)
 {
-	while (true) {
+	while (true)
+	{
 		// show battery level if on
-		if (SystemInfo.bShowBatteryLevel && !g_bSettingsMode) {
+		if (SystemInfo.bShowBatteryLevel && !g_bSettingsMode)
+		{
 			int raw;
 			ReadBattery(&raw);
 			ShowBattery(NULL);
@@ -485,8 +554,10 @@ void TaskShowBattery(void* parameters)
 // display a received character on the bottom line
 void DisplayBottomChar(char ch)
 {
-	if (!g_bSettingsMode) {
-		if (xSemaphoreTake(MutexDisplayHandle, portMAX_DELAY) == pdTRUE) {
+	if (!g_bSettingsMode)
+	{
+		if (xSemaphoreTake(MutexDisplayHandle, portMAX_DELAY) == pdTRUE)
+		{
 			tft.setTextColor(TFT_GREEN);
 			tft.setTextSize(2);
 			// add ' ' to ensure spot is cleared for shorter letters like 'l'
@@ -499,7 +570,7 @@ void DisplayBottomChar(char ch)
 
 // handle DTMF commands, runs periodically
 // TODO: should probably turn off sending while working in here
-void TaskDTMF(void* parameter)
+void TaskDTMF(void *parameter)
 {
 	// use this to make task run periodically
 	TickType_t xLastWakeTime;
@@ -509,25 +580,28 @@ void TaskDTMF(void* parameter)
 	bool bEnabled = false;
 	unsigned long enableTimer = 0;
 
-	while (true) {
+	while (true)
+	{
 		bool bReply = false;
-		uint8_t   tones;
-		char      button;
+		uint8_t tones;
+		char button;
 		// detect tone
 		tones = dtmf.detect();
-		//if (tones)
+		// if (tones)
 		//	Serial.println(String("tones:") + tones);
-		// if valid tone was found, proof for validity
+		//  if valid tone was found, proof for validity
 		button = dtmf.tone2char(tones);
-		if (button > 0) {
-			//Serial.println(String("button:")+button);
-			// measure 4 times, result of each measurement should be always the same 
-			// time needed for this process: 80ms, so the tone must be present at least 100ms to be valid
+		if (button > 0)
+		{
+			// Serial.println(String("button:")+button);
+			//  measure 4 times, result of each measurement should be always the same
+			//  time needed for this process: 80ms, so the tone must be present at least 100ms to be valid
 			tones |= dtmf.detect() | dtmf.detect() | dtmf.detect();
 			char ch = dtmf.tone2char(tones);
 			Serial.println(String("ch:") + ch);
 			// unless the timer is on, only accept '*'
-			if ((millis() > enableTimer) && ch != '*') {
+			if ((millis() > enableTimer) && ch != '*')
+			{
 				continue;
 			}
 			// display it
@@ -535,31 +609,32 @@ void TaskDTMF(void* parameter)
 			// enable for the timer active seconds
 			enableTimer = millis() + SystemInfo.nDtmfEnableTimer * 1000;
 			bool bValidCommand = true;
-			switch (ch) {
+			switch (ch)
+			{
 			case '*':
 				bEnabled = true;
 				digitalWrite(PTT_PORT, PTT_LISTEN);
 				bReply = false;
 				break;
-			case '1':	// Start Loop
-				SetRadioTransmit(true);        // set the flag to ENABLE transmissions
+			case '1':					// Start Loop
+				SetRadioTransmit(true); // set the flag to ENABLE transmissions
 				bReply = true;
 				break;
-			case '2':	// turn off transmissions - send a short letter to confirm receive
-				SetRadioTransmit(false);    // set the flag to DISABLE transmissions
+			case '2':					 // turn off transmissions - send a short letter to confirm receive
+				SetRadioTransmit(false); // set the flag to DISABLE transmissions
 				bReply = true;
 				break;
-			case '4':	// LOW Power Mode - No Loop           
+			case '4': // LOW Power Mode - No Loop
 				digitalWrite(TXPOWER_PORT, SystemInfo.bTxPowerLow = true);
 				RadioSetup(false);
 				bReply = true;
 				break;
-			case '5':	// High Power Mode
+			case '5': // High Power Mode
 				digitalWrite(TXPOWER_PORT, SystemInfo.bTxPowerLow = false);
 				RadioSetup(false);
 				bReply = true;
 				break;
-			case '6':	// start tx by cancelling the delay and pause
+			case '6': // start tx by cancelling the delay and pause
 				CancelWaitTimers(NULL);
 				break;
 			default:
@@ -568,7 +643,7 @@ void TaskDTMF(void* parameter)
 			}
 		}
 		// TODO: this reply seems to kill the command, probably something to do with half duplex radio
-		//if (bReply) {
+		// if (bReply) {
 		//	digitalWrite(PTT_PORT, PTT_TALK);
 		//	delay(500);
 		//	sendLetter('R');
@@ -576,17 +651,20 @@ void TaskDTMF(void* parameter)
 		//	bReply = false;
 		//}
 		// check timer
-		if (bEnabled) {
-			if (millis() > enableTimer) {
+		if (bEnabled)
+		{
+			if (millis() > enableTimer)
+			{
 				bEnabled = false;
 				//// restore PTT setting
-				//if (IsTransmitting) {
+				// if (IsTransmitting) {
 				//	digitalWrite(PTT_PORT, PTT_TALK);
-				//}
+				// }
 			}
 			vTaskDelay(pdMS_TO_TICKS(10));
 		}
-		else {
+		else
+		{
 			// Wait for the next cycle if nothing happened this time
 			vTaskDelayUntil(&xLastWakeTime, xFrequency);
 		}
@@ -606,7 +684,7 @@ void SetRadioTransmit(bool bTx)
 
 // send a string to the radio
 // wait for a response, empty string return when it works
-String SendToRadio(char* msg)
+String SendToRadio(char *msg)
 {
 	if (*msg == '\0')
 		return "";
@@ -615,21 +693,25 @@ String SendToRadio(char* msg)
 	String rxString;
 	bool done = false;
 	// try a few times
-	for (int tries = 0; !done && tries < 3; ++tries) {
+	for (int tries = 0; !done && tries < 3; ++tries)
+	{
 		// purge the input from the radio first
-		while (RadioSerial.available()) {
+		while (RadioSerial.available())
+		{
 			byte b;
 			RadioSerial.readBytes(&b, sizeof(b));
-			//Serial.println("clearing radio input");
+			// Serial.println("clearing radio input");
 		}
 		RadioSerial.println(msg);
-		//Serial.println(String("TX:") + msg);
-		// wait for a response
-		// see if the radio answers
-		for (int i = 100; i > 0; --i) {
-			if (RadioSerial.available()) {
+		// Serial.println(String("TX:") + msg);
+		//  wait for a response
+		//  see if the radio answers
+		for (int i = 100; i > 0; --i)
+		{
+			if (RadioSerial.available())
+			{
 				rxString = RadioSerial.readString();
-				//Serial.println(String("RX:") + rxString);
+				// Serial.println(String("RX:") + rxString);
 				rxString.trim();
 				// check the return value
 				retval = rxString.indexOf(":0") > 0;
@@ -648,43 +730,46 @@ String SendToRadio(char* msg)
 bool RadioSetup(bool bIniit)
 {
 	bool retval = true;
-	if (bIniit) {
+	if (bIniit)
+	{
 		// tell people the radio is not ready
 		xEventGroupClearBits(gRadioEventsHandle, RadioEventReady);
 		char line[200];
 		// loop through all the commands we need to send to the radio
 		bool done = false;
-		for (int which = 0; !done; ++which) {
-			switch (which) {
-			case 0:	// connect
+		for (int which = 0; !done; ++which)
+		{
+			switch (which)
+			{
+			case 0: // connect
 				strcpy(line, "AT+DMOCONNECT");
 				break;
-			case 1:	// radio group settings
+			case 1: // radio group settings
 			{
 				// set the radio data, e.g. AT+DMOSETGROUP=0,415.1250,415.1250,0012,4, 0013
 				float fRX = SystemInfo.nFrequency / 1000.0;
 				float fTX = (SystemInfo.nFrequency + atof(RxOffsetModeText[SystemInfo.nRfOffset])) / 1000.0;
-				if (SystemInfo.bCTCSS) {
+				if (SystemInfo.bCTCSS)
+				{
 					sprintf(line, "AT+DMOSETGROUP=%d,%.4f,%.4f,%04d,%d,%04d",
-						SystemInfo.nBandWidth, fTX, fRX,
-						SystemInfo.nTxCTCSS,
-						SystemInfo.nSquelch,
-						SystemInfo.nRxCTCSS
-					);
+							SystemInfo.nBandWidth, fTX, fRX,
+							SystemInfo.nTxCTCSS,
+							SystemInfo.nSquelch,
+							SystemInfo.nRxCTCSS);
 				}
-				else {
+				else
+				{
 					sprintf(line, "AT+DMOSETGROUP=%d,%.4f,%.4f,%s%c,%d,%s%c",
-						SystemInfo.nBandWidth, fTX, fRX,
-						SystemInfo.nTxDcs ? DcsText[SystemInfo.nTxDcs] : "000",
-						SystemInfo.nTxDcs ? (SystemInfo.bTxDcsNI ? 'N' : 'I') : '0',
-						SystemInfo.nSquelch,
-						SystemInfo.nRxDcs ? DcsText[SystemInfo.nRxDcs] : "000",
-						SystemInfo.nRxDcs ? (SystemInfo.bRxDcsNI ? 'N' : 'I') : '0'
-					);
+							SystemInfo.nBandWidth, fTX, fRX,
+							SystemInfo.nTxDcs ? DcsText[SystemInfo.nTxDcs] : "000",
+							SystemInfo.nTxDcs ? (SystemInfo.bTxDcsNI ? 'N' : 'I') : '0',
+							SystemInfo.nSquelch,
+							SystemInfo.nRxDcs ? DcsText[SystemInfo.nRxDcs] : "000",
+							SystemInfo.nRxDcs ? (SystemInfo.bRxDcsNI ? 'N' : 'I') : '0');
 				}
 			}
-				break;
-			case 2:	// set receive volume
+			break;
+			case 2: // set receive volume
 				sprintf(line, "AT+DMOSETVOLUME=%d", SystemInfo.nRxVolume);
 				break;
 			default:
@@ -694,16 +779,19 @@ bool RadioSetup(bool bIniit)
 			}
 			// send it to the radio and see if it worked or timed out
 			String str;
-			if (line[0]) {
+			if (line[0])
+			{
 				str = SendToRadio(line);
 			}
-			if (!str.isEmpty()) {
+			if (!str.isEmpty())
+			{
 				retval = false;
 				done = true;
 				WriteMessage(str, true, 5000);
 			}
 		}
-		if (retval) {
+		if (retval)
+		{
 			WriteMessage("Radio Initialized");
 			// tell everybody
 			xEventGroupSetBits(gRadioEventsHandle, RadioEventReady);
@@ -718,11 +806,15 @@ bool RadioSetup(bool bIniit)
 
 // check if any important radio settings have changed between the two sets
 // return true if any changes found
-bool CompareRadioSettings(SYSTEM_INFO* pSystemInfo, SYSTEM_INFO* pSystemInfoSaved)
+bool CompareRadioSettings(SYSTEM_INFO *pSystemInfo, SYSTEM_INFO *pSystemInfoSaved)
 {
 	bool retval = false;
-#define SIVL_ENTRY(x) {offsetof(SYSTEM_INFO,x),sizeof(SystemInfo.x)}
-	static struct SYSINFO_VALUE_LIST {
+#define SIVL_ENTRY(x)                                  \
+	{                                                  \
+		offsetof(SYSTEM_INFO, x), sizeof(SystemInfo.x) \
+	}
+	static struct SYSINFO_VALUE_LIST
+	{
 		uint offset;
 		uint size;
 	} sysInfoValueList[] = {
@@ -739,11 +831,13 @@ bool CompareRadioSettings(SYSTEM_INFO* pSystemInfo, SYSTEM_INFO* pSystemInfoSave
 		SIVL_ENTRY(nTxDcs),
 		SIVL_ENTRY(nRxDcs),
 	};
-	byte* a = (byte*)pSystemInfo;
-	byte* b = (byte*)pSystemInfoSaved;
-	for (struct SYSINFO_VALUE_LIST vl :sysInfoValueList) {
+	byte *a = (byte *)pSystemInfo;
+	byte *b = (byte *)pSystemInfoSaved;
+	for (struct SYSINFO_VALUE_LIST vl : sysInfoValueList)
+	{
 		// compare them
-		if (memcmp(a + vl.offset, b + vl.offset, vl.size) != 0) {
+		if (memcmp(a + vl.offset, b + vl.offset, vl.size) != 0)
+		{
 			retval = true;
 			break;
 		}
@@ -753,40 +847,49 @@ bool CompareRadioSettings(SYSTEM_INFO* pSystemInfo, SYSTEM_INFO* pSystemInfoSave
 
 // handle the dial and menu system
 // also check for some system settings changes and deal with them, e.g. radio settings
-void TaskMenu(void* params)
+void TaskMenu(void *params)
 {
 	static SYSTEM_INFO SystemInfoSaved;
 	static BATTERY_INFO BatteryInfoSaved;
 	static bool bLastSettingsMode = false;
-	for (;;) {
-		if (g_bSettingsMode) {
+	for (;;)
+	{
+		if (g_bSettingsMode)
+		{
 			HandleMenus();
 			// check for some conditions that must be adjusted
-			if (SystemInfo.bBeaconMode) {
+			if (SystemInfo.bBeaconMode)
+			{
 				// only certain frequencies are allowed in Beacon mode
-				if (SystemInfo.nFrequency < BEACON_LOW_FREQUENCY || SystemInfo.nFrequency > BEACON_HIGH_FREQUENCY) {
+				if (SystemInfo.nFrequency < BEACON_LOW_FREQUENCY || SystemInfo.nFrequency > BEACON_HIGH_FREQUENCY)
+				{
 					SystemInfo.nFrequency = BEACON_LOW_FREQUENCY;
 				}
 			}
 			// if beacon mode off, make sure the send GPS flag is off
-			if (!SystemInfo.bBeaconMode) {
+			if (!SystemInfo.bBeaconMode)
+			{
 				SystemInfo.bSendGPS = false;
 			}
 		}
-		else {
+		else
+		{
 			HandleRunMode();
 		}
 		// did settings mode just turn on?
-		if (g_bSettingsMode && !bLastSettingsMode) {
+		if (g_bSettingsMode && !bLastSettingsMode)
+		{
 			memcpy(&SystemInfoSaved, &SystemInfo, sizeof(SystemInfo));
 			memcpy(&BatteryInfoSaved, &BatteryInfo, sizeof(BatteryInfo));
 			ClearScreen();
 		}
 		// did settings mode just turn off?
-		if (!g_bSettingsMode && bLastSettingsMode) {
+		if (!g_bSettingsMode && bLastSettingsMode)
+		{
 			// show the battery display by telling the task to run
 			xTaskNotifyGive(TaskShowBatteryHandle);
-			if (memcmp(&SystemInfoSaved, &SystemInfo, sizeof(SystemInfo)) || memcmp(&BatteryInfoSaved, &BatteryInfo, sizeof(BatteryInfo))) {
+			if (memcmp(&SystemInfoSaved, &SystemInfo, sizeof(SystemInfo)) || memcmp(&BatteryInfoSaved, &BatteryInfo, sizeof(BatteryInfo)))
+			{
 				// make sure that the lcd dim is less than the bright
 				if (SystemInfo.nDisplayDimValue > SystemInfo.nDisplayBrightness)
 					SystemInfo.nDisplayDimValue = SystemInfo.nDisplayBrightness;
@@ -795,10 +898,12 @@ void TaskMenu(void* params)
 				// scan the important settings
 				bRadioChanges = CompareRadioSettings(&SystemInfo, &SystemInfoSaved);
 				// tell the radio
-				if (RadioSetup(bRadioChanges)) {
+				if (RadioSetup(bRadioChanges))
+				{
 					// worked
 				}
-				else {
+				else
+				{
 					// TODO failed, turn off transmit?
 				}
 				// copy so we know we updated things
@@ -809,21 +914,22 @@ void TaskMenu(void* params)
 		}
 		bLastSettingsMode = g_bSettingsMode;
 		vTaskDelay(pdMS_TO_TICKS(2));
-		//int freestack = uxTaskGetStackHighWaterMark(NULL);
-		//Serial.println(String("menu high water: ") + freestack);
+		// int freestack = uxTaskGetStackHighWaterMark(NULL);
+		// Serial.println(String("menu high water: ") + freestack);
 	}
 }
 
 void setup()
 {
 	Serial.begin(115200);
-	while (!Serial.availableForWrite()) {
+	while (!Serial.availableForWrite())
+	{
 		delay(10);
 	}
 	//******
-	//esp_chip_info_t data;
-	//esp_chip_info(&data);
-	//Serial.println(String("chip:") + data.model + " features:" + String(data.features, 2) + " cores:" + data.cores);
+	// esp_chip_info_t data;
+	// esp_chip_info(&data);
+	// Serial.println(String("chip:") + data.model + " features:" + String(data.features, 2) + " cores:" + data.cores);
 	// create the display mutex
 	MutexDisplayHandle = xSemaphoreCreateMutex();
 	// init the display
@@ -836,37 +942,20 @@ void setup()
 	nMenuLineCount = (tft.height() + 1) / tft.fontHeight();
 	TextLines.resize(nMenuLineCount);
 	// start the tone generator, freq=0 gives error on Serial port during boot, so just set to 1000
-	ledcSetup(toneChannel, 1000, 8);
-	ledcAttachPin(AUDIO_OUT_PORT, toneChannel);
-	//ledcAttachChannel(digitalPinToGPIONumber(AUDIO_OUT_PORT), 1000, 8, toneChannel);
-
-
-	//ledcAttachChannel(digitalPinToGPIONumber(TFT_BL), pwmFreq, pwmResolution, pwmLedChannelTFT);
-	//ledcWrite(digitalPinToGPIONumber(TFT_BL), 100);
-
-	////ledcSetup(pwmLedChannelTFT, pwmFreq, pwmResolution);
-	////ledcAttachPin(TFT_BL, pwmLedChannelTFT);
-	////ledcWrite(pwmLedChannelTFT, 100);
-
-
-	// the next two lines don't seem to make any difference, but leave them here just in case in the future
-	//ledcWrite(toneChannel, 127);
-	//ledcWriteTone(toneChannel, 0);
+	ledcAttach(AUDIO_OUT_PORT, 1000, 8);
 	// start the DTMF detector
 	dtmf.begin(AUDIO_IN_PORT, 2000);
 
-	//Serial.println("flash:" + String(ESP.getFlashChipSize()));
-	//Serial.print("setup() is running on core ");
-	//Serial.println(xPortGetCoreID());
+	// Serial.println("flash:" + String(ESP.getFlashChipSize()));
+	// Serial.print("setup() is running on core ");
+	// Serial.println(xPortGetCoreID());
 
 	// configure LCD PWM functionality
 	pinMode(TFT_ENABLE, OUTPUT);
 	digitalWrite(TFT_ENABLE, 1);
 
 	// attach the channel to the GPIO to be controlled
-	ledcSetup(ledChannel, freq, resolution);
-	ledcAttachPin(TFT_ENABLE, ledChannel);
-	//ledcAttachChannel(digitalPinToGPIONumber(TFT_ENABLE), freq, resolution, ledChannel);
+	ledcAttach(TFT_ENABLE, 1000, 8);
 
 	CRotaryDialButton::begin((gpio_num_t)DIAL_A, (gpio_num_t)DIAL_B, (gpio_num_t)DIAL_BTN, (gpio_num_t)0, (gpio_num_t)35, (gpio_num_t)-1, (gpio_num_t)-1, &SystemInfo.DialSettings);
 	// we know that this is a toggle switch type
@@ -883,35 +972,38 @@ void setup()
 	pinMode(TXPOWER_PORT, OUTPUT);
 
 	periodic_Second_timer_args = {
-				periodic_Second_timer_callback,
-				/* argument specified here will be passed to timer callback function */
-				(void*)0,
-				ESP_TIMER_TASK,
-				"seconds timer"
-	};
+		periodic_Second_timer_callback,
+		/* argument specified here will be passed to timer callback function */
+		(void *)0,
+		ESP_TIMER_TASK,
+		"seconds timer"};
 	esp_timer_create(&periodic_Second_timer_args, &periodic_Second_timer);
 	esp_timer_start_periodic(periodic_Second_timer, (int64_t)1000 * 1000);
 
 	SystemInfo.bCriticalBatteryLevel = false;
 	SetDisplayBrightness(SystemInfo.nDisplayBrightness);
 	// see if the button is down, if so clear all settings
-	if (gpio_get_level((gpio_num_t)DIAL_BTN) == 0) {
+	if (gpio_get_level((gpio_num_t)DIAL_BTN) == 0)
+	{
 		FactorySettings(NULL);
 		WriteMessage("Factory Reset");
 	}
 	String msg;
 	// see if we can read the settings
-	if (SaveLoadSettings(false, true)) {
+	if (SaveLoadSettings(false, true))
+	{
 		msg = "Settings Loaded";
 	}
-	else {
+	else
+	{
 		// must not be anything there, so save it
 		SaveLoadSettings(true, false);
 	}
 	ClearScreen();
 	SetDisplayBrightness(SystemInfo.nDisplayBrightness);
-	//WiFi
-	if (SystemInfo.bRunWebServer) {
+	// WiFi
+	if (SystemInfo.bRunWebServer)
+	{
 		WiFi.softAP(ssid, password);
 		IPAddress myIP = WiFi.softAPIP();
 		// save for the menu system
@@ -920,12 +1012,13 @@ void setup()
 		Serial.println(myIP);
 		server.begin();
 		Serial.println("Server started");
-		for (OnServerItem item : OnServerList) {
+		for (OnServerItem item : OnServerList)
+		{
 			server.on(item.path, item.function);
 		}
-		//server.on("/fupload", HTTP_POST, []() { server.send(200); }, handleFileUpload);
-		//server.on("/settings/increpeat", HTTP_GET, []() { server.send(200); }, IncRepeat);
-		//server.on("/settings/increpeat", HTTP_GET, IncRepeat);
+		// server.on("/fupload", HTTP_POST, []() { server.send(200); }, handleFileUpload);
+		// server.on("/settings/increpeat", HTTP_GET, []() { server.send(200); }, IncRepeat);
+		// server.on("/settings/increpeat", HTTP_GET, IncRepeat);
 		/////////////////////////// End of Request commands
 		server.begin();
 	}
@@ -963,19 +1056,20 @@ void setup()
 	tft.drawString(String("Version ") + FOX_Version, 20, 70);
 	tft.setTextSize(1);
 	tft.drawString(__DATE__, 20, 90);
-	if (msg.length()) {
+	if (msg.length())
+	{
 		tft.drawString(msg, 20, 110);
 	}
 	// clear the button buffer
 	CRotaryDialButton::clear();
 	delay(3000);
 	//// leave the intro screen up for 4 seconds or until a button is pressed or dial rotated
-	//for (int cnt = 0; cnt < 400; ++cnt) {
+	// for (int cnt = 0; cnt < 400; ++cnt) {
 	//	if (ReadButton() != BTN_NONE) {
 	//		break;
 	//	}
 	//	vTaskDelay(pdMS_TO_TICKS(10));
-	//}
+	// }
 	gRadioEventsHandle = xEventGroupCreate();
 	// set the PTT port
 	gpio_set_direction((gpio_num_t)PTT_PORT, GPIO_MODE_INPUT_OUTPUT);
@@ -989,16 +1083,18 @@ void setup()
 	xTaskCreate(TaskMenu, "MENU", 3000, NULL, 4, &TaskMenuHandle);
 	xTaskCreate(TaskXmitDisplay, "XMITDISPLAY", 2000, NULL, 0, NULL);
 	ResetDimTimer();
-	//WavPlayer(SystemInfo.cAudioFile); // for testing I2S
-	// start the radio serial port, wait until here to make sure the radio is powered up completely
+	// WavPlayer(SystemInfo.cAudioFile); // for testing I2S
+	//  start the radio serial port, wait until here to make sure the radio is powered up completely
 	RadioSerial.begin(9600, SERIAL_8N1, RADIO_SERIAL_RX, RADIO_SERIAL_TX, false);
 	// init the radio
 	RadioSetup(true);
 }
 
-void ResetDimTimer() {
+void ResetDimTimer()
+{
 	displayDimTimer = SystemInfo.nDisplayDimTime;
-	if (SystemInfo.eDisplayDimMode == DISPLAY_DIM_MODE_TIME && SystemInfo.nDisplayDimTime) {
+	if (SystemInfo.eDisplayDimMode == DISPLAY_DIM_MODE_TIME && SystemInfo.nDisplayDimTime)
+	{
 		SetDisplayBrightness(SystemInfo.nDisplayBrightness);
 	}
 }
@@ -1006,7 +1102,8 @@ void ResetDimTimer() {
 // the main loop
 void loop()
 {
-	if (SystemInfo.bRunWebServer) {
+	if (SystemInfo.bRunWebServer)
+	{
 		server.handleClient();
 	}
 	delay(100);
@@ -1019,26 +1116,32 @@ void RunMenus(int button)
 	// see if we got a menu match
 	bool gotmatch = false;
 	int menuix = 0;
-	MenuInfo* oldMenu;
+	MenuInfo *oldMenu;
 	bool bExit = false;
-	for (int ix = 0; !gotmatch && MenuStack.top()->menu[ix].op != eTerminate; ++ix) {
+	for (int ix = 0; !gotmatch && MenuStack.top()->menu[ix].op != eTerminate; ++ix)
+	{
 		// see if this is one is valid
-		if (!bMenuValid[ix]) {
-			continue;	// and don't increment menix
+		if (!bMenuValid[ix])
+		{
+			continue; // and don't increment menix
 		}
-		if (menuix == MenuStack.top()->index) {
+		if (menuix == MenuStack.top()->index)
+		{
 			gotmatch = true;
-			switch (button) {
-			case BTN_B1_LONG:	// handle help if there is any
-				if (MenuStack.top()->menu[ix].cHelpText) {
+			switch (button)
+			{
+			case BTN_B1_LONG: // handle help if there is any
+				if (MenuStack.top()->menu[ix].cHelpText)
+				{
 					WriteMessage(MenuStack.top()->menu[ix].cHelpText, false, -1, true);
 				}
 				g_bMenuChanged = true;
 				break;
-			case BTN_SELECT:	// handle selection
+			case BTN_SELECT: // handle selection
 				// got one, service it
-				switch (MenuStack.top()->menu[ix].op) {
-				case eTerminate:	// not used, tell compiler
+				switch (MenuStack.top()->menu[ix].op)
+				{
+				case eTerminate: // not used, tell compiler
 				case eIfEqual:
 				case eIfIntEqual:
 				case eElse:
@@ -1048,29 +1151,33 @@ void RunMenus(int button)
 				case eTextInt:
 				case eTextFloat:
 				case eEditText:
-				//case eChooseFile:
+				// case eChooseFile:
 				case eBool:
 				case eList:
 					g_bMenuChanged = true;
-					if (MenuStack.top()->menu[ix].change != NULL) {
+					if (MenuStack.top()->menu[ix].change != NULL)
+					{
 						(*MenuStack.top()->menu[ix].change)(&MenuStack.top()->menu[ix], 1);
 					}
-					if (MenuStack.top()->menu[ix].function) {
+					if (MenuStack.top()->menu[ix].function)
+					{
 						(*MenuStack.top()->menu[ix].function)(&MenuStack.top()->menu[ix]);
 					}
-					if (MenuStack.top()->menu[ix].change != NULL) {
+					if (MenuStack.top()->menu[ix].change != NULL)
+					{
 						(*MenuStack.top()->menu[ix].change)(&MenuStack.top()->menu[ix], -1);
 					}
 					break;
 				case eMenu:
-					if (MenuStack.top()->menu) {
+					if (MenuStack.top()->menu)
+					{
 						oldMenu = MenuStack.top();
 						MenuStack.push(new MenuInfo);
 						MenuStack.top()->menu = oldMenu->menu[ix].menu;
 						g_bMenuChanged = true;
 						MenuStack.top()->index = 0;
 						MenuStack.top()->offset = 0;
-						//Serial.println("change menu");
+						// Serial.println("change menu");
 					}
 					break;
 				case eExit: // go back a level
@@ -1086,11 +1193,13 @@ void RunMenus(int button)
 		++menuix;
 	}
 	// if no match, and we are in a submenu, go back one level, or if bExit is set
-	if (bExit && MenuStack.size() == 1) {
+	if (bExit && MenuStack.size() == 1)
+	{
 		g_bSettingsMode = false;
 		ClearScreen();
 	}
-	if (bExit || (!g_bMenuChanged && MenuStack.size() > 1)) {
+	if (bExit || (!g_bMenuChanged && MenuStack.size() > 1))
+	{
 		UpMenuLevel(false);
 	}
 }
@@ -1098,7 +1207,7 @@ void RunMenus(int button)
 // display the menu
 // if MenuStack.top()->index is > MENU_LINES, then shift the lines up by enough to display them
 // remember that we only have room for MENU_LINES lines
-void ShowMenu(struct MenuItem* menu)
+void ShowMenu(struct MenuItem *menu)
 {
 	// let the sideways scroller know that we changed the screen
 	if (TaskScrollSidewaysHandle)
@@ -1113,27 +1222,32 @@ void ShowMenu(struct MenuItem* menu)
 	int skipLevel = 1;
 	bool bSkipping = false;
 	// loop through the menu
-	for (int menix = 0; menu->op != eTerminate; ++menu, ++menix) {
+	for (int menix = 0; menu->op != eTerminate; ++menu, ++menix)
+	{
 		// make sure menu valid vector is big enough
-		if (bMenuValid.size() < menix + 1) {
+		if (bMenuValid.size() < menix + 1)
+		{
 			bMenuValid.resize(menix + 1);
 		}
 		bMenuValid[menix] = false;
-		switch ((menu->op)) {
+		switch ((menu->op))
+		{
 		case eIfEqual:
 			// skip the next one if match, this is boolean only
-			skipStack.push(*(bool*)menu->value != (menu->min ? true : false));
-			//Serial.println("ifequal test: skip: " + String(skip));
-			if (!bSkipping) {
+			skipStack.push(*(bool *)menu->value != (menu->min ? true : false));
+			// Serial.println("ifequal test: skip: " + String(skip));
+			if (!bSkipping)
+			{
 				++skipLevel;
 				bSkipping = skipStack.top();
 			}
 			break;
 		case eIfIntEqual:
 			// skip the next one if match, this is int values
-			skipStack.push(*(int*)menu->value != menu->min);
-			//Serial.println("ifIntequal test: skip: " + String(skip));
-			if (!bSkipping) {
+			skipStack.push(*(int *)menu->value != menu->min);
+			// Serial.println("ifIntequal test: skip: " + String(skip));
+			if (!bSkipping)
+			{
 				++skipLevel;
 				bSkipping = skipStack.top();
 			}
@@ -1143,7 +1257,8 @@ void ShowMenu(struct MenuItem* menu)
 			break;
 		case eEndif:
 			skipStack.pop();
-			if (!bSkipping || skipLevel > skipStack.size()) {
+			if (!bSkipping || skipLevel > skipStack.size())
+			{
 				--skipLevel;
 			}
 			break;
@@ -1151,7 +1266,8 @@ void ShowMenu(struct MenuItem* menu)
 			break;
 		}
 		bSkipping = skipLevel < skipStack.size() ? true : skipStack.top();
-		if (bSkipping) {
+		if (bSkipping)
+		{
 			bMenuValid[menix] = false;
 			continue;
 		}
@@ -1160,27 +1276,33 @@ void ShowMenu(struct MenuItem* menu)
 		line[0] = '\0';
 		int val;
 		bool exists = false;
-		switch (menu->op) {
+		switch (menu->op)
+		{
 		case eTextInt:
 		case eTextFloat:
 		case eText:
 		case eEditText:
-		//case eChooseFile:
+			// case eChooseFile:
 			bMenuValid[menix] = true;
-			if (menu->value) {
-				val = *(int*)menu->value;
-				if (menu->op == eText || menu->op == eEditText /*|| menu->op == eChooseFile*/) {
-					sprintf(line, menu->text, (char*)(menu->value));
+			if (menu->value)
+			{
+				val = *(int *)menu->value;
+				if (menu->op == eText || menu->op == eEditText /*|| menu->op == eChooseFile*/)
+				{
+					sprintf(line, menu->text, (char *)(menu->value));
 				}
-				else if (menu->op == eTextInt) {
+				else if (menu->op == eTextInt)
+				{
 					sprintf(line, menu->text, (int)(val / pow10(menu->decimals)), val % (int)(pow10(menu->decimals)));
 				}
-				else if (menu->op == eTextFloat) {
-					double fval = *(double*)menu->value;
+				else if (menu->op == eTextFloat)
+				{
+					double fval = *(double *)menu->value;
 					sprintf(line, menu->text, fval);
 				}
 			}
-			else {
+			else
+			{
 				strcpy(line, menu->text);
 			}
 			// next line
@@ -1188,7 +1310,7 @@ void ShowMenu(struct MenuItem* menu)
 			break;
 		case eList:
 			bMenuValid[menix] = true;
-			val = *(int*)menu->value;
+			val = *(int *)menu->value;
 			Serial.println(String("val:") + val);
 			sprintf(line, menu->text, menu->nameList[val]);
 			// next line
@@ -1196,11 +1318,13 @@ void ShowMenu(struct MenuItem* menu)
 			break;
 		case eBool:
 			bMenuValid[menix] = true;
-			if (menu->value) {
-				bool* pb = (bool*)menu->value;
+			if (menu->value)
+			{
+				bool *pb = (bool *)menu->value;
 				sprintf(line, menu->text, *pb ? menu->on : menu->off);
 			}
-			else {
+			else
+			{
 				strcpy(line, menu->text);
 			}
 			// increment displayable lines
@@ -1210,14 +1334,16 @@ void ShowMenu(struct MenuItem* menu)
 		case eExit:
 		case eReboot:
 			bMenuValid[menix] = true;
-			if (menu->value) {
+			if (menu->value)
+			{
 				// check for %d or %s in string, be lazy and assume %s if %d not there
 				if (String(menu->text).indexOf("%d") != -1)
-					sprintf(xtraline, menu->text, *(int*)menu->value);
+					sprintf(xtraline, menu->text, *(int *)menu->value);
 				else
-					sprintf(xtraline, menu->text, (char*)menu->value);
+					sprintf(xtraline, menu->text, (char *)menu->value);
 			}
-			else {
+			else
+			{
 				strcpy(xtraline, menu->text);
 			}
 			if (menu->op == eExit)
@@ -1225,77 +1351,83 @@ void ShowMenu(struct MenuItem* menu)
 			else
 				sprintf(line, "%s%s", (menu->op == eReboot) ? "" : "+", xtraline);
 			++y;
-			//Serial.println("menu text4: " + String(line));
+			// Serial.println("menu text4: " + String(line));
 			break;
 		default:
 			break;
 		}
-		if (strlen(line) && y >= MenuStack.top()->offset) {
+		if (strlen(line) && y >= MenuStack.top()->offset)
+		{
 			DisplayMenuLine(y - 1, y - 1 - MenuStack.top()->offset, line);
 		}
 	}
 	MenuStack.top()->menucount = y;
 	// blank the rest of the lines
-	for (int ix = y; ix < nMenuLineCount; ++ix) {
+	for (int ix = y; ix < nMenuLineCount; ++ix)
+	{
 		DisplayLine(ix, "");
 	}
 	// show line if menu has been scrolled
 	if (MenuStack.top()->offset > 0)
 		tft.fillTriangle(0, 0, 2, 0, 0, tft.fontHeight() / 3, TFT_DARKGREY);
-	//tft.drawLine(0, 0, 5, 0, menuLineActiveColor);TFT_DARKGREY
-// show bottom line if last line is showing
-	if (MenuStack.top()->offset + (nMenuLineCount - 1) < MenuStack.top()->menucount - 1) {
+	// tft.drawLine(0, 0, 5, 0, menuLineActiveColor);TFT_DARKGREY
+	// show bottom line if last line is showing
+	if (MenuStack.top()->offset + (nMenuLineCount - 1) < MenuStack.top()->menucount - 1)
+	{
 		int ypos = tft.height() - 2 - tft.fontHeight() / 3;
 		tft.fillTriangle(0, ypos, 2, ypos, 0, ypos - tft.fontHeight() / 3, TFT_DARKGREY);
 	}
-	//if (MenuStack.top()->offset + (MENU_LINES - 1) < MenuStack.top()->menucount - 1)
+	// if (MenuStack.top()->offset + (MENU_LINES - 1) < MenuStack.top()->menucount - 1)
 	//	tft.drawLine(0, tft.height() - 1, 5, tft.height() - 1, menuLineActiveColor);
-	//else
+	// else
 	//	tft.drawLine(0, tft.height() - 1, 5, tft.height() - 1, TFT_BLACK);
-	// see if we need to clean up the end, like when the menu shrank due to a choice
+	//  see if we need to clean up the end, like when the menu shrank due to a choice
 	int extra = MenuStack.top()->menucount - MenuStack.top()->offset - nMenuLineCount;
-	while (extra < 0) {
+	while (extra < 0)
+	{
 		DisplayLine(nMenuLineCount + extra, "");
 		++extra;
 	}
 }
 
 // toggle a boolean value
-void ToggleBool(MenuItem * menu)
+void ToggleBool(MenuItem *menu)
 {
-	bool* pb = (bool*)menu->value;
+	bool *pb = (bool *)menu->value;
 	*pb = !*pb;
-	if (menu->change != NULL) {
+	if (menu->change != NULL)
+	{
 		(*menu->change)(menu, 0);
 	}
 	ResetTextLines();
 }
 
 // choose from one of the values, update the index and wrap around if past max
-void GetSelectChoice(MenuItem * menu)
+void GetSelectChoice(MenuItem *menu)
 {
-	int* pVal = (int*)menu->value;
-	++* pVal;
+	int *pVal = (int *)menu->value;
+	++*pVal;
 	*pVal %= menu->max + 1;
-	if (menu->change != NULL) {
+	if (menu->change != NULL)
+	{
 		(*menu->change)(menu, 0);
 	}
 	ResetTextLines();
 }
 
 // make a selection from the supplied text list in the menu
-void GetSelectChoiceList(MenuItem* menu)
+void GetSelectChoiceList(MenuItem *menu)
 {
 	GetSelectChoiceListHelper(menu);
 }
 
 // some people need to know if this was a cancel (simple click) return but function must be void
 // return false if click for no choice, true if chosen
-bool GetSelectChoiceListHelper(MenuItem* menu)
+bool GetSelectChoiceListHelper(MenuItem *menu)
 {
 	bool bRetval = true;
 	// holds the current selection
-	int nTextIndex = *(int*)menu->value;
+	int nTextIndex = *(int *)menu->value;
 	int nOriginal = nTextIndex;
 	// just to be safe
 	if (nTextIndex < 0)
@@ -1303,7 +1435,8 @@ bool GetSelectChoiceListHelper(MenuItem* menu)
 	// holds the list starting index
 	int nStartIndex = nTextIndex;
 	// see if we need adjust the start
-	if (nTextIndex >= nMenuLineCount - 1) {
+	if (nTextIndex >= nMenuLineCount - 1)
+	{
 		nStartIndex = nTextIndex - nMenuLineCount + 2;
 	}
 	ClearScreen();
@@ -1312,26 +1445,32 @@ bool GetSelectChoiceListHelper(MenuItem* menu)
 	bool done = false;
 	// redraw screen only when necessary
 	bool bRedraw = true;
-	do {
-		if (bRedraw) {
+	do
+	{
+		if (bRedraw)
+		{
 			String line;
 			bool hilite;
-			for (int ix = 0; ix <= menu->max && ix < nMenuLineCount - 1; ++ix) {
+			for (int ix = 0; ix <= menu->max && ix < nMenuLineCount - 1; ++ix)
+			{
 				// high light the current selection
 				hilite = (nTextIndex - nStartIndex) == ix;
 				line = menu->nameList[ix + nStartIndex];
-				if (SystemInfo.bMenuStar) {
+				if (SystemInfo.bMenuStar)
+				{
 					line = (hilite ? "*" : " ") + line;
 					DisplayLine(ix, line, SystemInfo.menuTextColor);
 				}
-				else {
+				else
+				{
 					DisplayLine(ix, line, hilite ? TFT_BLACK : SystemInfo.menuTextColor, hilite ? SystemInfo.menuHiLiteColor : TFT_BLACK);
 				}
 			}
 			bRedraw = false;
 		}
 		button = ReadButton();
-		switch (button) {
+		switch (button)
+		{
 		case BTN_NONE:
 		case BTN_B1_CLICK:
 		case BTN_B2_LONG:
@@ -1339,35 +1478,39 @@ bool GetSelectChoiceListHelper(MenuItem* menu)
 		case BTN_B0_CLICK:
 		case BTN_B0_LONG:
 			break;
-		case BTN_LEFT:	// previous line
-			if (nTextIndex > 0) {
+		case BTN_LEFT: // previous line
+			if (nTextIndex > 0)
+			{
 				// select the previous one
 				--nTextIndex;
 				// check if we need to scroll
-				if (nTextIndex - nStartIndex < 0) {
+				if (nTextIndex - nStartIndex < 0)
+				{
 					--nStartIndex;
 				}
 				bRedraw = true;
 			}
 			break;
-		case BTN_RIGHT:	// next line
+		case BTN_RIGHT: // next line
 			// check if more available
-			if (nTextIndex < menu->max) {
+			if (nTextIndex < menu->max)
+			{
 				++nTextIndex;
 				// check if we need to scroll
-				if (nTextIndex - nStartIndex >= nMenuLineCount - 1) {
+				if (nTextIndex - nStartIndex >= nMenuLineCount - 1)
+				{
 					++nStartIndex;
 				}
 				bRedraw = true;
 			}
 			break;
-		case BTN_LONG:	// set the new index
-			*(int*)menu->value = nTextIndex;
+		case BTN_LONG: // set the new index
+			*(int *)menu->value = nTextIndex;
 			done = true;
 			bRetval = true;
 			break;
-		case BTN_SELECT:	// use this to cancel and return original value
-			*(int*)menu->value = nOriginal;
+		case BTN_SELECT: // use this to cancel and return original value
+			*(int *)menu->value = nOriginal;
 			done = true;
 			bRetval = false;
 			break;
@@ -1378,86 +1521,97 @@ bool GetSelectChoiceListHelper(MenuItem* menu)
 }
 
 // get integer values
-void GetIntegerValue(MenuItem * menu)
+void GetIntegerValue(MenuItem *menu)
 {
 	ClearScreen();
 	// -1 means to reset to original
 	int stepSize = 1;
-	int originalValue = *(int*)menu->value;
-	//Serial.println("int: " + String(menu->text) + String(*(int*)menu->value));
+	int originalValue = *(int *)menu->value;
+	// Serial.println("int: " + String(menu->text) + String(*(int*)menu->value));
 	char line[50];
 	CRotaryDialButton::Button button = BTN_NONE;
 	bool done = false;
-	const char* fmt;
-	if (menu->decimals) {
+	const char *fmt;
+	if (menu->decimals)
+	{
 		static char fmtInfo[50];
-		//String st = String("%ld.%0") + menu->decimals + "ld";
-		sprintf(fmtInfo,"%%ld.%%0%dld",menu->decimals);
+		// String st = String("%ld.%0") + menu->decimals + "ld";
+		sprintf(fmtInfo, "%%ld.%%0%dld", menu->decimals);
 		fmt = fmtInfo;
 	}
-	else {
+	else
+	{
 		fmt = "%ld";
 	}
 	char minstr[50], maxstr[50], valstr[50];
-	sprintf(line, menu->text, *(int*)menu->value / (int)pow10(menu->decimals), *(int*)menu->value % (int)pow10(menu->decimals));
+	sprintf(line, menu->text, *(int *)menu->value / (int)pow10(menu->decimals), *(int *)menu->value % (int)pow10(menu->decimals));
 	DisplayLine(0, line, SystemInfo.menuTextColor);
 	sprintf(minstr, fmt, menu->min / (int)pow10(menu->decimals), abs(menu->min % (int)pow10(menu->decimals)));
 	sprintf(maxstr, fmt, menu->max / (int)pow10(menu->decimals), abs(menu->max % (int)pow10(menu->decimals)));
 	DisplayLine(1, String(minstr) + " to " + String(maxstr), SystemInfo.menuTextColor);
 	DisplayLine(5, "Long Press B0 to reset", SystemInfo.menuTextColor);
 	DisplayLine(6, "Long Press to Accept", SystemInfo.menuTextColor);
-	int oldVal = *(int*)menu->value;
+	int oldVal = *(int *)menu->value;
 	bool bChange = true;
-	do {
-		if (bChange) {
+	do
+	{
+		if (bChange)
+		{
 			// make sure within limits
-			*(int*)menu->value = constrain(*(int*)menu->value, menu->min, menu->max);
+			*(int *)menu->value = constrain(*(int *)menu->value, menu->min, menu->max);
 			// show slider bar
 			tft.fillRect(0, 2 * tft.fontHeight(), tft.width() - 1, 6, TFT_BLACK);
-			DrawProgressBar(0, 2 * tft.fontHeight() + 4, tft.width() - 1, 12, map(*(int*)menu->value, menu->min, menu->max, 0, 100), true);
-			sprintf(valstr, fmt, *(int*)menu->value / (int)pow10(menu->decimals), abs(*(int*)menu->value % (int)pow10(menu->decimals)));
+			DrawProgressBar(0, 2 * tft.fontHeight() + 4, tft.width() - 1, 12, map(*(int *)menu->value, menu->min, menu->max, 0, 100), true);
+			sprintf(valstr, fmt, *(int *)menu->value / (int)pow10(menu->decimals), abs(*(int *)menu->value % (int)pow10(menu->decimals)));
 			DisplayLine(3, String("New Value: ") + valstr, SystemInfo.menuTextColor);
 			sprintf(valstr, fmt, stepSize / (int)pow10(menu->decimals), stepSize % (int)pow10(menu->decimals));
 			DisplayLine(4, stepSize == -1 ? "Reset: long press (Click +)" : "Step: " + String(valstr) + " (Click +)", SystemInfo.menuTextColor);
-			if (menu->change != NULL && oldVal != *(int*)menu->value) {
+			if (menu->change != NULL && oldVal != *(int *)menu->value)
+			{
 				(*menu->change)(menu, 0);
-				oldVal = *(int*)menu->value;
+				oldVal = *(int *)menu->value;
 			}
 			bChange = false;
 		}
 		button = ReadButton();
-		switch (button) {
+		switch (button)
+		{
 		case BTN_LEFT:
 			if (stepSize != -1)
-				*(int*)menu->value -= stepSize;
+				*(int *)menu->value -= stepSize;
 			break;
 		case BTN_RIGHT:
 			if (stepSize != -1)
-				*(int*)menu->value += stepSize;
+				*(int *)menu->value += stepSize;
 			break;
 		case BTN_SELECT:
 		case BTN_B0_CLICK:
-			if (stepSize == -1) {
+			if (stepSize == -1)
+			{
 				stepSize = 1;
 			}
-			else {
+			else
+			{
 				stepSize *= 10;
 			}
-			if (stepSize > (menu->max / 2)) {
+			if (stepSize > (menu->max / 2))
+			{
 				Serial.println("setting stepsize=-1");
 				stepSize = -1;
 			}
 			break;
-		case BTN_B0_LONG:	// reset
-			*(int*)menu->value = originalValue;
+		case BTN_B0_LONG: // reset
+			*(int *)menu->value = originalValue;
 			stepSize = 1;
 			break;
 		case BTN_LONG:
-			if (stepSize == -1) {
-				*(int*)menu->value = originalValue;
+			if (stepSize == -1)
+			{
+				*(int *)menu->value = originalValue;
 				stepSize = 1;
 			}
-			else {
+			else
+			{
 				done = true;
 			}
 			break;
@@ -1467,75 +1621,82 @@ void GetIntegerValue(MenuItem * menu)
 }
 
 // get double float values
-void GetFloatValue(MenuItem* menu)
+void GetFloatValue(MenuItem *menu)
 {
 	ClearScreen();
 	// -1 means to reset to original
 	int stepSize = 0;
-	double originalValue = *(double*)menu->value;
-	//Serial.println("int: " + String(menu->text) + String(*(int*)menu->value));
+	double originalValue = *(double *)menu->value;
+	// Serial.println("int: " + String(menu->text) + String(*(int*)menu->value));
 	char line[50];
 	CRotaryDialButton::Button button = BTN_NONE;
 	bool done = false;
-	const char* fmt;
+	const char *fmt;
 	static char fmtInfo[50];
 	sprintf(fmtInfo, "%%.%df", menu->decimals);
 	fmt = fmtInfo;
 	char minstr[50], maxstr[50], valstr[50];
-	sprintf(line, menu->text, *(double*)menu->value);
+	sprintf(line, menu->text, *(double *)menu->value);
 	DisplayLine(0, line, SystemInfo.menuTextColor);
 	sprintf(minstr, fmt, menu->fmin);
 	sprintf(maxstr, fmt, menu->fmax);
 	DisplayLine(1, String(minstr) + " to " + String(maxstr), SystemInfo.menuTextColor);
 	DisplayLine(5, "Long Press B0 to reset", SystemInfo.menuTextColor);
 	DisplayLine(6, "Long Press to Accept", SystemInfo.menuTextColor);
-	double oldVal = *(double*)menu->value;
+	double oldVal = *(double *)menu->value;
 	bool bChange = true;
-	do {
-		if (bChange) {
+	do
+	{
+		if (bChange)
+		{
 			// make sure within limits
-			*(double*)menu->value = constrain(*(double*)menu->value, menu->fmin, menu->fmax);
+			*(double *)menu->value = constrain(*(double *)menu->value, menu->fmin, menu->fmax);
 			// show slider bar
 			tft.fillRect(0, 2 * tft.fontHeight(), tft.width() - 1, 6, TFT_BLACK);
-			long pc = map(*(double*)menu->value, menu->fmin, menu->fmax, 0, 100);
+			long pc = map(*(double *)menu->value, menu->fmin, menu->fmax, 0, 100);
 			DrawProgressBar(0, 2 * tft.fontHeight() + 4, tft.width() - 1, 12, pc, true);
-			sprintf(valstr, fmt, *(double*)menu->value);
+			sprintf(valstr, fmt, *(double *)menu->value);
 			DisplayLine(3, String("New Value: ") + valstr, SystemInfo.menuTextColor);
 			sprintf(valstr, fmt, pow10(stepSize - menu->decimals));
 			DisplayLine(4, stepSize == -1 ? "Reset: long press (Click +)" : "Step: " + String(valstr) + " (Click +)", SystemInfo.menuTextColor);
-			if (menu->change != NULL && oldVal != *(double*)menu->value) {
+			if (menu->change != NULL && oldVal != *(double *)menu->value)
+			{
 				(*menu->change)(menu, 0);
-				oldVal = *(double*)menu->value;
+				oldVal = *(double *)menu->value;
 			}
 			bChange = false;
 		}
 		button = ReadButton();
-		switch (button) {
+		switch (button)
+		{
 		case BTN_LEFT:
 			if (stepSize != -1)
-				*(double*)menu->value -= pow10(stepSize - menu->decimals);
+				*(double *)menu->value -= pow10(stepSize - menu->decimals);
 			break;
 		case BTN_RIGHT:
 			if (stepSize != -1)
-				*(double*)menu->value += pow10(stepSize - menu->decimals);
+				*(double *)menu->value += pow10(stepSize - menu->decimals);
 			break;
 		case BTN_SELECT:
 		case BTN_B0_CLICK:
 			++stepSize;
-			if (stepSize > log10(menu->fmax) + menu->decimals) {
+			if (stepSize > log10(menu->fmax) + menu->decimals)
+			{
 				stepSize = -1;
 			}
 			break;
-		case BTN_B0_LONG:	// reset
-			*(double*)menu->value = originalValue;
+		case BTN_B0_LONG: // reset
+			*(double *)menu->value = originalValue;
 			stepSize = 1;
 			break;
 		case BTN_LONG:
-			if (stepSize == -1) {
-				*(double*)menu->value = originalValue;
+			if (stepSize == -1)
+			{
+				*(double *)menu->value = originalValue;
 				stepSize = 1;
 			}
-			else {
+			else
+			{
 				done = true;
 			}
 			break;
@@ -1544,33 +1705,34 @@ void GetFloatValue(MenuItem* menu)
 	} while (!done);
 }
 
-void UpdateDisplayBrightness(MenuItem * menu, int flag)
+void UpdateDisplayBrightness(MenuItem *menu, int flag)
 {
 	// control LCD brightness
-	SetDisplayBrightness(*(int*)menu->value);
+	SetDisplayBrightness(*(int *)menu->value);
 }
 
-void UpdateDisplayDimMode(MenuItem * menu, int flag)
+void UpdateDisplayDimMode(MenuItem *menu, int flag)
 {
-	switch (flag) {
-	case 0:		// first time
+	switch (flag)
+	{
+	case 0: // first time
 		break;
-	case 1:		// every change
+	case 1: // every change
 		break;
-	case -1:	// last time
+	case -1: // last time
 		SetDisplayBrightness(SystemInfo.nDisplayBrightness);
 	}
 }
 
 void SetDisplayBrightness(int val)
 {
-	ledcWrite(ledChannel, map(val, 0, 100, 0, 255));
+	ledcWrite(TFT_ENABLE, map(val, 0, 100, 0, 255));
 }
 
 uint16_t ColorList[] = {
-	//TFT_NAVY,
-	//TFT_MAROON,
-	//TFT_OLIVE,
+	// TFT_NAVY,
+	// TFT_MAROON,
+	// TFT_OLIVE,
 	TFT_WHITE,
 	TFT_LIGHTGREY,
 	TFT_BLUE,
@@ -1594,14 +1756,15 @@ int FindMenuColor(uint16_t col)
 {
 	int ix;
 	int colors = sizeof(ColorList) / sizeof(*ColorList);
-	for (ix = 0; ix < colors; ++ix) {
+	for (ix = 0; ix < colors; ++ix)
+	{
 		if (col == ColorList[ix])
 			break;
 	}
 	return constrain(ix, 0, colors - 1);
 }
 
-void SetMenuColor(MenuItem * menu)
+void SetMenuColor(MenuItem *menu)
 {
 	bool bHiLiteColor = false;
 	int maxIndex = sizeof(ColorList) / sizeof(*ColorList) - 1;
@@ -1615,16 +1778,20 @@ void SetMenuColor(MenuItem * menu)
 	DisplayLine(6, "Long=OK Click=Cancel", SystemInfo.menuTextColor);
 	bool done = false;
 	bool bChanged = true;
-	int* npColor;
+	int *npColor;
 	String prefix0, prefix1;
-	while (!done) {
+	while (!done)
+	{
 		npColor = bHiLiteColor ? &nHiLiteColorIndex : &nTextColorIndex;
-		if (bChanged) {
-			if (bHiLiteColor) {
+		if (bChanged)
+		{
+			if (bHiLiteColor)
+			{
 				prefix0 = "     ";
 				prefix1 = "--> ";
 			}
-			else {
+			else
+			{
 				prefix0 = "--> ";
 				prefix1 = "     ";
 			}
@@ -1633,19 +1800,22 @@ void SetMenuColor(MenuItem * menu)
 			DisplayLine(1, prefix1 + "HiLite Color", TFT_BLACK, SystemInfo.menuHiLiteColor);
 			bChanged = false;
 		}
-		switch (ReadButton()) {
+		switch (ReadButton())
+		{
 		case CRotaryDialButton::BTN_LONGPRESS:
 			done = true;
 			break;
 		case CRotaryDialButton::BTN_RIGHT:
 			bChanged = true;
-			if (*npColor < maxIndex) {
+			if (*npColor < maxIndex)
+			{
 				++(*npColor);
 			}
 			break;
 		case CRotaryDialButton::BTN_LEFT:
 			bChanged = true;
-			if (*npColor > 0) {
+			if (*npColor > 0)
+			{
 				--(*npColor);
 			}
 			break;
@@ -1673,11 +1843,13 @@ void SetMenuColor(MenuItem * menu)
 // set gotoMain to go all the way back to the top
 bool UpMenuLevel(bool gotoMain)
 {
-	if (gotoMain) {
+	if (gotoMain)
+	{
 		while (UpMenuLevel(false))
 			;
 	}
-	else if (MenuStack.size() > 1) {
+	else if (MenuStack.size() > 1)
+	{
 		g_bMenuChanged = true;
 		menuPtr = MenuStack.top();
 		MenuStack.pop();
@@ -1690,7 +1862,8 @@ bool UpMenuLevel(bool gotoMain)
 // handle the menus
 bool HandleMenus()
 {
-	if (g_bMenuChanged) {
+	if (g_bMenuChanged)
+	{
 		ShowMenu(MenuStack.top()->menu);
 		g_bMenuChanged = false;
 	}
@@ -1699,44 +1872,51 @@ bool HandleMenus()
 	int lastOffset = MenuStack.top()->offset;
 	int lastMenu = MenuStack.top()->index;
 	int lastMenuCount = MenuStack.top()->menucount;
-	//MenuItem* pCurrentMenu = &MenuStack.top()->menu[MenuStack.top()->index];
+	// MenuItem* pCurrentMenu = &MenuStack.top()->menu[MenuStack.top()->index];
 	int btnRepeatCount = 1;
-	switch (button) {
+	switch (button)
+	{
 	case BTN_LEFT_LONG:
 	case BTN_RIGHT_LONG:
 		btnRepeatCount = 5;
 		break;
 	}
-	switch (button) {
-	case BTN_B0_CLICK:	// go back a menu level if we can
+	switch (button)
+	{
+	case BTN_B0_CLICK: // go back a menu level if we can
 		UpMenuLevel(false);
 		break;
-	case BTN_B1_LONG:	// look for help
-		//UpMenuLevel(true);	// go back to the top menu
+	case BTN_B1_LONG: // look for help
+		// UpMenuLevel(true);	// go back to the top menu
 		RunMenus(button);
 		g_bMenuChanged = true;
 		break;
-	//case BTN_B1_LONG:
+	// case BTN_B1_LONG:
 	//	button = BTN_SELECT;
-		// yes, no break here
+	//  yes, no break here
 	case BTN_SELECT:
 		RunMenus(button);
 		g_bMenuChanged = true;
 		break;
 	case BTN_RIGHT_LONG:
 	case BTN_RIGHT:
-		while (btnRepeatCount--) {
-			if (SystemInfo.bAllowMenuWrap || MenuStack.top()->index < MenuStack.top()->menucount - 1) {
+		while (btnRepeatCount--)
+		{
+			if (SystemInfo.bAllowMenuWrap || MenuStack.top()->index < MenuStack.top()->menucount - 1)
+			{
 				++MenuStack.top()->index;
 			}
-			if (MenuStack.top()->index >= MenuStack.top()->menucount) {
+			if (MenuStack.top()->index >= MenuStack.top()->menucount)
+			{
 				MenuStack.top()->index = 0;
 				g_bMenuChanged = true;
 				MenuStack.top()->offset = 0;
 			}
 			// see if we need to scroll the menu
-			if (MenuStack.top()->index - MenuStack.top()->offset > (nMenuLineCount - 1)) {
-				if (MenuStack.top()->offset < MenuStack.top()->menucount - nMenuLineCount) {
+			if (MenuStack.top()->index - MenuStack.top()->offset > (nMenuLineCount - 1))
+			{
+				if (MenuStack.top()->offset < MenuStack.top()->menucount - nMenuLineCount)
+				{
 					++MenuStack.top()->offset;
 				}
 			}
@@ -1744,17 +1924,21 @@ bool HandleMenus()
 		break;
 	case BTN_LEFT_LONG:
 	case BTN_LEFT:
-		while (btnRepeatCount--) {
-			if (SystemInfo.bAllowMenuWrap || MenuStack.top()->index > 0) {
+		while (btnRepeatCount--)
+		{
+			if (SystemInfo.bAllowMenuWrap || MenuStack.top()->index > 0)
+			{
 				--MenuStack.top()->index;
 			}
-			if (MenuStack.top()->index < 0) {
+			if (MenuStack.top()->index < 0)
+			{
 				MenuStack.top()->index = MenuStack.top()->menucount - 1;
 				g_bMenuChanged = true;
 				MenuStack.top()->offset = MenuStack.top()->menucount - nMenuLineCount;
 			}
 			// see if we need to adjust the offset
-			if (MenuStack.top()->offset && MenuStack.top()->index < MenuStack.top()->offset) {
+			if (MenuStack.top()->offset && MenuStack.top()->index < MenuStack.top()->offset)
+			{
 				--MenuStack.top()->offset;
 			}
 		}
@@ -1769,9 +1953,10 @@ bool HandleMenus()
 		break;
 	}
 	// check some conditions that should redraw the menu
-	if (lastMenu != MenuStack.top()->index || lastOffset != MenuStack.top()->offset) {
+	if (lastMenu != MenuStack.top()->index || lastOffset != MenuStack.top()->offset)
+	{
 		g_bMenuChanged = true;
-		//Serial.println("menu changed");
+		// Serial.println("menu changed");
 	}
 	return didsomething;
 }
@@ -1782,7 +1967,8 @@ bool HandleRunMode()
 	bool didsomething = true;
 	int maxMenuLine = nMenuLineCount - (SystemInfo.bShowBatteryLevel ? 2 : 1);
 	CRotaryDialButton::Button button = ReadButton();
-	switch (button) {
+	switch (button)
+	{
 	case BTN_SELECT:
 		break;
 	case BTN_RIGHT_LONG:
@@ -1820,7 +2006,8 @@ bool HandleRunMode()
 // check the rotation buttons during running
 enum CRotaryDialButton::Button ReadButton()
 {
-	if (SystemInfo.bRunWebServer) {
+	if (SystemInfo.bRunWebServer)
+	{
 		server.handleClient();
 	}
 	enum CRotaryDialButton::Button retValue = BTN_NONE;
@@ -1835,13 +2022,17 @@ enum CRotaryDialButton::Button ReadButton()
 	// turn the b1 button into a dial long click
 	if (retValue == BTN_B1_CLICK)
 		retValue = BTN_LONG;
-	if (retValue != BTN_NONE) {
+	if (retValue != BTN_NONE)
+	{
 		ResetDimTimer();
 	}
-	else if (displayDimNow) {
-		for (int val = SystemInfo.nDisplayBrightness - 1; val >= SystemInfo.nDisplayDimValue; --val) {
+	else if (displayDimNow)
+	{
+		for (int val = SystemInfo.nDisplayBrightness - 1; val >= SystemInfo.nDisplayDimValue; --val)
+		{
 			SetDisplayBrightness(val);
-			if (CRotaryDialButton::getCount()) {
+			if (CRotaryDialButton::getCount())
+			{
 				// if button pressed finish and get out of here
 				SetDisplayBrightness(SystemInfo.nDisplayBrightness);
 				break;
@@ -1859,11 +2050,14 @@ bool CheckCancel(bool bLeaveButton)
 	ResetDimTimer();
 	// if it has been set, just return true
 	CRotaryDialButton::Button button = ReadButton();
-	if (button != BTN_NONE) {
-		if (button == BTN_LONG) {
+	if (button != BTN_NONE)
+	{
+		if (button == BTN_LONG)
+		{
 			return true;
 		}
-		else if (bLeaveButton) {
+		else if (bLeaveButton)
+		{
 			CRotaryDialButton::pushButton(button);
 		}
 	}
@@ -1878,50 +2072,58 @@ void setupSDcard()
 #if USE_STANDARD_SD
 	gpio_set_direction((gpio_num_t)SDcsPin, GPIO_MODE_OUTPUT);
 	delay(50);
-	//SPIClass(1);
-	spiSDCard.begin(SDSckPin, SDMisoPin, SDMosiPin, SDcsPin);	// SCK,MISO,MOSI,CS
+	// SPIClass(1);
+	spiSDCard.begin(SDSckPin, SDMisoPin, SDMosiPin, SDcsPin); // SCK,MISO,MOSI,CS
 	delay(20);
 
-	if (!SD.begin(SDcsPin, spiSDCard)) {
-		//Serial.println("Card Mount Failed");
+	if (!SD.begin(SDcsPin, spiSDCard))
+	{
+		// Serial.println("Card Mount Failed");
 		return;
 	}
 	uint8_t cardType = SD.cardType();
 
-	if (cardType == CARD_NONE) {
-		//Serial.println("No SD card attached");
+	if (cardType == CARD_NONE)
+	{
+		// Serial.println("No SD card attached");
 		return;
 	}
 #else
-#define SD_CONFIG SdSpiConfig(SDcsPin, /*DEDICATED_SPI*/SHARED_SPI, SD_SCK_MHZ(10))
-	SPI.begin(SDSckPin, SDMisoPin, SDMosiPin, SDcsPin);	// SCK,MISO,MOSI,CS
-	if (!SD.begin(SD_CONFIG)) {
-		//Serial.println(String("etype:") + SD.fatType());
+#define SD_CONFIG SdSpiConfig(SDcsPin, /*DEDICATED_SPI*/ SHARED_SPI, SD_SCK_MHZ(10))
+	SPI.begin(SDSckPin, SDMisoPin, SDMosiPin, SDcsPin); // SCK,MISO,MOSI,CS
+	if (!SD.begin(SD_CONFIG))
+	{
+		// Serial.println(String("etype:") + SD.fatType());
 		WriteMessage("SD card failure:", true);
 		return;
 	}
-	//Serial.println(String("type:") + SD.fatType());
+	// Serial.println(String("type:") + SD.fatType());
 	bSdCardValid = true;
-	//Serial.println("Mounted SD card");
-	//SD.printFatType(&Serial);
+	// Serial.println("Mounted SD card");
+	// SD.printFatType(&Serial);
 
-	//uint64_t cardSize = (uint64_t)SD.clusterCount() * SD.bytesPerCluster() / (1024 * 1024 * 1024);
-	//Serial.printf("SD Card Size: %llu GB\n", cardSize);
+	// uint64_t cardSize = (uint64_t)SD.clusterCount() * SD.bytesPerCluster() / (1024 * 1024 * 1024);
+	// Serial.printf("SD Card Size: %llu GB\n", cardSize);
 #endif
 }
 
 // display a line in selected colors and clear to the end of the line
 void DisplayLine(int lineNum, String text, uint16_t color, uint16_t backColor)
 {
-	if (xSemaphoreTake(MutexDisplayHandle, portMAX_DELAY) == pdTRUE) {
-		if (lineNum >= 0 && lineNum < nMenuLineCount) {
-			if (TextLines[lineNum].Line != text || TextLines[lineNum].backColor != backColor || TextLines[lineNum].foreColor != color) {
+	if (xSemaphoreTake(MutexDisplayHandle, portMAX_DELAY) == pdTRUE)
+	{
+		if (lineNum >= 0 && lineNum < nMenuLineCount)
+		{
+			if (TextLines[lineNum].Line != text || TextLines[lineNum].backColor != backColor || TextLines[lineNum].foreColor != color)
+			{
 				int pixels = tft.textWidth(text);
-				if (pixels > tft.width()) {
+				if (pixels > tft.width())
+				{
 					TextLines[lineNum].nRollLength = pixels;
 					TextLines[lineNum].nRollOffset = 0;
 				}
-				else {
+				else
+				{
 					TextLines[lineNum].nRollOffset = TextLines[lineNum].nRollLength = 0;
 				}
 				// save the line for scrolling purposes
@@ -1942,7 +2144,8 @@ void DisplayLine(int lineNum, String text, uint16_t color, uint16_t backColor)
 // clear the screen and reset the scrolling lines
 void ClearScreen()
 {
-	if (xSemaphoreTake(MutexDisplayHandle, portMAX_DELAY) == pdTRUE) {
+	if (xSemaphoreTake(MutexDisplayHandle, portMAX_DELAY) == pdTRUE)
+	{
 		// let the sideways scroller know that we cleared the screen
 		if (TaskScrollSidewaysHandle)
 			xTaskNotifyGive(TaskScrollSidewaysHandle);
@@ -1954,7 +2157,8 @@ void ClearScreen()
 
 void ResetTextLines()
 {
-	for (int ix = 0; ix < nMenuLineCount; ++ix) {
+	for (int ix = 0; ix < nMenuLineCount; ++ix)
+	{
 		TextLines[ix].Line.clear();
 		TextLines[ix].nRollOffset = 0;
 		TextLines[ix].nRollLength = 0;
@@ -1969,11 +2173,14 @@ void DisplayMenuLine(int lineNum, int displine, String text)
 {
 	bool hilite = MenuStack.top()->index == lineNum;
 	String mline = (hilite && SystemInfo.bMenuStar ? "*" : " ") + text;
-	if (displine >= 0 && displine < nMenuLineCount) {
-		if (SystemInfo.bMenuStar) {
+	if (displine >= 0 && displine < nMenuLineCount)
+	{
+		if (SystemInfo.bMenuStar)
+		{
 			DisplayLine(displine, mline, SystemInfo.menuTextColor, TFT_BLACK);
 		}
-		else {
+		else
+		{
 			DisplayLine(displine, mline, hilite ? TFT_BLACK : SystemInfo.menuTextColor, hilite ? SystemInfo.menuHiLiteColor : TFT_BLACK);
 		}
 	}
@@ -1981,7 +2188,7 @@ void DisplayMenuLine(int lineNum, int displine, String text)
 
 // insert newlines into a string so it doesn't wrap in the middle of words when displayed
 // existing newlines are honored
-String FormatMultiLine(String & input)
+String FormatMultiLine(String &input)
 {
 	String output;
 	int lineWidth = 0;
@@ -1989,8 +2196,10 @@ String FormatMultiLine(String & input)
 	int lastOutputSpace = 0;
 	int lastOutputStart = 0;
 	// look for spaces and add words to the output, when each line is too long start a new line
-	for (int inIx = 0; inIx < input.length(); ++inIx) {
-		switch (input[inIx]) {
+	for (int inIx = 0; inIx < input.length(); ++inIx)
+	{
+		switch (input[inIx])
+		{
 		case '\n':
 			// flush the line
 			output += '\n';
@@ -2006,7 +2215,8 @@ String FormatMultiLine(String & input)
 			// check the width after adding this character
 			output += input[inIx];
 			lineWidth = tft.textWidth(output.substring(lastOutputStart));
-			if (lineWidth > tft.width()) {
+			if (lineWidth > tft.width())
+			{
 				// too wide, backup
 				output = output.substring(0, lastOutputSpace);
 				// add a newline to the output
@@ -2024,36 +2234,42 @@ String FormatMultiLine(String & input)
 void WriteMessage(String txt, bool error, int wait, bool process)
 {
 	ClearScreen();
-	if (xSemaphoreTake(MutexDisplayHandle, portMAX_DELAY) == pdTRUE) {
-		if (process) {
+	if (xSemaphoreTake(MutexDisplayHandle, portMAX_DELAY) == pdTRUE)
+	{
+		if (process)
+		{
 			txt = FormatMultiLine(txt);
 		}
-		if (error) {
+		if (error)
+		{
 			txt = "**" + txt + "**";
 			tft.setTextColor(TFT_RED);
 		}
-		else {
+		else
+		{
 			tft.setTextColor(SystemInfo.menuTextColor);
 		}
 		tft.setCursor(0, tft.fontHeight());
 		tft.setTextWrap(true);
 		tft.print(txt);
-		if (wait == -1) {
+		if (wait == -1)
+		{
 			// wait for a key
 			while (ReadButton() == BTN_NONE)
 				delay(10);
 		}
-		else {
+		else
+		{
 			delay(wait);
 		}
 		tft.setTextColor(TFT_WHITE);
 		xSemaphoreGive(MutexDisplayHandle);
 	}
-	//ClearScreen();
+	// ClearScreen();
 }
 
 // compare strings for sort ignoring case
-bool CompareNames(const String & a, const String & b)
+bool CompareNames(const String &a, const String &b)
 {
 	String a1 = a, b1 = b;
 	a1.toUpperCase();
@@ -2075,9 +2291,11 @@ String GetFilename()
 	int nLetterIndex = 0;
 	// redraw screen only when necessary
 	bool bRedraw = true;
-	const int partA = 18;	// first line
-	do {
-		if (bRedraw) {
+	const int partA = 18; // first line
+	do
+	{
+		if (bRedraw)
+		{
 			DisplayLine(0, text, SystemInfo.menuTextColor);
 			// draw the text
 			DisplayLine(1, letters.substring(0, partA), SystemInfo.menuTextColor);
@@ -2087,19 +2305,22 @@ String GetFilename()
 			int y = nLetterIndex / partA;
 			y = constrain(y, 0, 2);
 			int x = tft.textWidth(letters.substring(y * partA, nLetterIndex));
-			char ch[2] = { 0 };
+			char ch[2] = {0};
 			ch[0] = letters[nLetterIndex];
-			if (SystemInfo.bMenuStar) {
+			if (SystemInfo.bMenuStar)
+			{
 				tft.drawChar(x + 1, tft.fontHeight() * (y + 2) - 6, letters[nLetterIndex], TFT_WHITE, TFT_BLACK, 1);
 			}
-			else {
+			else
+			{
 				tft.fillRect(x + 1, tft.fontHeight() * (y + 1) - 4, tft.textWidth(ch), (y + 2) + tft.fontHeight(), SystemInfo.menuTextColor);
 				tft.drawChar(x + 1, tft.fontHeight() * (y + 2) - 6, letters[nLetterIndex], TFT_BLACK, TFT_BLACK, 1);
 			}
 			bRedraw = false;
 		}
 		button = ReadButton();
-		switch (button) {
+		switch (button)
+		{
 		case BTN_NONE:
 		case BTN_B1_CLICK:
 		case BTN_B2_LONG:
@@ -2119,18 +2340,19 @@ String GetFilename()
 				nLetterIndex = 0;
 			bRedraw = true;
 			break;
-		case BTN_SELECT:	// add a letter if room
-			if (text.length() < MAX_SETTINGS_NAME_LENGTH) {
+		case BTN_SELECT: // add a letter if room
+			if (text.length() < MAX_SETTINGS_NAME_LENGTH)
+			{
 				text += letters[nLetterIndex];
 				bRedraw = true;
 			}
 			break;
-		case BTN_B0_CLICK:	// delete last character
+		case BTN_B0_CLICK: // delete last character
 			if (text.length())
 				text = text.substring(0, text.length() - 1);
 			bRedraw = true;
 			break;
-		case BTN_B0_LONG:	// clear the text
+		case BTN_B0_LONG: // clear the text
 			text.clear();
 			bRedraw = true;
 			break;
@@ -2148,136 +2370,156 @@ String GetSettingsFilename()
 	int index = 0;
 	std::vector<String> namelist;
 	GetFileNamesFromSD(namelist, "RFS");
-	if (namelist.size() == 0) {
+	if (namelist.size() == 0)
+	{
 		WriteMessage("No saved settings");
 		return "";
 	}
-	const char** list;
-	list = (const char**)calloc(sizeof(char*), namelist.size());
-	if (list == NULL) {
+	const char **list;
+	list = (const char **)calloc(sizeof(char *), namelist.size());
+	if (list == NULL)
+	{
 		WriteMessage("failed to alloc file list", true);
 		return "";
 	}
 
-	for (int ix = 0; ix < namelist.size(); ++ix) {
+	for (int ix = 0; ix < namelist.size(); ++ix)
+	{
 		// remove the extension
 		namelist[ix] = namelist[ix].substring(0, namelist[ix].length() - 4);
 		list[ix] = namelist[ix].c_str();
 	}
-	MenuItem mi = { eList, "File: %s", GetSelectChoice, &index, 0, namelist.size() - 1, 0, NULL, NULL, NULL, list };
+	MenuItem mi = {eList, "File: %s", GetSelectChoice, &index, 0, namelist.size() - 1, 0, NULL, NULL, NULL, list};
 	bool bChosen = GetSelectChoiceListHelper(&mi);
 	free(list);
 	return bChosen ? namelist[index] : "";
 }
 
 // create and save the settings in a named file
-void CreateSettingsFile(MenuItem*)
+void CreateSettingsFile(MenuItem *)
 {
 	// get the filename
 	String fname = GetFilename();
-	if (fname.length() == 0) {
+	if (fname.length() == 0)
+	{
 		WriteMessage("no file saved");
 		return;
 	}
 	// open the file and save the settings
 	FsFile binFile;
 	// first check if the file exists
-	if (SD.exists("/" + fname + ".RFS") && !GetYesNo("Replace\n" + fname + "?")) {
+	if (SD.exists("/" + fname + ".RFS") && !GetYesNo("Replace\n" + fname + "?"))
+	{
 		WriteMessage(fname + "\nnot changed");
 		return;
 	}
 	// if we get here, write the file
 	binFile = SD.open("/" + fname + ".RFS", O_WRONLY | O_CREAT | O_TRUNC);
-	if (binFile.getError() == 0) {
+	if (binFile.getError() == 0)
+	{
 		binFile.write(&SystemInfo, sizeof(SystemInfo));
 		binFile.close();
 		WriteMessage(fname + "\nsaved");
 	}
-	else {
+	else
+	{
 		WriteMessage(fname + "\nnot saved");
 	}
 }
 
 // Save or update the settings in a named file
-void SaveSettingsInFile(MenuItem*)
+void SaveSettingsInFile(MenuItem *)
 {
 	// get the filename
 	String fname = GetSettingsFilename();
-	if (fname.length() == 0) {
+	if (fname.length() == 0)
+	{
 		WriteMessage("no file saved");
 		return;
 	}
 	// open the file and save the settings
 	FsFile binFile;
 	// first check if the file exists
-	if (SD.exists("/" + fname + ".RFS") && !GetYesNo("Replace\n" + fname + "?")) {
+	if (SD.exists("/" + fname + ".RFS") && !GetYesNo("Replace\n" + fname + "?"))
+	{
 		WriteMessage(fname + "\nnot changed");
 		return;
 	}
 	// if we get here, write the file
 	binFile = SD.open("/" + fname + ".RFS", O_WRONLY | O_CREAT | O_TRUNC);
-	if (binFile.getError() == 0) {
+	if (binFile.getError() == 0)
+	{
 		binFile.write(&SystemInfo, sizeof(SystemInfo));
 		binFile.close();
 		WriteMessage(fname + "\nsaved");
 	}
-	else {
+	else
+	{
 		WriteMessage(fname + "\nnot saved");
 	}
 }
 
 // load the settings from a named file
-void LoadSettingsFromFile(MenuItem*)
+void LoadSettingsFromFile(MenuItem *)
 {
 	FsFile file;
 	String fname = GetSettingsFilename();
-	if (fname.length()) {
-		if ((file = SD.open(String("/") + fname + ".RFS", O_RDONLY)) != NULL) {
+	if (fname.length())
+	{
+		if ((file = SD.open(String("/") + fname + ".RFS", O_RDONLY)) != NULL)
+		{
 			file.read(&SystemInfo, sizeof(SystemInfo));
 			file.close();
 			WriteMessage(fname + "\nloaded");
 		}
-		else {
+		else
+		{
 			WriteMessage(fname + "\nnot loaded");
 		}
 	}
-	else {
+	else
+	{
 		WriteMessage("no file selected");
 	}
 }
 
 // Delete a settings file
-void DeleteSettingsFile(MenuItem*)
+void DeleteSettingsFile(MenuItem *)
 {
 	String fname = GetSettingsFilename();
 	String fullname = "/" + fname + ".RFS";
-	if (fname.length()) {
-		if (SD.exists(fullname)) {
-			if (GetYesNo("delete: \n" + fname)) {
+	if (fname.length())
+	{
+		if (SD.exists(fullname))
+		{
+			if (GetYesNo("delete: \n" + fname))
+			{
 				SD.remove(fullname);
 				WriteMessage(fname + "\ndeleted");
 			}
-			else {
+			else
+			{
 				WriteMessage(fname + "\nnot deleted");
 			}
 		}
 	}
-	else {
+	else
+	{
 		WriteMessage("no file selected");
 	}
 }
 
 // save the eeprom settings
-void SaveEepromSettings(MenuItem * menu)
+void SaveEepromSettings(MenuItem *menu)
 {
 	SaveLoadSettings(true, false);
 }
 
 //// load eeprom settings
-//void LoadEepromSettings(MenuItem * menu)
+// void LoadEepromSettings(MenuItem * menu)
 //{
 //	SaveLoadSettings(false, false);
-//}
+// }
 
 // get a yes/no response
 bool GetYesNo(String msg)
@@ -2292,22 +2534,25 @@ bool GetYesNo(String msg)
 	DisplayLine(5, "Click to Select", SystemInfo.menuTextColor);
 	CRotaryDialButton::Button button = BTN_NONE;
 	bool done = false;
-	while (!done) {
+	while (!done)
+	{
 		button = ReadButton();
-		switch (button) {
+		switch (button)
+		{
 		case BTN_LEFT:
 		case BTN_RIGHT:
 			retval = !retval;
 			change = true;
 			break;
 		case BTN_SELECT:
-			//case BTN_LONG:
+			// case BTN_LONG:
 			done = true;
 			break;
 		default:
 			break;
 		}
-		if (change) {
+		if (change)
+		{
 			// draw the buttons
 			tft.fillRoundRect(60, 42, 60, 22, 8, SystemInfo.menuTextColor);
 			tft.setTextColor(TFT_BLACK, SystemInfo.menuTextColor);
@@ -2322,7 +2567,8 @@ bool GetYesNo(String msg)
 // draw a progress bar
 void DrawProgressBar(int x, int y, int dx, int dy, int percent, bool rect)
 {
-	if (xSemaphoreTake(MutexDisplayHandle, portMAX_DELAY) == pdTRUE) {
+	if (xSemaphoreTake(MutexDisplayHandle, portMAX_DELAY) == pdTRUE)
+	{
 		if (rect)
 			tft.drawRoundRect(x, y, dx, dy, 2, SystemInfo.menuTextColor);
 		int fill = (dx - 2) * percent / 100;
@@ -2340,13 +2586,16 @@ bool SaveLoadBatterySettings(bool save)
 	bool retvalue = true;
 	Preferences prefs;
 	prefs.begin(prefsName, !save);
-	if (save) {
+	if (save)
+	{
 		// save things
 		prefs.putBytes(prefsBatteryInfo, &BatteryInfo, sizeof(BatteryInfo));
 	}
-	else {
+	else
+	{
 		// load things
-		if (prefs.getBytes(prefsBatteryInfo, &BatteryInfo, sizeof(BatteryInfo)) != sizeof(BatteryInfo)) {
+		if (prefs.getBytes(prefsBatteryInfo, &BatteryInfo, sizeof(BatteryInfo)) != sizeof(BatteryInfo))
+		{
 			retvalue = false;
 		}
 	}
@@ -2361,27 +2610,33 @@ bool SaveLoadSettings(bool save, bool nodisplay)
 	bool retvalue = true;
 	Preferences prefs;
 	prefs.begin(prefsName, !save);
-	if (save) {
+	if (save)
+	{
 		// save things
 		prefs.putString(prefsVersion, FOX_Version);
 		prefs.putBytes(prefsSystemInfo, &SystemInfo, sizeof(SystemInfo));
-		if (!nodisplay) {
+		if (!nodisplay)
+		{
 			WriteMessage("Settings Saved", false, 1000);
 		}
 	}
-	else {
+	else
+	{
 		// load things
 		String vsn = prefs.getString(prefsVersion, "");
-		if (vsn == FOX_Version) {
+		if (vsn == FOX_Version)
+		{
 			setupSDcard();
 			// set the brightness values since they might have changed
 			SetDisplayBrightness(SystemInfo.nDisplayBrightness);
 			prefs.getBytes(prefsSystemInfo, &SystemInfo, sizeof(SystemInfo));
-			if (!nodisplay) {
+			if (!nodisplay)
+			{
 				WriteMessage("Settings Loaded", false, 1000);
 			}
 		}
-		else {
+		else
+		{
 			retvalue = false;
 			if (!nodisplay)
 				WriteMessage("Settings not saved yet", true, 2000);
@@ -2394,9 +2649,10 @@ bool SaveLoadSettings(bool save, bool nodisplay)
 }
 
 // delete saved settings, except for the battery values
-void FactorySettings(MenuItem * menu)
+void FactorySettings(MenuItem *menu)
 {
-	if (menu == NULL || GetYesNo("Reset All Settings? (reboot)")) {
+	if (menu == NULL || GetYesNo("Reset All Settings? (reboot)"))
+	{
 		SaveLoadBatterySettings(false);
 		Preferences prefs;
 		prefs.begin(prefsName);
@@ -2408,15 +2664,17 @@ void FactorySettings(MenuItem * menu)
 	}
 }
 
-void EraseFlash(MenuItem * menu)
+void EraseFlash(MenuItem *menu)
 {
-	if (GetYesNo("Format EEPROM? (factory)")) {
+	if (GetYesNo("Format EEPROM? (factory)"))
+	{
 		nvs_flash_erase(); // erase the NVS partition and...
-		nvs_flash_init(); // initialize the NVS partition.
+		nvs_flash_init();  // initialize the NVS partition.
 	}
 }
 
-void load_page_header(bool bRefresh) {
+void load_page_header(bool bRefresh)
+{
 	webpage = "<!DOCTYPE html><html>";
 	webpage += "<head>";
 	webpage += "<title>RadioFox</title>";
@@ -2456,7 +2714,8 @@ void load_page_header(bool bRefresh) {
 	webpage + "</h1>";
 }
 
-void append_page_footer() {
+void append_page_footer()
+{
 	webpage += "<ul>";
 	webpage += "<li><a href='/'>Home</a></li>";
 	webpage += "<li><a href='/download'>Download</a></li>";
@@ -2470,29 +2729,33 @@ void append_page_footer() {
 	webpage += "</body></html>";
 }
 
-void SendHTML_Header() {
+void SendHTML_Header()
+{
 	server.sendHeader("Cache-Control", "no-cache, no-store, must-revalidate");
 	server.sendHeader("Pragma", "no-cache");
 	server.sendHeader("Expires", "-1");
 	server.setContentLength(CONTENT_LENGTH_UNKNOWN);
-	server.send(200, "text/html", ""); // Empty content inhibits Content-length header so we have to close the socket ourselves. 
+	server.send(200, "text/html", ""); // Empty content inhibits Content-length header so we have to close the socket ourselves.
 	load_page_header(false);
 	server.sendContent(webpage);
 	webpage = "";
 }
 
-void SendHTML_Content() {
+void SendHTML_Content()
+{
 	server.sendContent(webpage);
 	webpage = "";
 }
 
-void SendHTML_Stop() {
+void SendHTML_Stop()
+{
 	server.sendContent("");
 	server.client().stop(); // Stop is needed because no content length was sent
 }
 
 // display the homepage on the web browser
-void HomePage() {
+void HomePage()
+{
 	bWebRunning = false;
 	SendHTML_Header();
 	webpage += "<a href='/download'><button style=\"width:auto\">Download</button></a>";
@@ -2511,29 +2774,31 @@ void HomePage() {
 }
 
 // these are used for the list of things that can be set on the settings web page
-enum WEB_SETTINGS_TYPE {
-	WST_NUMBER,		// a number value, decimals 0 for integer
-	WST_BOOL,		// boolean values
-	WST_STRING,		// a string of characters
-	WST_TEXT_ONLY,	// text that will display as H2, use to separate sections
-	WST_SLIDER,		// a slider control
+enum WEB_SETTINGS_TYPE
+{
+	WST_NUMBER,	   // a number value, decimals 0 for integer
+	WST_BOOL,	   // boolean values
+	WST_STRING,	   // a string of characters
+	WST_TEXT_ONLY, // text that will display as H2, use to separate sections
+	WST_SLIDER,	   // a slider control
 };
 typedef WEB_SETTINGS_TYPE WEB_SETTINGS_TYPE;
-struct WEB_SETTINGS {
-	WEB_SETTINGS_TYPE type;		// what type of data
-	bool* display;				// if not NULL, compare with displayTest to display this line
-	bool displayTest;			// compare with display to see if this line should display or not
-	const char* text;			// show on page
-	const char* name;			// the data name
-	void* data;					// a pointer to the data
-	int width;					// how wide to make the field
-	int decimals;				// decimals for floats, although stored as ints, also used for max string length
-	int min, max;				// not used yet, TODO, but will limit range of numbers
+struct WEB_SETTINGS
+{
+	WEB_SETTINGS_TYPE type; // what type of data
+	bool *display;			// if not NULL, compare with displayTest to display this line
+	bool displayTest;		// compare with display to see if this line should display or not
+	const char *text;		// show on page
+	const char *name;		// the data name
+	void *data;				// a pointer to the data
+	int width;				// how wide to make the field
+	int decimals;			// decimals for floats, although stored as ints, also used for max string length
+	int min, max;			// not used yet, TODO, but will limit range of numbers
 };
 typedef WEB_SETTINGS WebSettings;
 WebSettings WebSettingsPage[] = {
-	{(WEB_SETTINGS_TYPE)WST_TEXT_ONLY,NULL,true,"Image Settings",NULL},
-	{WST_BOOL,NULL,true,"Enable Transmit","enable_transmit",&SystemInfo.bXmitEnable},
+	{(WEB_SETTINGS_TYPE)WST_TEXT_ONLY, NULL, true, "Image Settings", NULL},
+	{WST_BOOL, NULL, true, "Enable Transmit", "enable_transmit", &SystemInfo.bXmitEnable},
 	//{WST_NUMBER,&ImgInfo.bFixedTime,true,"Fixed Time Value (S)","fixed_time",&ImgInfo.nFixedImageTime,4,0},
 	//{WST_NUMBER,&ImgInfo.bFixedTime,false,"Column Time(mS)","column_time",&ImgInfo.nFrameHold,4,0},
 	//{WST_SLIDER,&ImgInfo.bFixedTime,false,"Column Time(mS)","column_time_slider",&ImgInfo.nFrameHold,4,0,0,500},
@@ -2567,85 +2832,91 @@ WebSettings WebSettingsPage[] = {
 // change the settings from the web page
 void WebChangeSettings()
 {
-	if (server.args()) {
-		void* lastData = NULL;
-		void* thisData = NULL;
-		//Serial.println("argcnt: " + String(server.args()));
-		for (WebSettings val : WebSettingsPage) {
+	if (server.args())
+	{
+		void *lastData = NULL;
+		void *thisData = NULL;
+		// Serial.println("argcnt: " + String(server.args()));
+		for (WebSettings val : WebSettingsPage)
+		{
 			thisData = val.data;
-			//if (thisData == lastData)
+			// if (thisData == lastData)
 			//	continue;
 			lastData = thisData;
 			if (val.type != WST_BOOL && !server.hasArg(val.name))
 				continue;
-			//Serial.println(String(val.name) + ": ~" + server.arg(val.name) + "~");
-			switch (val.type) {
+			// Serial.println(String(val.name) + ": ~" + server.arg(val.name) + "~");
+			switch (val.type)
+			{
 			case WST_NUMBER:
-				*(int*)(val.data) = (int)(server.arg(val.name).toDouble() * pow10(val.decimals));
+				*(int *)(val.data) = (int)(server.arg(val.name).toDouble() * pow10(val.decimals));
 				break;
 			case WST_SLIDER:
-				//Serial.println("slider value:" + server.arg(val.name));
-				*(int*)(val.data) = (int)(server.arg(val.name).toDouble() * pow10(val.decimals));
+				// Serial.println("slider value:" + server.arg(val.name));
+				*(int *)(val.data) = (int)(server.arg(val.name).toDouble() * pow10(val.decimals));
 				break;
 			case WST_BOOL:
-				*(bool*)(val.data) = server.arg(val.name).length() ? true : false;
+				*(bool *)(val.data) = server.arg(val.name).length() ? true : false;
 				break;
 			case WST_STRING:
 				memset(val.data, 0, val.decimals);
-				strncpy((char*)(val.data), server.arg(val.name).c_str(), val.decimals - 1);
+				strncpy((char *)(val.data), server.arg(val.name).c_str(), val.decimals - 1);
 				break;
 			case WST_TEXT_ONLY:
 				break;
 			}
 		}
 	}
-	//Serial.println("fixed: " + String(server.arg("fixed_time")));
+	// Serial.println("fixed: " + String(server.arg("fixed_time")));
 	WebShowSettings();
 }
 
-void WebShowSettings() {
+void WebShowSettings()
+{
 	String stmp;
 	double sfloat;
 	bool bDoneFirst = false;
 	load_page_header(false);
-	//webpage += ".slidecontainer{  width: 100 %;	}";
+	// webpage += ".slidecontainer{  width: 100 %;	}";
 	webpage += "<form id='allsettings' onchange='document.forms[\"allsettings\"].submit()' action='/changesettings' method='post'>";
-	//webpage += "<form onchange='document.getElementById(\"settingssubmitbutton\").disabled=false' action='/changesettings' method='post'>";
-	for (WebSettings val : WebSettingsPage) {
+	// webpage += "<form onchange='document.getElementById(\"settingssubmitbutton\").disabled=false' action='/changesettings' method='post'>";
+	for (WebSettings val : WebSettingsPage)
+	{
 		if (val.display && (*(val.display) != val.displayTest))
 			continue;
 		if (bDoneFirst)
 			webpage += "<br>";
 		else
 			bDoneFirst = true;
-		switch (val.type) {
+		switch (val.type)
+		{
 		case WST_NUMBER:
 			webpage += "<label>" + String(val.text) + ": ";
-			stmp = String(*(int*)(val.data));
+			stmp = String(*(int *)(val.data));
 			sfloat = stmp.toDouble() / pow10(val.decimals);
 			stmp = String(sfloat, val.decimals);
 			webpage += "<input type='text' name='" + String(val.name) + "' size='" + String(val.width) + "' value='" + stmp + "'>";
 			webpage += "</label>";
 			break;
 		case WST_SLIDER:
-			//webpage += "<label>" + String(val.text) + ": ";
-			stmp = String(*(int*)(val.data));
+			// webpage += "<label>" + String(val.text) + ": ";
+			stmp = String(*(int *)(val.data));
 			sfloat = stmp.toDouble() / pow10(val.decimals);
 			stmp = String(sfloat, val.decimals);
 			webpage += "<input type='range' name='" + String(val.name) + "' min='" + String(val.min) + "' max='" + String(val.max) + "' value='" + stmp + "' class='slider' id='" + val.name + "'>";
-			//webpage += "</label>";
+			// webpage += "</label>";
 			break;
 		case WST_BOOL:
 			webpage += "<label>" + String(val.text) + ": ";
 			webpage += "<input type='checkbox' name='" + String(val.name) + "' value='" + val.name + "'";
-			if (*(bool*)(val.data))
+			if (*(bool *)(val.data))
 				webpage += " checked='checked'";
 			webpage += ">";
 			webpage += "</label>";
 			break;
 		case WST_STRING:
 			webpage += "<label>" + String(val.text) + ": ";
-			webpage += "<input type='text' name='" + String(val.name) + "' size='" + String(val.width) + "' value='" + (char*)(val.data) + "'>";
+			webpage += "<input type='text' name='" + String(val.name) + "' size='" + String(val.width) + "' value='" + (char *)(val.data) + "'>";
 			webpage += "</label>";
 			break;
 		case WST_TEXT_ONLY:
@@ -2654,15 +2925,15 @@ void WebShowSettings() {
 			break;
 		}
 	}
-	//webpage += "<br><input type='range' name='test' min='1' max='255' value='50' class='slider' id='myRange'>";
-	//webpage += "<br><br><input id='settingssubmitbutton' disabled type='submit' value='Update MIW'>";
+	// webpage += "<br><input type='range' name='test' min='1' max='255' value='50' class='slider' id='myRange'>";
+	// webpage += "<br><br><input id='settingssubmitbutton' disabled type='submit' value='Update MIW'>";
 	webpage += "</form><br>";
-	//if (ImgInfo.bFixedTime) {
+	// if (ImgInfo.bFixedTime) {
 	//	webpage += String("<p>Fixed Image Time: ") + String(ImgInfo.nFixedImageTime) + " S";
-	//}
-	//else {
+	// }
+	// else {
 	//	webpage += String("<p>Column Time: ") + String(ImgInfo.nFrameHold) + " mS";
-	//}
+	// }
 	////IncreaseRepeatButton();
 	////DecreaseRepeatButton();
 	append_page_footer();
@@ -2698,35 +2969,42 @@ void VerifyRebootSystem()
 // reboot system from web page
 void RebootSystem()
 {
-	if (b_RebootArmed) {
+	if (b_RebootArmed)
+	{
 		ESP.restart();
 	}
-	else {
+	else
+	{
 		UtilitiesPage();
 	}
 }
 
 // map a menuitem list to html
 // recurses for each eIf
-String MenuToHtml(MenuItem * pMenu, bool bActive, int nLevel)
+String MenuToHtml(MenuItem *pMenu, bool bActive, int nLevel)
 {
 	static String str;
 	static int ix;
-	static MenuItem* menu, * StartMenu;
+	static MenuItem *menu, *StartMenu;
 	static String line, name, stmp;
 	double sfloat;
-	if (nLevel == 0) {
+	if (nLevel == 0)
+	{
 		StartMenu = pMenu;
 		str = "";
 		ix = 0;
 	}
-	else {
+	else
+	{
 		++ix;
 	}
-	for (menu = &StartMenu[ix]; menu->op != eTerminate; ++ix, ++menu) {
-		if (!bActive) {
+	for (menu = &StartMenu[ix]; menu->op != eTerminate; ++ix, ++menu)
+	{
+		if (!bActive)
+		{
 			// skip if not one of the if else parts when not active
-			switch (menu->op) {
+			switch (menu->op)
+			{
 			case eIfEqual:
 			case eIfIntEqual:
 			case eElse:
@@ -2738,19 +3016,22 @@ String MenuToHtml(MenuItem * pMenu, bool bActive, int nLevel)
 			}
 		}
 		name = "bi_" + String(ix);
-		//Serial.println("name: " + name);
-		// keep the line without %x's
+		// Serial.println("name: " + name);
+		//  keep the line without %x's
 		line = menu->text;
-		if (line.indexOf("%d.%d") >= 0) {
+		if (line.indexOf("%d.%d") >= 0)
+		{
 			line.remove(line.indexOf("%d.%d"), 5);
 		}
-		while (line.indexOf('%') >= 0) {
+		while (line.indexOf('%') >= 0)
+		{
 			line.remove(line.indexOf('%'), 2);
 		}
-		switch (menu->op) {
+		switch (menu->op)
+		{
 		case eText:
 		case eEditText:
-		//case eChooseFile:
+			// case eChooseFile:
 			str += String("<p>") + line + "</p>";
 			break;
 		case eTextFloat:
@@ -2758,26 +3039,27 @@ String MenuToHtml(MenuItem * pMenu, bool bActive, int nLevel)
 			break;
 		case eTextInt:
 			str += "<label>" + line;
-			stmp = String(*(int*)(menu->value));
+			stmp = String(*(int *)(menu->value));
 			sfloat = stmp.toDouble() / pow10(menu->decimals);
 			stmp = String(sfloat, menu->decimals);
 			str += "<input type='text' name='" + name + "' size='" + String(5) + "' value='" + stmp + "'>";
 			str += "</label>";
 			break;
-		case eBool:	// show the two text choices in (...)
+		case eBool: // show the two text choices in (...)
 			str += "<label>" + line + " (" + menu->on + "&#x2611; | " + menu->off + "&#9633;)";
 			str += "<input type='checkbox' name='" + name + "' value='" + name + "'";
-			if (*(bool*)(menu->value))
+			if (*(bool *)(menu->value))
 				str += " checked='checked'";
 			str += ">";
 			str += "</label>";
 			break;
-		case eList:	// a dropdown list
+		case eList: // a dropdown list
 			str += "<label>" + line;
 			str += "<select name='" + name + "'>";
-			for (int ix = 0; ix <= menu->max; ++ix) {
+			for (int ix = 0; ix <= menu->max; ++ix)
+			{
 				str += "<option ";
-				if (ix == *(int*)(menu->value))
+				if (ix == *(int *)(menu->value))
 					str += "selected='" + String(ix) + "' ";
 				str += "<value='" + String(ix) + "'>" + menu->nameList[ix] + "</option>";
 			}
@@ -2787,11 +3069,11 @@ String MenuToHtml(MenuItem * pMenu, bool bActive, int nLevel)
 		case eExit:
 			break;
 		case eIfEqual:
-			MenuToHtml(NULL, *(bool*)(menu->value) == (menu->min ? true : false), nLevel + 1);
+			MenuToHtml(NULL, *(bool *)(menu->value) == (menu->min ? true : false), nLevel + 1);
 			continue;
 			break;
 		case eIfIntEqual:
-			MenuToHtml(NULL, *(int*)(menu->value) == (menu->min), nLevel + 1);
+			MenuToHtml(NULL, *(int *)(menu->value) == (menu->min), nLevel + 1);
 			continue;
 			break;
 		case eElse:
@@ -2803,12 +3085,13 @@ String MenuToHtml(MenuItem * pMenu, bool bActive, int nLevel)
 		case eMenu:
 		case eReboot:
 		case eTerminate:
-			//Serial.println("unsupported menutype to html: " + String(menu->op));
+			// Serial.println("unsupported menutype to html: " + String(menu->op));
 			break;
 		default:
 			break;
 		}
-		if (bActive) {
+		if (bActive)
+		{
 			str += "<br>";
 		}
 	}
@@ -2817,7 +3100,7 @@ String MenuToHtml(MenuItem * pMenu, bool bActive, int nLevel)
 
 // read the battery level, LiIon cells are 4.2 fully charged and should not be discharged below 2.75 (some say 3.2)
 // smoothing of the reading is done using an exponential moving average
-int ReadBattery(int* raw)
+int ReadBattery(int *raw)
 {
 	static bool bFirstTime = true;
 	const float alpha = 0.9;
@@ -2825,7 +3108,8 @@ int ReadBattery(int* raw)
 	int percent;
 	float nextLevel;
 	// take extra passes the first time to read a more accurate value
-	for (int tries = 0; tries < (bFirstTime ? 50 : 5); ++tries) {
+	for (int tries = 0; tries < (bFirstTime ? 50 : 5); ++tries)
+	{
 		nextLevel = (float)analogRead(BATTERY_SENSOR_GPIO);
 		// calculate the next value
 		eSmooth = (alpha * eSmooth) + ((1 - alpha) * nextLevel);
@@ -2834,7 +3118,8 @@ int ReadBattery(int* raw)
 			percent = 100;
 		else if (eSmooth <= LOW_BATTERY_VALUE)
 			percent = 0;
-		else {
+		else
+		{
 			percent = (eSmooth - LOW_BATTERY_VALUE) * 100 / (BatteryInfo.nBatteryFullLevel - LOW_BATTERY_VALUE);
 		}
 		vTaskDelay(pdMS_TO_TICKS(2));
@@ -2842,10 +3127,12 @@ int ReadBattery(int* raw)
 	bFirstTime = false;
 	if (raw)
 		*raw = (int)eSmooth;
-	if (percent == 0) {
+	if (percent == 0)
+	{
 		static int count0 = 0;
 		// we need at least 5 0's before claiming no power, it takes a few cycles to stabilize
-		if (count0++ > 5) {
+		if (count0++ > 5)
+		{
 			SystemInfo.bCriticalBatteryLevel = true;
 		}
 	}
@@ -2853,34 +3140,39 @@ int ReadBattery(int* raw)
 }
 
 //// reset the battery indicator, this is done by setting it to 1/2 and letting the ShowBattery code letting it rise to its maximum level
-//void ResetBattery(MenuItem* menu)
+// void ResetBattery(MenuItem* menu)
 //{
 //	if (GetYesNo("Reset Battery Calibration?")) {
 //		WriteMessage("Calibration reset,\nfully charge battery\nto finish", false, 5000);
 //		SystemInfo.nBatteryFullLevel /= 2;
 //	}
-//}
+// }
 
 // this code shows the battery on the main display when menu is NULL
 // otherwise it shows the current raw integer readings of the battery sensor
 // if this call comes from the menu system the display is already locked, otherwise we lock it here
-void ShowBattery(MenuItem* menu)
+void ShowBattery(MenuItem *menu)
 {
 	static int percent = 0, raw = 0;
 	if (menu)
 		ClearScreen();
 	static unsigned long showtime = 0;
-	while (!menu || ReadButton() != BTN_LONG) {
+	while (!menu || ReadButton() != BTN_LONG)
+	{
 		percent = ReadBattery(&raw);
-		if (millis() > showtime + 1000) {
-			if (menu) {
+		if (millis() > showtime + 1000)
+		{
+			if (menu)
+			{
 				DisplayLine(0, "Battery: " + String(percent) + "%", SystemInfo.menuTextColor);
 				DisplayLine(1, "Raw Battery: " + String(raw), SystemInfo.menuTextColor);
 				DisplayLine(3, "Long Press to Cancel", SystemInfo.menuTextColor);
 			}
-			else {
+			else
+			{
 				// update the battery calibration by setting the max value to 90% of what is read when it is larger than the last value
-				if (xSemaphoreTake(MutexDisplayHandle, portMAX_DELAY) == pdTRUE) {
+				if (xSemaphoreTake(MutexDisplayHandle, portMAX_DELAY) == pdTRUE)
+				{
 					// TODO: fix this so it works for a sprite that is not 100 pixels wide
 					int sh = BatterySprite.height();
 					BatterySprite.fillSprite(TFT_BLACK);
@@ -2896,13 +3188,13 @@ void ShowBattery(MenuItem* menu)
 					BatterySprite.pushSprite(tft.width() - 101, tft.height() - sh + 2);
 					xSemaphoreGive(MutexDisplayHandle);
 					//// see if this value is larger than the current calibration, use 90% of value during charging
-					//int rawNew = raw * 0.90;
-					//if (rawNew > SystemInfo.nBatteryFullLevel) {
+					// int rawNew = raw * 0.90;
+					// if (rawNew > SystemInfo.nBatteryFullLevel) {
 					//	//Serial.println(String("full: ") + SystemInfo.nBatteryFullLevel + " raw: " + raw + " read: " + rawNew);
 					//	SystemInfo.nBatteryFullLevel = rawNew;
 					//	BatteryInfo.nBatteryLowLevel = rawNew * 3.2 / 4.2;
 					//	SaveLoadSettings(true, true);
-					//}
+					// }
 				}
 			}
 			showtime = millis();
@@ -2915,13 +3207,13 @@ void ShowBattery(MenuItem* menu)
 }
 
 //// set the low battery level from the current value
-//void SetLowBattery(MenuItem*)
+// void SetLowBattery(MenuItem*)
 //{
 //	ReadBattery(&BatteryInfo.nBatteryLowLevel);
-//}
+// }
 
 // set the high battery level from the current value
-void SetHighBattery(MenuItem*)
+void SetHighBattery(MenuItem *)
 {
 	ReadBattery(&BatteryInfo.nBatteryFullLevel);
 }
@@ -2934,8 +3226,10 @@ void ShowProgressBar(int percent)
 	int x = tft.width() - 1;
 	int y = (tft.fontHeight() + 4);
 	int h = 8;
-	if (percent == 0) {
-		if (xSemaphoreTake(MutexDisplayHandle, portMAX_DELAY) == pdTRUE) {
+	if (percent == 0)
+	{
+		if (xSemaphoreTake(MutexDisplayHandle, portMAX_DELAY) == pdTRUE)
+		{
 			tft.fillRect(0, y, x, h, TFT_BLACK);
 			xSemaphoreGive(MutexDisplayHandle);
 		}
@@ -2951,41 +3245,47 @@ void ShowUpdateProgress(size_t x, size_t total)
 }
 
 // see if there is an update bin file in the SD slot
-void CheckUpdateBin(MenuItem * menu)
+void CheckUpdateBin(MenuItem *menu)
 {
-	//const char* binFileName = "/RadioFox.ino.ttgo-t1.bin";
-	const char* binFileName = "/RadioFox.bin";
-	if (SD.exists(binFileName)) {
-		if (GetYesNo("Load New Firmware?")) {
+	// const char* binFileName = "/RadioFox.ino.ttgo-t1.bin";
+	const char *binFileName = "/RadioFox.bin";
+	if (SD.exists(binFileName))
+	{
+		if (GetYesNo("Load New Firmware?"))
+		{
 			ClearScreen();
 			DisplayLine(2, "loading...");
 #if USE_STANDARD_SD
 			SDFile binFile;
 			binFile = SD.open(binFileName);
-			if (binFileName) {
+			if (binFileName)
+			{
 #else
 			FsFile binFile;
 			binFile = SD.open(binFileName);
-			if (binFile.getError() == 0) {
+			if (binFile.getError() == 0)
+			{
 #endif
 				size_t binSize = binFile.size();
-				//Serial.println("size: " + String(binSize));
+				// Serial.println("size: " + String(binSize));
 				Update.begin(binSize);
 				Update.onProgress(ShowUpdateProgress);
 				size_t bytesWritten = Update.writeStream(binFile);
-				//Serial.println("written: " + String(bytesWritten));
+				// Serial.println("written: " + String(bytesWritten));
 				Update.end();
 				binFile.close();
 				ClearScreen();
-				if (GetYesNo("Delete BIN file?")) {
+				if (GetYesNo("Delete BIN file?"))
+				{
 					SD.remove(binFileName);
 				}
 				ClearScreen();
 				ESP.restart();
 			}
-			}
 		}
-	else {
+	}
+	else
+	{
 		WriteMessage(String("No: ") + binFileName, true);
 	}
 }
@@ -2993,18 +3293,21 @@ void CheckUpdateBin(MenuItem * menu)
 // scan for networks
 int ScanForNetworks()
 {
-	//Serial.println("scan start");
+	// Serial.println("scan start");
 	WiFi.disconnect();
 	// WiFi.scanNetworks will return the number of networks found
 	int retval = WiFi.scanNetworks();
-	//Serial.println("scan done");
-	if (retval == 0) {
+	// Serial.println("scan done");
+	if (retval == 0)
+	{
 		Serial.println("no networks found");
 	}
-	else {
+	else
+	{
 		Serial.print(retval);
 		Serial.println(" networks found");
-		for (int i = 0; i < retval; ++i) {
+		for (int i = 0; i < retval; ++i)
+		{
 			// Print SSID and RSSI for each network found
 			Serial.print(i + 1);
 			Serial.print(": ");
@@ -3019,7 +3322,7 @@ int ScanForNetworks()
 }
 
 // choose a network name from the first 5 found
-void GetNetworkName(MenuItem * menu)
+void GetNetworkName(MenuItem *menu)
 {
 	ClearScreen();
 	DisplayLine(0, "Scanning Networks...", SystemInfo.menuTextColor, TFT_BLACK);
@@ -3027,7 +3330,8 @@ void GetNetworkName(MenuItem * menu)
 	// maximum 5 nets
 	constexpr int maxNetworks = 5;
 	nets = min(nets, maxNetworks);
-	for (int ix = 0; ix < nets; ++ix) {
+	for (int ix = 0; ix < nets; ++ix)
+	{
 		DisplayLine(ix, WiFi.SSID(ix), SystemInfo.menuTextColor, TFT_BLACK);
 	}
 	// loop handling key presses
@@ -3035,11 +3339,13 @@ void GetNetworkName(MenuItem * menu)
 	bool done = false;
 	DisplayLine(6, "Longpress=accept LongB0=cancel", SystemInfo.menuTextColor, TFT_BLACK);
 	DisplayLine(which, WiFi.SSID(which), TFT_BLACK, SystemInfo.menuTextColor);
-	while (!done) {
+	while (!done)
+	{
 		CRotaryDialButton::Button btn = ReadButton();
-		switch (btn) {
+		switch (btn)
+		{
 		case CRotaryDialButton::BTN_LONGPRESS:
-			strncpy((char*)menu->value, WiFi.SSID(which).c_str(), menu->max - 1);
+			strncpy((char *)menu->value, WiFi.SSID(which).c_str(), menu->max - 1);
 			bControllerReboot = true;
 			done = true;
 			break;
@@ -3047,14 +3353,16 @@ void GetNetworkName(MenuItem * menu)
 			done = true;
 			break;
 		case CRotaryDialButton::BTN_RIGHT:
-			if (which < maxNetworks - 1) {
+			if (which < maxNetworks - 1)
+			{
 				DisplayLine(which, WiFi.SSID(which), SystemInfo.menuTextColor, TFT_BLACK);
 				++which;
 				DisplayLine(which, WiFi.SSID(which), TFT_BLACK, SystemInfo.menuTextColor);
 			}
 			break;
 		case CRotaryDialButton::BTN_LEFT:
-			if (which > 0) {
+			if (which > 0)
+			{
 				DisplayLine(which, WiFi.SSID(which), SystemInfo.menuTextColor, TFT_BLACK);
 				--which;
 				DisplayLine(which, WiFi.SSID(which), TFT_BLACK, SystemInfo.menuTextColor);
@@ -3068,10 +3376,11 @@ void GetNetworkName(MenuItem * menu)
 }
 
 // get the text from a menu item
-void GetText(MenuItem* menu)
+void GetText(MenuItem *menu)
 {
-	char* str = (char*)menu->value;
-	if (str) {
+	char *str = (char *)menu->value;
+	if (str)
+	{
 		String text = str;
 		ClearScreen();
 		String upperLetters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789 -_@#$%^&|";
@@ -3080,20 +3389,24 @@ void GetText(MenuItem* menu)
 		bool bUpper = true;
 		CRotaryDialButton::Button button = BTN_NONE;
 		bool done = false;
-		if (menu->op == eBool) {
+		if (menu->op == eBool)
+		{
 			DisplayLine(5, "Rotate dial to select, Click appends char, '|' separates OR fields", SystemInfo.menuTextColor);
 			DisplayLine(6, "Long press dial exits, B0 deletes last char, B0 Long clears text", SystemInfo.menuTextColor);
 		}
-		else {
+		else
+		{
 			DisplayLine(5, "Rotate dial to select, Click appends char, B1 Long toggles case", SystemInfo.menuTextColor);
 			DisplayLine(6, "Long press dial exits, B0 deletes last char, B0 Long clears text", SystemInfo.menuTextColor);
 		}
 		int nLetterIndex = 0;
 		// redraw screen only when necessary
 		bool bRedraw = true;
-		const int partA = 13;	// half the alphabet
-		do {
-			if (bRedraw) {
+		const int partA = 13; // half the alphabet
+		do
+		{
+			if (bRedraw)
+			{
 				DisplayLine(0, text, SystemInfo.menuTextColor);
 				// draw the text
 				DisplayLine(1, letters.substring(0, partA), SystemInfo.menuTextColor);
@@ -3103,28 +3416,32 @@ void GetText(MenuItem* menu)
 				int y = nLetterIndex / partA;
 				y = constrain(y, 0, 2);
 				int x = tft.textWidth(letters.substring(y * partA, nLetterIndex));
-				char ch[2] = { 0 };
+				char ch[2] = {0};
 				ch[0] = letters[nLetterIndex];
 				// the width calculation for ' ' is 0 (an error!), so we use something close
 				if (ch[0] == ' ')
 					ch[0] = '|';
-				if (SystemInfo.bMenuStar) {
+				if (SystemInfo.bMenuStar)
+				{
 					tft.drawChar(x + 1, tft.fontHeight() * (y + 2) - 6, letters[nLetterIndex], TFT_WHITE, TFT_BLACK, 1);
 				}
-				else {
+				else
+				{
 					tft.fillRect(x + 1, tft.fontHeight() * (y + 1) - 4, tft.textWidth(ch), (y + 2) + tft.fontHeight(), SystemInfo.menuTextColor);
 					tft.drawChar(x + 1, tft.fontHeight() * (y + 2) - 6, letters[nLetterIndex], TFT_BLACK, TFT_BLACK, 1);
 				}
 				bRedraw = false;
 			}
 			button = ReadButton();
-			switch (button) {
+			switch (button)
+			{
 			case BTN_NONE:
 			case BTN_B1_CLICK:
 			case BTN_B2_LONG:
 				break;
 			case BTN_B1_LONG:
-				if (menu->op != eBool) {
+				if (menu->op != eBool)
+				{
 					bUpper = !bUpper;
 					letters = bUpper ? upperLetters : lowerLetters;
 					bRedraw = true;
@@ -3144,18 +3461,19 @@ void GetText(MenuItem* menu)
 					nLetterIndex = 0;
 				bRedraw = true;
 				break;
-			case BTN_SELECT:	// add a letter if room
-				if (text.length() < menu->max) {
+			case BTN_SELECT: // add a letter if room
+				if (text.length() < menu->max)
+				{
 					text += letters[nLetterIndex];
 					bRedraw = true;
 				}
 				break;
-			case BTN_B0_CLICK:	// delete last character
+			case BTN_B0_CLICK: // delete last character
 				if (text.length())
 					text = text.substring(0, text.length() - 1);
 				bRedraw = true;
 				break;
-			case BTN_B0_LONG:	// clear the text
+			case BTN_B0_LONG: // clear the text
 				text.clear();
 				bRedraw = true;
 				break;
@@ -3170,7 +3488,7 @@ void GetText(MenuItem* menu)
 }
 
 //// display the USB voltage
-//void ShowUsbVoltage(MenuItem* menu)
+// void ShowUsbVoltage(MenuItem* menu)
 //{
 //	ClearScreen();
 //	DisplayLine(nMenuLineCount - 1, "Click/Dial=Cancel", SystemInfo.menuTextColor);
@@ -3198,17 +3516,18 @@ void GetText(MenuItem* menu)
 //		}
 //		vTaskDelay(pdMS_TO_TICKS(500));
 //	} while (!done);
-//}
+// }
 
 // get an audio file from the SD card
-void GetAudioFile(MenuItem* menu)
+void GetAudioFile(MenuItem *menu)
 {
-	char* str = (char*)menu->value;
+	char *str = (char *)menu->value;
 	// keep the files here
 	std::vector<String> FileNames;
 	// read all the filenames
 	GetFileNamesFromSD(FileNames, "TXT");
-	if (str) {
+	if (str)
+	{
 		// holds the current selection
 		int nNameIndex = 0;
 		// holds the list starting index
@@ -3216,15 +3535,18 @@ void GetAudioFile(MenuItem* menu)
 		String text = str;
 		// find the current audio file and set the index
 		int foundIx = 0;
-		for (String fn : FileNames) {
+		for (String fn : FileNames)
+		{
 			String to = str;
 			to.toUpperCase();
 			fn.toUpperCase();
-			if (fn.compareTo(to) == 0) {
-				//Serial.print(fn + " " + foundIx + "\n");
-				// set the current index and start if necessary
+			if (fn.compareTo(to) == 0)
+			{
+				// Serial.print(fn + " " + foundIx + "\n");
+				//  set the current index and start if necessary
 				nNameIndex = foundIx;
-				if (foundIx >= nMenuLineCount - 1) {
+				if (foundIx >= nMenuLineCount - 1)
+				{
 					nStartIndex = nNameIndex - nMenuLineCount + 2;
 				}
 				break;
@@ -3237,26 +3559,32 @@ void GetAudioFile(MenuItem* menu)
 		bool done = false;
 		// redraw screen only when necessary
 		bool bRedraw = true;
-		do {
-			if (bRedraw) {
+		do
+		{
+			if (bRedraw)
+			{
 				String line;
 				bool hilite;
-				for (int ix = 0; ix < FileNames.size() && ix < nMenuLineCount - 1; ++ix) {
+				for (int ix = 0; ix < FileNames.size() && ix < nMenuLineCount - 1; ++ix)
+				{
 					// high light the current selection
 					hilite = (nNameIndex - nStartIndex) == ix;
 					line = FileNames[ix + nStartIndex];
-					if (SystemInfo.bMenuStar) {
+					if (SystemInfo.bMenuStar)
+					{
 						line = (hilite ? "*" : " ") + line;
 						DisplayLine(ix, line, SystemInfo.menuTextColor);
 					}
-					else {
+					else
+					{
 						DisplayLine(ix, line, hilite ? TFT_BLACK : SystemInfo.menuTextColor, hilite ? SystemInfo.menuHiLiteColor : TFT_BLACK);
 					}
 				}
 				bRedraw = false;
 			}
 			button = ReadButton();
-			switch (button) {
+			switch (button)
+			{
 			case BTN_NONE:
 			case BTN_B1_CLICK:
 			case BTN_B2_LONG:
@@ -3264,33 +3592,37 @@ void GetAudioFile(MenuItem* menu)
 			case BTN_B0_CLICK:
 			case BTN_B0_LONG:
 				break;
-			case BTN_LEFT:	// previous line
-				if (nNameIndex > 0) {
+			case BTN_LEFT: // previous line
+				if (nNameIndex > 0)
+				{
 					// select the previous one
 					--nNameIndex;
 					// check if we need to scroll
-					if (nNameIndex - nStartIndex < 0) {
+					if (nNameIndex - nStartIndex < 0)
+					{
 						--nStartIndex;
 					}
 					bRedraw = true;
 				}
 				break;
-			case BTN_RIGHT:	// next line
+			case BTN_RIGHT: // next line
 				// check if more available
-				if (nNameIndex < FileNames.size() - 1) {
+				if (nNameIndex < FileNames.size() - 1)
+				{
 					++nNameIndex;
 					// check if we need to scroll
-					if (nNameIndex - nStartIndex >= nMenuLineCount - 1) {
+					if (nNameIndex - nStartIndex >= nMenuLineCount - 1)
+					{
 						++nStartIndex;
 					}
 					bRedraw = true;
 				}
 				break;
-			case BTN_LONG:	// set the new name
+			case BTN_LONG: // set the new name
 				text = FileNames[nNameIndex];
 				done = true;
 				break;
-			case BTN_SELECT:	// use this to cancel
+			case BTN_SELECT: // use this to cancel
 				done = true;
 				break;
 			}
@@ -3302,24 +3634,24 @@ void GetAudioFile(MenuItem* menu)
 }
 
 // toggle web server running, reboot if needed
-void ToggleWebServer(MenuItem* menu)
+void ToggleWebServer(MenuItem *menu)
 {
 	// save existing value
-	bool bWas = *(bool*)menu->value;
+	bool bWas = *(bool *)menu->value;
 	ToggleBool(menu);
-	bControllerReboot = (bWas != *(bool*)menu->value);
+	bControllerReboot = (bWas != *(bool *)menu->value);
 }
 
 // read the files from the card
-void GetFileNamesFromSD(std::vector<String>& FileNames, String ext, String dir)
+void GetFileNamesFromSD(std::vector<String> &FileNames, String ext, String dir)
 {
 	setupSDcard();
 	ext.toUpperCase();
 	ext = "." + ext;
 	bool worked = true;
-	//Serial.print("reading files: " + dir + "*" + ext);
-	// start over
-	// first empty the current file names
+	// Serial.print("reading files: " + dir + "*" + ext);
+	//  start over
+	//  first empty the current file names
 	FileNames.clear();
 	String startfile;
 	if (dir.length() > 1)
@@ -3332,27 +3664,32 @@ void GetFileNamesFromSD(std::vector<String>& FileNames, String ext, String dir)
 	FsFile file;
 #endif
 	String CurrentFilename = "";
-	if (!root) {
-		//Serial.println("Failed to open directory: " + dir + "\n");
-		//Serial.println("error: " + String(root.getError()));
-		//SD.errorPrint("fail");
+	if (!root)
+	{
+		// Serial.println("Failed to open directory: " + dir + "\n");
+		// Serial.println("error: " + String(root.getError()));
+		// SD.errorPrint("fail");
 		worked = false;
 	}
-	if (!root.isDirectory()) {
-		//Serial.println("Not a directory: " + dir);
+	if (!root.isDirectory())
+	{
+		// Serial.println("Not a directory: " + dir);
 		worked = false;
 	}
-	if (worked) {
+	if (worked)
+	{
 		file = root.openNextFile();
-		if (dir != "/") {
+		if (dir != "/")
+		{
 			// add an arrow to go back
-			//String sdir = currentFolder.substring(0, currentFolder.length() - 1);
-			//sdir = sdir.substring(0, sdir.lastIndexOf("/"));
-			//if (sdir.length() == 0)
+			// String sdir = currentFolder.substring(0, currentFolder.length() - 1);
+			// sdir = sdir.substring(0, sdir.lastIndexOf("/"));
+			// if (sdir.length() == 0)
 			//	sdir = "/";
-			//FileNames.push_back(String(PREVIOUS_FOLDER_CHAR));
+			// FileNames.push_back(String(PREVIOUS_FOLDER_CHAR));
 		}
-		while (file) {
+		while (file)
+		{
 #if USE_STANDARD_SD
 			CurrentFilename = file.name();
 #else
@@ -3362,20 +3699,25 @@ void GetFileNamesFromSD(std::vector<String>& FileNames, String ext, String dir)
 #endif
 			// strip path
 			CurrentFilename = CurrentFilename.substring(CurrentFilename.lastIndexOf('/') + 1);
-			//Serial.println("name: " + CurrentFilename);
-			if (CurrentFilename != "System Volume Information") {
-				if (file.isDirectory()) {
-					//FileNames.push_back(String(NEXT_FOLDER_CHAR) + CurrentFilename);
+			// Serial.println("name: " + CurrentFilename);
+			if (CurrentFilename != "System Volume Information")
+			{
+				if (file.isDirectory())
+				{
+					// FileNames.push_back(String(NEXT_FOLDER_CHAR) + CurrentFilename);
 				}
-				else {
+				else
+				{
 					String uppername = CurrentFilename;
 					uppername.toUpperCase();
-					//find files with our extension only
-					if (uppername.endsWith(ext)) {
-						//Serial.println("name: " + CurrentFilename);
+					// find files with our extension only
+					if (uppername.endsWith(ext))
+					{
+						// Serial.println("name: " + CurrentFilename);
 						FileNames.push_back(CurrentFilename);
 					}
-					else if (uppername == StartFileName) {
+					else if (uppername == StartFileName)
+					{
 						startfile = CurrentFilename;
 					}
 				}
@@ -3387,81 +3729,91 @@ void GetFileNamesFromSD(std::vector<String>& FileNames, String ext, String dir)
 		std::sort(FileNames.begin(), FileNames.end(), CompareNames);
 		bSdCardValid = true;
 	}
-	else {
+	else
+	{
 		bSdCardValid = false;
 	}
 	return;
 }
 
 // Functions
-void sendLetter(char c) {
-	const char* morseCodeLetter[] = {
-	  ".-",       // A
-	  "-...",     // B
-	  "-.-.",     // C
-	  "-..",      // D
-	  ".",        // E
-	  "..-.",     // F
-	  "--.",      // G
-	  "....",     // H
-	  "..",       // I
-	  ".---",     // J
-	  "-.-",      // K
-	  ".-..",     // L
-	  "--",       // M
-	  "-.",       // N
-	  "---",      // O
-	  ".--.",     // P
-	  "--.-",     // Q
-	  ".-.",      // R
-	  "...",      // S
-	  "-",        // T
-	  "..-",      // U
-	  "...-",     // V
-	  ".--",      // W
-	  "-..-",     // X
-	  "-.--",     // Y
-	  "--..",     // Z
+void sendLetter(char c)
+{
+	const char *morseCodeLetter[] = {
+		".-",	// A
+		"-...", // B
+		"-.-.", // C
+		"-..",	// D
+		".",	// E
+		"..-.", // F
+		"--.",	// G
+		"....", // H
+		"..",	// I
+		".---", // J
+		"-.-",	// K
+		".-..", // L
+		"--",	// M
+		"-.",	// N
+		"---",	// O
+		".--.", // P
+		"--.-", // Q
+		".-.",	// R
+		"...",	// S
+		"-",	// T
+		"..-",	// U
+		"...-", // V
+		".--",	// W
+		"-..-", // X
+		"-.--", // Y
+		"--..", // Z
 	};
-	const char* morseCodeDigit[] = {
-	  "-----",    // 0
-	  ".----",    // 1
-	  "..---",    // 2
-	  "...--",    // 3
-	  "....-",    // 4
-	  ".....",    // 5
-	  "-....",    // 6
-	  "--...",    // 7
-	  "---..",    // 8
-	  "----.",    // 9
+	const char *morseCodeDigit[] = {
+		"-----", // 0
+		".----", // 1
+		"..---", // 2
+		"...--", // 3
+		"....-", // 4
+		".....", // 5
+		"-....", // 6
+		"--...", // 7
+		"---..", // 8
+		"----.", // 9
 	};
 
 	c = toupper(c);
-	char const* pm = NULL;
-	if (isalpha(c)) {
+	char const *pm = NULL;
+	if (isalpha(c))
+	{
 		pm = morseCodeLetter[c - 'A'];
 	}
-	else if (isdigit(c)) {
+	else if (isdigit(c))
+	{
 		pm = morseCodeDigit[c - '0'];
 	}
-	else if (c == '/') {
+	else if (c == '/')
+	{
 		pm = "-..-.";
 	}
-	else if (c == ' ') {
+	else if (c == ' ')
+	{
 		pm = " ";
 	}
-	else if (c == '.') {
+	else if (c == '.')
+	{
 		pm = "._._._";
 	}
 	if (pm)
 		sendMorseCode(pm);
 }
 
-void sendMorseCode(const char* tokens) {
+void sendMorseCode(const char *tokens)
+{
 	int i;
 	// Serial.println("Morse: " + String(tokens));
-	for (i = 0; tokens[i]; ++i) {
-		switch (tokens[i]) {
+	for (i = 0; tokens[i]; ++i)
+	{
+		switch (tokens[i])
+		{
 		case '-':
 			sendDash();
 			break;
@@ -3477,30 +3829,33 @@ void sendMorseCode(const char* tokens) {
 	//   Serial.print(" ");
 }
 
-void sendEndOfWord() {
+void sendEndOfWord()
+{
 	vTaskDelay(pdMS_TO_TICKS(4 * SystemInfo.nMorseInterval));
 	//   Serial.print("  ");
 }
 
 // basic functions - Morse code concepts
-void sendDot() {
-	ledcWriteTone(toneChannel, SystemInfo.nBuzzerFrequency);
+void sendDot()
+{
+	ledcWriteTone(AUDIO_OUT_PORT, SystemInfo.nBuzzerFrequency);
 	vTaskDelay(pdMS_TO_TICKS(1 * SystemInfo.nMorseInterval));
-	ledcWriteTone(toneChannel, 0);
+	ledcWriteTone(AUDIO_OUT_PORT, 0);
 	vTaskDelay(pdMS_TO_TICKS(1 * SystemInfo.nMorseInterval));
 	//   Serial.print(".");
 }
 
-void sendDash() {
-	ledcWriteTone(toneChannel, SystemInfo.nBuzzerFrequency);
+void sendDash()
+{
+	ledcWriteTone(AUDIO_OUT_PORT, SystemInfo.nBuzzerFrequency);
 	vTaskDelay(pdMS_TO_TICKS(3 * SystemInfo.nMorseInterval));
-	ledcWriteTone(toneChannel, 0);
+	ledcWriteTone(AUDIO_OUT_PORT, 0);
 	vTaskDelay(pdMS_TO_TICKS(1 * SystemInfo.nMorseInterval));
 	//   Serial.print("-");
 }
 
 //// get USB voltage on TTGO
-//float GetUsbVoltage()
+// float GetUsbVoltage()
 //{
 //	//analogSetPinAttenuation(digitalPinToDacChannel(6), ADC_0db);
 //	//analogReadResolution(12);
@@ -3514,7 +3869,7 @@ void sendDash() {
 //	float other_voltage = ((float)v2 / 4095.0) * 2.0 * 3.3 * (1100 / 1000.0);
 //	//return other_voltage;
 //	return battery_voltage;
-//}
+// }
 
 // enable or disable radio
 void RadioEnable(bool bEnable)
