@@ -146,11 +146,11 @@ void TaskSendRadio(void *parameter)
 // task to send the music
 void TaskSendMusic(void *parameter)
 {
-	if (SD.exists(SystemInfo.cAudioFile))
+	if (SD_FOX.exists(SystemInfo.cAudioFile))
 	{
 		// open the audio file and start reading lines from it
 		FsFile audioFile;
-		audioFile = SD.open(SystemInfo.cAudioFile);
+		audioFile = SD_FOX.open(SystemInfo.cAudioFile);
 		if (audioFile.getError() == 0)
 		{
 			// put some defaults in just in case they are missing in the music file
@@ -2067,7 +2067,7 @@ bool CheckCancel(bool bLeaveButton)
 void setupSDcard()
 {
 	// see if the card is there, I.E. already initialized
-	if (SD.fatType())
+	if (SD_FOX.fatType())
 		return;
 #if USE_STANDARD_SD
 	gpio_set_direction((gpio_num_t)SDcsPin, GPIO_MODE_OUTPUT);
@@ -2091,18 +2091,18 @@ void setupSDcard()
 #else
 #define SD_CONFIG SdSpiConfig(SDcsPin, /*DEDICATED_SPI*/ SHARED_SPI, SD_SCK_MHZ(10))
 	SPI.begin(SDSckPin, SDMisoPin, SDMosiPin, SDcsPin); // SCK,MISO,MOSI,CS
-	if (!SD.begin(SD_CONFIG))
+	if (!SD_FOX.begin(SD_CONFIG))
 	{
-		// Serial.println(String("etype:") + SD.fatType());
+		// Serial.println(String("etype:") + SD_FOX.fatType());
 		WriteMessage("SD card failure:", true);
 		return;
 	}
-	// Serial.println(String("type:") + SD.fatType());
+	// Serial.println(String("type:") + SD_FOX.fatType());
 	bSdCardValid = true;
 	// Serial.println("Mounted SD card");
-	// SD.printFatType(&Serial);
+	// SD_FOX.printFatType(&Serial);
 
-	// uint64_t cardSize = (uint64_t)SD.clusterCount() * SD.bytesPerCluster() / (1024 * 1024 * 1024);
+	// uint64_t cardSize = (uint64_t)SD_FOX.clusterCount() * SD_FOX.bytesPerCluster() / (1024 * 1024 * 1024);
 	// Serial.printf("SD Card Size: %llu GB\n", cardSize);
 #endif
 }
@@ -2408,13 +2408,13 @@ void CreateSettingsFile(MenuItem *)
 	// open the file and save the settings
 	FsFile binFile;
 	// first check if the file exists
-	if (SD.exists("/" + fname + ".RFS") && !GetYesNo("Replace\n" + fname + "?"))
+	if (SD_FOX.exists("/" + fname + ".RFS") && !GetYesNo("Replace\n" + fname + "?"))
 	{
 		WriteMessage(fname + "\nnot changed");
 		return;
 	}
 	// if we get here, write the file
-	binFile = SD.open("/" + fname + ".RFS", O_WRONLY | O_CREAT | O_TRUNC);
+	binFile = SD_FOX.open("/" + fname + ".RFS", O_WRONLY | O_CREAT | O_TRUNC);
 	if (binFile.getError() == 0)
 	{
 		binFile.write(&SystemInfo, sizeof(SystemInfo));
@@ -2440,13 +2440,13 @@ void SaveSettingsInFile(MenuItem *)
 	// open the file and save the settings
 	FsFile binFile;
 	// first check if the file exists
-	if (SD.exists("/" + fname + ".RFS") && !GetYesNo("Replace\n" + fname + "?"))
+	if (SD_FOX.exists("/" + fname + ".RFS") && !GetYesNo("Replace\n" + fname + "?"))
 	{
 		WriteMessage(fname + "\nnot changed");
 		return;
 	}
 	// if we get here, write the file
-	binFile = SD.open("/" + fname + ".RFS", O_WRONLY | O_CREAT | O_TRUNC);
+	binFile = SD_FOX.open("/" + fname + ".RFS", O_WRONLY | O_CREAT | O_TRUNC);
 	if (binFile.getError() == 0)
 	{
 		binFile.write(&SystemInfo, sizeof(SystemInfo));
@@ -2466,7 +2466,7 @@ void LoadSettingsFromFile(MenuItem *)
 	String fname = GetSettingsFilename();
 	if (fname.length())
 	{
-		if ((file = SD.open(String("/") + fname + ".RFS", O_RDONLY)) != NULL)
+		if ((file = SD_FOX.open(String("/") + fname + ".RFS", O_RDONLY)) != NULL)
 		{
 			file.read(&SystemInfo, sizeof(SystemInfo));
 			file.close();
@@ -2490,11 +2490,11 @@ void DeleteSettingsFile(MenuItem *)
 	String fullname = "/" + fname + ".RFS";
 	if (fname.length())
 	{
-		if (SD.exists(fullname))
+		if (SD_FOX.exists(fullname))
 		{
 			if (GetYesNo("delete: \n" + fname))
 			{
-				SD.remove(fullname);
+				SD_FOX.remove(fullname);
 				WriteMessage(fname + "\ndeleted");
 			}
 			else
@@ -3249,7 +3249,7 @@ void CheckUpdateBin(MenuItem *menu)
 {
 	// const char* binFileName = "/RadioFox.ino.ttgo-t1.bin";
 	const char *binFileName = "/RadioFox.bin";
-	if (SD.exists(binFileName))
+	if (SD_FOX.exists(binFileName))
 	{
 		if (GetYesNo("Load New Firmware?"))
 		{
@@ -3262,7 +3262,7 @@ void CheckUpdateBin(MenuItem *menu)
 			{
 #else
 			FsFile binFile;
-			binFile = SD.open(binFileName);
+			binFile = SD_FOX.open(binFileName);
 			if (binFile.getError() == 0)
 			{
 #endif
@@ -3277,7 +3277,7 @@ void CheckUpdateBin(MenuItem *menu)
 				ClearScreen();
 				if (GetYesNo("Delete BIN file?"))
 				{
-					SD.remove(binFileName);
+					SD_FOX.remove(binFileName);
 				}
 				ClearScreen();
 				ESP.restart();
@@ -3660,7 +3660,7 @@ void GetFileNamesFromSD(std::vector<String> &FileNames, String ext, String dir)
 	File root = SD.open(dir);
 	File file;
 #else
-	FsFile root = SD.open(dir, O_RDONLY);
+	FsFile root = SD_FOX.open(dir, O_RDONLY);
 	FsFile file;
 #endif
 	String CurrentFilename = "";
@@ -3668,7 +3668,7 @@ void GetFileNamesFromSD(std::vector<String> &FileNames, String ext, String dir)
 	{
 		// Serial.println("Failed to open directory: " + dir + "\n");
 		// Serial.println("error: " + String(root.getError()));
-		// SD.errorPrint("fail");
+		// SD_FOX.errorPrint("fail");
 		worked = false;
 	}
 	if (!root.isDirectory())
