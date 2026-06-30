@@ -77,7 +77,7 @@ const char* prefsBatteryInfo = "batteryinfo";
 SPIClass spiSDCard;
 #else
 //SPIClass spi1(VSPI);
-SdFs SD; // fat16/32 and exFAT
+SdFs SD_FOX; // fat16/32 and exFAT
 #endif
 
 // the display
