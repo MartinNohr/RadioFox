@@ -7,3 +7,5 @@ Install as documents/arduino/libraries/phoneDTMF
 
 7/1/2026 The code has been changed to use VS Code with the pio extension loaded. Load the dtmf file into the VS Code lib folder.
 The code also now uses espressif version 3.x instead of 2.x. They had introduced a number of breaking changes in version 3.x that resulted in numerous code changes.
+
+7/28/2026 I went back to core 2.0.17. The 3.x one rebooted constantly. I'll spend some time later figureing out why.
