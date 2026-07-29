@@ -14,7 +14,7 @@
 #define TTGO_T_DISPLAY 1
 
 // 1 for standard SD library, 0 for the new exFat library which allows > 32GB SD cards
-#define USE_STANDARD_SD 0
+#define USE_STANDARD_SD 1
 // battery level
 #define HAS_BATTERY_LEVEL 1
 
@@ -23,8 +23,13 @@
 
 // all the gpio pins
 #if TTGO_T_DISPLAY == 1
-// LED brightness pin
-const int TFT_ENABLE = 4;
+// tone generator
+const int toneChannel = 2;
+constexpr int TFT_ENABLE = 4;
+// use these to control the LCD brightness
+const int freq = 5000;
+const int ledChannel = 0;
+const int resolution = 8;
 // SD details
 #define SDSckPin   25  // GIPO25
 #define SDMosiPin  26  // GPIO26

@@ -146,12 +146,12 @@ void TaskSendRadio(void *parameter)
 // task to send the music
 void TaskSendMusic(void *parameter)
 {
-	if (SD_FOX.exists(SystemInfo.cAudioFile))
+	if (SD.exists(SystemInfo.cAudioFile))
 	{
 		// open the audio file and start reading lines from it
-		FsFile audioFile;
-		audioFile = SD_FOX.open(SystemInfo.cAudioFile);
-		if (audioFile.getError() == 0)
+		File audioFile;
+		audioFile = SD.open(SystemInfo.cAudioFile);
+		if (audioFile)
 		{
 			// put some defaults in just in case they are missing in the music file
 			int noteLength = 90;
@@ -197,9 +197,9 @@ void TaskSendMusic(void *parameter)
 						duration *= -1.5;
 					}
 					// we only play the note for noteLength % of the duration, leaving the rest as a pause
-					ledcWriteTone(AUDIO_OUT_PORT, note);
+					ledcWriteTone(toneChannel, note);
 					vTaskDelay(pdMS_TO_TICKS((float)duration * noteLength / 100.0));
-					ledcWriteTone(AUDIO_OUT_PORT, 0);
+					ledcWriteTone(toneChannel, 0);
 					vTaskDelay(pdMS_TO_TICKS((float)duration * ((100 - noteLength) / 100.0)));
 				}
 			}
@@ -272,7 +272,7 @@ void TaskRunTransmit(void *parameter)
 		vTaskDelay(pdMS_TO_TICKS(500));
 	}
 	// Turn off the output tone also
-	ledcWriteTone(AUDIO_OUT_PORT, 0);
+	ledcWriteTone(toneChannel, 0);
 	// turn PTT off here
 	gpio_set_level((gpio_num_t)PTT_PORT, PTT_LISTEN);
 	xEventGroupClearBits(gRadioEventsHandle, RadioEventIsTransmitting);
@@ -942,7 +942,22 @@ void setup()
 	nMenuLineCount = (tft.height() + 1) / tft.fontHeight();
 	TextLines.resize(nMenuLineCount);
 	// start the tone generator, freq=0 gives error on Serial port during boot, so just set to 1000
-	ledcAttach(AUDIO_OUT_PORT, 1000, 8);
+	ledcSetup(toneChannel, 1000, 8);
+	ledcAttachPin(AUDIO_OUT_PORT, toneChannel);
+	//ledcAttachChannel(digitalPinToGPIONumber(AUDIO_OUT_PORT), 1000, 8, toneChannel);
+
+
+	//ledcAttachChannel(digitalPinToGPIONumber(TFT_BL), pwmFreq, pwmResolution, pwmLedChannelTFT);
+	//ledcWrite(digitalPinToGPIONumber(TFT_BL), 100);
+
+	////ledcSetup(pwmLedChannelTFT, pwmFreq, pwmResolution);
+	////ledcAttachPin(TFT_BL, pwmLedChannelTFT);
+	////ledcWrite(pwmLedChannelTFT, 100);
+
+
+	// the next two lines don't seem to make any difference, but leave them here just in case in the future
+	//ledcWrite(toneChannel, 127);
+	//ledcWriteTone(toneChannel, 0);
 	// start the DTMF detector
 	dtmf.begin(AUDIO_IN_PORT, 2000);
 
@@ -955,7 +970,9 @@ void setup()
 	digitalWrite(TFT_ENABLE, 1);
 
 	// attach the channel to the GPIO to be controlled
-	ledcAttach(TFT_ENABLE, 1000, 8);
+	ledcSetup(ledChannel, freq, resolution);
+	ledcAttachPin(TFT_ENABLE, ledChannel);
+	//ledcAttachChannel(digitalPinToGPIONumber(TFT_ENABLE), freq, resolution, ledChannel);
 
 	CRotaryDialButton::begin((gpio_num_t)DIAL_A, (gpio_num_t)DIAL_B, (gpio_num_t)DIAL_BTN, (gpio_num_t)0, (gpio_num_t)35, (gpio_num_t)-1, (gpio_num_t)-1, &SystemInfo.DialSettings);
 	// we know that this is a toggle switch type
@@ -1726,7 +1743,7 @@ void UpdateDisplayDimMode(MenuItem *menu, int flag)
 
 void SetDisplayBrightness(int val)
 {
-	ledcWrite(TFT_ENABLE, map(val, 0, 100, 0, 255));
+	ledcWrite(ledChannel, map(val, 0, 100, 0, 255));
 }
 
 uint16_t ColorList[] = {
@@ -2066,8 +2083,9 @@ bool CheckCancel(bool bLeaveButton)
 
 void setupSDcard()
 {
+	bool bSdCardValid = false;
 	// see if the card is there, I.E. already initialized
-	if (SD_FOX.fatType())
+	if (bSdCardValid)
 		return;
 #if USE_STANDARD_SD
 	gpio_set_direction((gpio_num_t)SDcsPin, GPIO_MODE_OUTPUT);
@@ -2406,18 +2424,18 @@ void CreateSettingsFile(MenuItem *)
 		return;
 	}
 	// open the file and save the settings
-	FsFile binFile;
+	File binFile;
 	// first check if the file exists
-	if (SD_FOX.exists("/" + fname + ".RFS") && !GetYesNo("Replace\n" + fname + "?"))
+	if (SD.exists("/" + fname + ".RFS") && !GetYesNo("Replace\n" + fname + "?"))
 	{
 		WriteMessage(fname + "\nnot changed");
 		return;
 	}
 	// if we get here, write the file
-	binFile = SD_FOX.open("/" + fname + ".RFS", O_WRONLY | O_CREAT | O_TRUNC);
-	if (binFile.getError() == 0)
+	binFile = SD.open("/" + fname + ".RFS", FILE_WRITE, true);
+	if (binFile)
 	{
-		binFile.write(&SystemInfo, sizeof(SystemInfo));
+		binFile.write((uint8_t *)&SystemInfo, sizeof(SystemInfo));
 		binFile.close();
 		WriteMessage(fname + "\nsaved");
 	}
@@ -2438,18 +2456,18 @@ void SaveSettingsInFile(MenuItem *)
 		return;
 	}
 	// open the file and save the settings
-	FsFile binFile;
+	File binFile;
 	// first check if the file exists
-	if (SD_FOX.exists("/" + fname + ".RFS") && !GetYesNo("Replace\n" + fname + "?"))
+	if (SD.exists("/" + fname + ".RFS") && !GetYesNo("Replace\n" + fname + "?"))
 	{
 		WriteMessage(fname + "\nnot changed");
 		return;
 	}
 	// if we get here, write the file
-	binFile = SD_FOX.open("/" + fname + ".RFS", O_WRONLY | O_CREAT | O_TRUNC);
-	if (binFile.getError() == 0)
+	binFile = SD.open("/" + fname + ".RFS", FILE_WRITE, true);
+	if (binFile)
 	{
-		binFile.write(&SystemInfo, sizeof(SystemInfo));
+		binFile.write((uint8_t*)&SystemInfo, sizeof(SystemInfo));
 		binFile.close();
 		WriteMessage(fname + "\nsaved");
 	}
@@ -2462,13 +2480,13 @@ void SaveSettingsInFile(MenuItem *)
 // load the settings from a named file
 void LoadSettingsFromFile(MenuItem *)
 {
-	FsFile file;
+	File file;
 	String fname = GetSettingsFilename();
 	if (fname.length())
 	{
-		if ((file = SD_FOX.open(String("/") + fname + ".RFS", O_RDONLY)) != NULL)
+		if ((file = SD.open(String("/") + fname + ".RFS", FILE_READ)))
 		{
-			file.read(&SystemInfo, sizeof(SystemInfo));
+			file.read((uint8_t *)&SystemInfo, sizeof(SystemInfo));
 			file.close();
 			WriteMessage(fname + "\nloaded");
 		}
@@ -2490,11 +2508,11 @@ void DeleteSettingsFile(MenuItem *)
 	String fullname = "/" + fname + ".RFS";
 	if (fname.length())
 	{
-		if (SD_FOX.exists(fullname))
+		if (SD.exists(fullname))
 		{
 			if (GetYesNo("delete: \n" + fname))
 			{
-				SD_FOX.remove(fullname);
+				SD.remove(fullname);
 				WriteMessage(fname + "\ndeleted");
 			}
 			else
@@ -3249,14 +3267,14 @@ void CheckUpdateBin(MenuItem *menu)
 {
 	// const char* binFileName = "/RadioFox.ino.ttgo-t1.bin";
 	const char *binFileName = "/RadioFox.bin";
-	if (SD_FOX.exists(binFileName))
+	if (SD.exists(binFileName))
 	{
 		if (GetYesNo("Load New Firmware?"))
 		{
 			ClearScreen();
 			DisplayLine(2, "loading...");
 #if USE_STANDARD_SD
-			SDFile binFile;
+			File binFile;
 			binFile = SD.open(binFileName);
 			if (binFileName)
 			{
@@ -3277,7 +3295,7 @@ void CheckUpdateBin(MenuItem *menu)
 				ClearScreen();
 				if (GetYesNo("Delete BIN file?"))
 				{
-					SD_FOX.remove(binFileName);
+					SD.remove(binFileName);
 				}
 				ClearScreen();
 				ESP.restart();
@@ -3838,18 +3856,18 @@ void sendEndOfWord()
 // basic functions - Morse code concepts
 void sendDot()
 {
-	ledcWriteTone(AUDIO_OUT_PORT, SystemInfo.nBuzzerFrequency);
+	ledcWriteTone(toneChannel, SystemInfo.nBuzzerFrequency);
 	vTaskDelay(pdMS_TO_TICKS(1 * SystemInfo.nMorseInterval));
-	ledcWriteTone(AUDIO_OUT_PORT, 0);
+	ledcWriteTone(toneChannel, 0);
 	vTaskDelay(pdMS_TO_TICKS(1 * SystemInfo.nMorseInterval));
 	//   Serial.print(".");
 }
 
 void sendDash()
 {
-	ledcWriteTone(AUDIO_OUT_PORT, SystemInfo.nBuzzerFrequency);
+	ledcWriteTone(toneChannel, SystemInfo.nBuzzerFrequency);
 	vTaskDelay(pdMS_TO_TICKS(3 * SystemInfo.nMorseInterval));
-	ledcWriteTone(AUDIO_OUT_PORT, 0);
+	ledcWriteTone(toneChannel, 0);
 	vTaskDelay(pdMS_TO_TICKS(1 * SystemInfo.nMorseInterval));
 	//   Serial.print("-");
 }
