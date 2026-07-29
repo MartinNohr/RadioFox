@@ -2087,7 +2087,6 @@ void setupSDcard()
 	// see if the card is there, I.E. already initialized
 	if (bSdCardValid)
 		return;
-#if USE_STANDARD_SD
 	gpio_set_direction((gpio_num_t)SDcsPin, GPIO_MODE_OUTPUT);
 	delay(50);
 	// SPIClass(1);
@@ -2106,23 +2105,6 @@ void setupSDcard()
 		// Serial.println("No SD card attached");
 		return;
 	}
-#else
-#define SD_CONFIG SdSpiConfig(SDcsPin, /*DEDICATED_SPI*/ SHARED_SPI, SD_SCK_MHZ(10))
-	SPI.begin(SDSckPin, SDMisoPin, SDMosiPin, SDcsPin); // SCK,MISO,MOSI,CS
-	if (!SD_FOX.begin(SD_CONFIG))
-	{
-		// Serial.println(String("etype:") + SD_FOX.fatType());
-		WriteMessage("SD card failure:", true);
-		return;
-	}
-	// Serial.println(String("type:") + SD_FOX.fatType());
-	bSdCardValid = true;
-	// Serial.println("Mounted SD card");
-	// SD_FOX.printFatType(&Serial);
-
-	// uint64_t cardSize = (uint64_t)SD_FOX.clusterCount() * SD_FOX.bytesPerCluster() / (1024 * 1024 * 1024);
-	// Serial.printf("SD Card Size: %llu GB\n", cardSize);
-#endif
 }
 
 // display a line in selected colors and clear to the end of the line
@@ -3273,17 +3255,10 @@ void CheckUpdateBin(MenuItem *menu)
 		{
 			ClearScreen();
 			DisplayLine(2, "loading...");
-#if USE_STANDARD_SD
 			File binFile;
 			binFile = SD.open(binFileName);
 			if (binFileName)
 			{
-#else
-			FsFile binFile;
-			binFile = SD_FOX.open(binFileName);
-			if (binFile.getError() == 0)
-			{
-#endif
 				size_t binSize = binFile.size();
 				// Serial.println("size: " + String(binSize));
 				Update.begin(binSize);
@@ -3674,13 +3649,8 @@ void GetFileNamesFromSD(std::vector<String> &FileNames, String ext, String dir)
 	String startfile;
 	if (dir.length() > 1)
 		dir = dir.substring(0, dir.length() - 1);
-#if USE_STANDARD_SD
 	File root = SD.open(dir);
 	File file;
-#else
-	FsFile root = SD_FOX.open(dir, O_RDONLY);
-	FsFile file;
-#endif
 	String CurrentFilename = "";
 	if (!root)
 	{
@@ -3708,13 +3678,7 @@ void GetFileNamesFromSD(std::vector<String> &FileNames, String ext, String dir)
 		}
 		while (file)
 		{
-#if USE_STANDARD_SD
 			CurrentFilename = file.name();
-#else
-			char fname[100];
-			file.getName(fname, sizeof(fname));
-			CurrentFilename = fname;
-#endif
 			// strip path
 			CurrentFilename = CurrentFilename.substring(CurrentFilename.lastIndexOf('/') + 1);
 			// Serial.println("name: " + CurrentFilename);

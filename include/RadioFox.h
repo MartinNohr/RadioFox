@@ -33,11 +33,7 @@ const char *ssid = wifiMacs.c_str();
 const char *password = "12345678"; // not critical stuff, therefore simple password is enough
 
 // we need to change the file handling for exFat, the name function is different than standard SD lib
-#if USE_STANDARD_SD
 WebServer server(80);
-#else
-WebServerX server(80);
-#endif
 
 String webpage = "";
 char localIpAddress[16];
@@ -194,11 +190,7 @@ bool displayDimNow = false;
 esp_timer_handle_t periodic_Second_timer;
 esp_timer_create_args_t periodic_Second_timer_args;
 
-#if USE_STANDARD_SD
 SDFile dataFile;
-#else
-FsFile dataFile;
-#endif
 
 enum eDisplayOperation
 {

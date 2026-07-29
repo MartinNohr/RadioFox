@@ -13,8 +13,6 @@
 // set 1 for T-Display, 3 for S3 version
 #define TTGO_T_DISPLAY 1
 
-// 1 for standard SD library, 0 for the new exFat library which allows > 32GB SD cards
-#define USE_STANDARD_SD 1
 // battery level
 #define HAS_BATTERY_LEVEL 1
 
