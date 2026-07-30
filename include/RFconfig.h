@@ -21,13 +21,8 @@
 
 // all the gpio pins
 #if TTGO_T_DISPLAY == 1
-// tone generator
-const int toneChannel = 2;
+// use this to control the LCD brightness
 constexpr int TFT_ENABLE = 4;
-// use these to control the LCD brightness
-const int freq = 5000;
-const int ledChannel = 0;
-const int resolution = 8;
 // SD details
 #define SDSckPin   25  // GIPO25
 #define SDMosiPin  26  // GPIO26

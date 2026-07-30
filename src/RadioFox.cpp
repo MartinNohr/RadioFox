@@ -197,9 +197,9 @@ void TaskSendMusic(void *parameter)
 						duration *= -1.5;
 					}
 					// we only play the note for noteLength % of the duration, leaving the rest as a pause
-					ledcWriteTone(toneChannel, note);
+					ledcWriteTone(AUDIO_OUT_PORT, note);
 					vTaskDelay(pdMS_TO_TICKS((float)duration * noteLength / 100.0));
-					ledcWriteTone(toneChannel, 0);
+					ledcWriteTone(AUDIO_OUT_PORT, 0);
 					vTaskDelay(pdMS_TO_TICKS((float)duration * ((100 - noteLength) / 100.0)));
 				}
 			}
@@ -272,7 +272,7 @@ void TaskRunTransmit(void *parameter)
 		vTaskDelay(pdMS_TO_TICKS(500));
 	}
 	// Turn off the output tone also
-	ledcWriteTone(toneChannel, 0);
+	ledcWriteTone(AUDIO_OUT_PORT, 0);
 	// turn PTT off here
 	gpio_set_level((gpio_num_t)PTT_PORT, PTT_LISTEN);
 	xEventGroupClearBits(gRadioEventsHandle, RadioEventIsTransmitting);
@@ -942,8 +942,7 @@ void setup()
 	nMenuLineCount = (tft.height() + 1) / tft.fontHeight();
 	TextLines.resize(nMenuLineCount);
 	// start the tone generator, freq=0 gives error on Serial port during boot, so just set to 1000
-	ledcSetup(toneChannel, 1000, 8);
-	ledcAttachPin(AUDIO_OUT_PORT, toneChannel);
+	ledcAttach(AUDIO_OUT_PORT, 1000, 8);
 	//ledcAttachChannel(digitalPinToGPIONumber(AUDIO_OUT_PORT), 1000, 8, toneChannel);
 
 
@@ -970,8 +969,7 @@ void setup()
 	digitalWrite(TFT_ENABLE, 1);
 
 	// attach the channel to the GPIO to be controlled
-	ledcSetup(ledChannel, freq, resolution);
-	ledcAttachPin(TFT_ENABLE, ledChannel);
+	ledcAttach(TFT_ENABLE, 1000, 8);
 	//ledcAttachChannel(digitalPinToGPIONumber(TFT_ENABLE), freq, resolution, ledChannel);
 
 	CRotaryDialButton::begin((gpio_num_t)DIAL_A, (gpio_num_t)DIAL_B, (gpio_num_t)DIAL_BTN, (gpio_num_t)0, (gpio_num_t)35, (gpio_num_t)-1, (gpio_num_t)-1, &SystemInfo.DialSettings);
@@ -1743,7 +1741,7 @@ void UpdateDisplayDimMode(MenuItem *menu, int flag)
 
 void SetDisplayBrightness(int val)
 {
-	ledcWrite(ledChannel, map(val, 0, 100, 0, 255));
+	ledcWrite(TFT_ENABLE, map(val, 0, 100, 0, 255));
 }
 
 uint16_t ColorList[] = {
@@ -3820,18 +3818,18 @@ void sendEndOfWord()
 // basic functions - Morse code concepts
 void sendDot()
 {
-	ledcWriteTone(toneChannel, SystemInfo.nBuzzerFrequency);
+	ledcWriteTone(AUDIO_OUT_PORT, SystemInfo.nBuzzerFrequency);
 	vTaskDelay(pdMS_TO_TICKS(1 * SystemInfo.nMorseInterval));
-	ledcWriteTone(toneChannel, 0);
+	ledcWriteTone(AUDIO_OUT_PORT, 0);
 	vTaskDelay(pdMS_TO_TICKS(1 * SystemInfo.nMorseInterval));
 	//   Serial.print(".");
 }
 
 void sendDash()
 {
-	ledcWriteTone(toneChannel, SystemInfo.nBuzzerFrequency);
+	ledcWriteTone(AUDIO_OUT_PORT, SystemInfo.nBuzzerFrequency);
 	vTaskDelay(pdMS_TO_TICKS(3 * SystemInfo.nMorseInterval));
-	ledcWriteTone(toneChannel, 0);
+	ledcWriteTone(AUDIO_OUT_PORT, 0);
 	vTaskDelay(pdMS_TO_TICKS(1 * SystemInfo.nMorseInterval));
 	//   Serial.print("-");
 }
