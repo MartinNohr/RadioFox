@@ -1,6 +1,6 @@
 #pragma once
 
-const char *FOX_Version = "1.14";
+const char *FOX_Version = "1.14.1";
 
 const char *StartFileName = "START.FOX";
 // some config things
@@ -102,7 +102,7 @@ const char *DisplayDimModeText[] = {"None", "Timer"};
 // Version 2: added morse buzzer frequency
 struct SYSTEM_INFO
 {
-    int nSystemInfoVersion = 2; // change as necessary
+    int nSystemInfoVersion = 3; // change as necessary
     uint16_t menuTextColor = TFT_WHITE;
     uint16_t menuHiLiteColor = TFT_WHITE;
     bool bMenuStar = false;
@@ -156,7 +156,7 @@ struct SYSTEM_INFO
     char cAudioFile[31] = "";     // choose the music file
     int nMorseInterval = 200;     // mSec morse timer
     bool bXmitEnable = false;     // if xmit = false, don't transmit
-    bool bStopImmediately = true; // set to true to cancel transmitting without waiting to finish
+    // bool bStopImmediately = true; // set to true to cancel transmitting without waiting to finish
     int nDtmfEnableTimer = 10;    // the number of seconds after '*' that DTMF commands will work
     int nStartDelayTimer = 0;     // seconds before the first transmission
     int nBuzzerFrequency = 700;   // the morse pitch
@@ -418,7 +418,7 @@ MenuItem RadioTimersMenu[] = {
     {eTextInt, "TX Pause Min: %d Sec", GetIntegerValue, &SystemInfo.nTxPauseMin, 10, 1200},
     {eTextInt, "TX Pause Max: %d Sec", GetIntegerValue, &SystemInfo.nTxPauseMax, 10, 1200},
     {eEndif},
-    {eBool, "TX Stop: %s", ToggleBool, &SystemInfo.bStopImmediately, 0, 0, 0, "Immediate", "Finish Cycle"},
+    // {eBool, "TX Stop: %s", ToggleBool, &SystemInfo.bStopImmediately, 0, 0, 0, "Immediate", "Finish Cycle"},
     {eBool, "Radio Pause: %s", ToggleBool, &SystemInfo.bSleepWhilePausing, 0, 0, 0, "Sleep", "Awake"},
     {eExit, PreviousMenu},
     // make sure this one is last

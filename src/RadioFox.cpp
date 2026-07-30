@@ -16,12 +16,12 @@
 #include "AudioGeneratorWAV.h"
 #include "AudioOutputI2SNoDAC.h"
 
-AudioGeneratorMP3 *mp3;
-AudioGeneratorWAV *wav;
-AudioFileSourceSPIFFS *file;
-AudioFileSourceSD *source = NULL;
-AudioOutputI2SNoDAC *out;
-AudioFileSourceID3 *id3;
+AudioGeneratorMP3 *audioMP3 = nullptr;
+AudioGeneratorWAV *wav = nullptr;
+AudioFileSourceSPIFFS *file = nullptr;
+AudioFileSourceSD *audioSource = nullptr;
+AudioOutputI2SNoDAC *audioOut = nullptr;
+AudioFileSourceID3 *id3 = nullptr;
 
 PhoneDTMF dtmf = PhoneDTMF();
 
@@ -259,21 +259,21 @@ void TaskSendMusic(void *parameter)
 		else if (ext == "MP3")
 		{
 			Serial.println("play MP3");
-			source = new AudioFileSourceSD(sFullName.c_str());
-			source->RegisterMetadataCB(MDCallback, (void *)"ID3TAG");
-			out = new AudioOutputI2SNoDAC(32);
-			mp3 = new AudioGeneratorMP3();
-			mp3->begin(source, out);
+			audioSource = new AudioFileSourceSD(sFullName.c_str());
+			audioSource->RegisterMetadataCB(MDCallback, (void *)"ID3TAG");
+			audioOut = new AudioOutputI2SNoDAC(32);
+			audioMP3 = new AudioGeneratorMP3();
+			audioMP3->begin(audioSource, audioOut);
 			// play until done
 			static bool bDone = false;
 			while (!bDone)
 			{
-				if (mp3->isRunning())
+				if (audioMP3->isRunning())
 				{
-					if (!mp3->loop())
+					if (!audioMP3->loop())
 					{
 						Serial.printf("MP3 stopped\n");
-						mp3->stop();
+						audioMP3->stop();
 						bDone = true;
 					}
 				}
@@ -282,7 +282,7 @@ void TaskSendMusic(void *parameter)
 					if (!bDone)
 					{
 						bDone = true;
-						source->close();
+						audioSource->close();
 						Serial.printf("MP3 done\n");
 					}
 				}
@@ -290,13 +290,13 @@ void TaskSendMusic(void *parameter)
 			}
 		}
 	}
-	if (mp3)
-	{
-		Serial.println("leaving audio task");
-		mp3->stop();
-		delete mp3;
-		mp3 = nullptr;
-	}
+	// clean up just in case
+	delete audioMP3;
+	audioMP3 = nullptr;
+	delete audioSource;
+	audioSource = nullptr;
+	delete audioOut;
+	audioOut = nullptr;
 	// terminate this task
 	TaskSendMusicHandle = NULL;
 	vTaskDelete(NULL);
@@ -324,7 +324,7 @@ void TaskRunTransmit(void *parameter)
 	} RFTaskList[] = {
 		{"ID+Call", TaskSendRadio, &TaskSendRadioHandle, NULL, NULL},
 		{"GPS", TaskSendGPS, &TaskSendGpsHandle, &SystemInfo.bBeaconMode, &SystemInfo.bSendGPS},
-		{"Music", TaskSendMusic, &TaskSendMusicHandle, &SystemInfo.bPlayAudioFile, NULL},
+		{"Audio", TaskSendMusic, &TaskSendMusicHandle, &SystemInfo.bPlayAudioFile, NULL},
 	};
 	bool bDone = false;
 	while (IsRadioReady && IsTransmitEnabled && !bDone && ulTaskNotifyTake(pdTRUE, 0) == 0)
@@ -344,23 +344,16 @@ void TaskRunTransmit(void *parameter)
 				// wait for it to complete or be cancelled
 				while (*pte.pTaskHandle)
 				{
-					// check for timeout or cancel task
-					if (SystemInfo.bStopImmediately && ulTaskNotifyTake(pdTRUE, 0))
-					{
-						if (*pte.pTaskHandle)
-							vTaskDelete(*pte.pTaskHandle);
-						*pte.pTaskHandle = NULL;
-						bDone = true;
-						break;
-					}
+					// // check for timeout or cancel task
+					// if (SystemInfo.bStopImmediately && ulTaskNotifyTake(pdTRUE, 0))
+					// {
+					// 	if (*pte.pTaskHandle)
+					// 		vTaskDelete(*pte.pTaskHandle);
+					// 	*pte.pTaskHandle = NULL;
+					// 	bDone = true;
+					// 	break;
+					// }
 					vTaskDelay(pdMS_TO_TICKS(100));
-				}
-				if (mp3)
-				{
-					Serial.println("force stopped mp3");
-					mp3->stop();
-					delete mp3;
-					mp3 = nullptr;
 				}
 				if (bDone || !IsTransmitEnabled)
 					break;
@@ -566,7 +559,7 @@ void TaskRunRadio(void *parameter)
 			DisplayLine(lineNo++, String(String("Count: ") + txCount + "  Time: " + tm), SystemInfo.menuTextColor);
 			DisplayLine(lineNo++, String(SystemInfo.cRadioString) + " " + SystemInfo.cRadioCallSign + " " + ((SystemInfo.bBeaconMode && SystemInfo.bSendGPS) ? "GPS" : ""), SystemInfo.menuTextColor);
 			if (SystemInfo.bPlayAudioFile)
-				DisplayLine(lineNo++, "Music: " + String(SystemInfo.cAudioFile), SystemInfo.menuTextColor);
+				DisplayLine(lineNo++, "Audio: " + String(SystemInfo.cAudioFile), SystemInfo.menuTextColor);
 			sprintf(fmt, "%03d MHz ", SystemInfo.nFrequency % 1000);
 			DisplayLine(lineNo++, String(SystemInfo.nFrequency / 1000) + "." + fmt + (SystemInfo.bTxPowerLow ? "Lo" : "Hi") + " Power", SystemInfo.menuTextColor);
 			DisplayLine(lineNo++, String("RX Offset: ") + RxOffsetModeText[SystemInfo.nRfOffset] + " kHz", SystemInfo.menuTextColor);
