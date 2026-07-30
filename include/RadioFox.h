@@ -1,6 +1,6 @@
 #pragma once
 
-const char *FOX_Version = "1.13";
+const char *FOX_Version = "1.14";
 
 const char *StartFileName = "START.FOX";
 // some config things
@@ -585,7 +585,7 @@ bool SaveLoadSettings(bool save, bool nodisplay);
 bool SaveLoadBatterySettings(bool save);
 CRotaryDialButton::Button ReadButton();
 bool CheckCancel(bool bLeaveButton = false);
-void GetFileNamesFromSD(std::vector<String> &FileNames, String ext = "", String dir = "/");
+void GetFileNamesFromSD(std::vector<String> &FileNames, bool bAppend = false, String ext = "", String dir = "/");
 void RadioEnable(bool bEnable);
 int ReadBattery(int *raw);
 void SetRadioTransmit(bool bTx);

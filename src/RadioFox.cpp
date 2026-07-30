@@ -9,6 +9,19 @@
 #include <PhoneDTMF.h>
 #include "pitches.h"
 #include <EEPROM.h>
+#include "AudioFileSourceSPIFFS.h"
+#include "AudioFileSourceSD.h"
+#include "AudioFileSourceID3.h"
+#include "AudioGeneratorMP3.h"
+#include "AudioGeneratorWAV.h"
+#include "AudioOutputI2SNoDAC.h"
+
+AudioGeneratorMP3 *mp3;
+AudioGeneratorWAV *wav;
+AudioFileSourceSPIFFS *file;
+AudioFileSourceSD *source = NULL;
+AudioOutputI2SNoDAC *out;
+AudioFileSourceID3 *id3;
 
 PhoneDTMF dtmf = PhoneDTMF();
 
@@ -143,65 +156,81 @@ void TaskSendRadio(void *parameter)
 	vTaskDelete(NULL);
 }
 
-// task to send the music
+// task to send the music or audio
 void TaskSendMusic(void *parameter)
 {
-	if (SD.exists(SystemInfo.cAudioFile))
+	String sFullName = SystemInfo.cAudioFile;
+	// SD needs a full qualified path
+	if (sFullName[0] != '/')
+		sFullName = "/" + sFullName;
+	if (SD.exists(sFullName))
 	{
+		vTaskDelay(pdMS_TO_TICKS(1000));
 		// open the audio file and start reading lines from it
 		File audioFile;
-		audioFile = SD.open(SystemInfo.cAudioFile);
+		audioFile = SD.open(sFullName);
+		String ext = sFullName.substring(sFullName.length() - 3);
+		ext.toUpperCase();
 		if (audioFile)
 		{
-			// put some defaults in just in case they are missing in the music file
-			int noteLength = 90;
-			int tempo = 145;
-			// this holds the duration of a whole note in ms (60s/tempo)*4 beats
-			int wholenote = (60000 * 4) / tempo;
-			// first read until the ~ which marks the start of the data stream
-			audioFile.readStringUntil('~');
-			// read tokens until done
-			String key, value;
-			while ((key = audioFile.readStringUntil(',')))
+			if (ext == "TXT")
 			{
-				// clean the key
-				key.trim();
-				key.toUpperCase();
-				// next get the value
-				value = audioFile.readStringUntil(',');
-				value.trim();
-				// if empty must be missing value, give up
-				if (value.isEmpty())
-					break;
-				// check for tempo setting
-				if (key.equals("TEMPO"))
+				// put some defaults in just in case they are missing in the music file
+				int noteLength = 90;
+				int tempo = 145;
+				// this holds the duration of a whole note in ms (60s/tempo)*4 beats
+				int wholenote = (60000 * 4) / tempo;
+				// first read until the ~ which marks the start of the data stream
+				audioFile.readStringUntil('~');
+				// read tokens until done
+				String key, value;
+				while ((key = audioFile.readStringUntil(',')))
 				{
-					// set the tempo
-					tempo = value.toInt();
-					wholenote = (60000 * 4) / tempo;
-				}
-				else if (key.equals("LENGTH"))
-				{
-					noteLength = value.toInt();
-				}
-				else
-				{
-					// process the notes and durations
-					int note = mapNotes[key.c_str()];
-					int divider = value.toInt();
-					int duration = wholenote / divider;
-					// negative duration means times 1.5 (dotted note)
-					if (duration < 0)
+					// clean the key
+					key.trim();
+					key.toUpperCase();
+					// next get the value
+					value = audioFile.readStringUntil(',');
+					value.trim();
+					// if empty must be missing value, give up
+					if (value.isEmpty())
+						break;
+					// check for tempo setting
+					if (key.equals("TEMPO"))
 					{
-						// dotted notes are represented with negative durations!!
-						duration *= -1.5;
+						// set the tempo
+						tempo = value.toInt();
+						wholenote = (60000 * 4) / tempo;
 					}
-					// we only play the note for noteLength % of the duration, leaving the rest as a pause
-					ledcWriteTone(AUDIO_OUT_PORT, note);
-					vTaskDelay(pdMS_TO_TICKS((float)duration * noteLength / 100.0));
-					ledcWriteTone(AUDIO_OUT_PORT, 0);
-					vTaskDelay(pdMS_TO_TICKS((float)duration * ((100 - noteLength) / 100.0)));
+					else if (key.equals("LENGTH"))
+					{
+						noteLength = value.toInt();
+					}
+					else
+					{
+						// process the notes and durations
+						int note = mapNotes[key.c_str()];
+						int divider = value.toInt();
+						int duration = wholenote / divider;
+						// negative duration means times 1.5 (dotted note)
+						if (duration < 0)
+						{
+							// dotted notes are represented with negative durations!!
+							duration *= -1.5;
+						}
+						// we only play the note for noteLength % of the duration, leaving the rest as a pause
+						ledcWriteTone(AUDIO_OUT_PORT, note);
+						vTaskDelay(pdMS_TO_TICKS((float)duration * noteLength / 100.0));
+						ledcWriteTone(AUDIO_OUT_PORT, 0);
+						vTaskDelay(pdMS_TO_TICKS((float)duration * ((100 - noteLength) / 100.0)));
+					}
 				}
+			}
+			else if (ext == "WAV") {
+				Serial.println("play WAV");
+			}
+			else if (ext == "MP3") {
+				Serial.println("play MP3");
 			}
 			audioFile.close();
 		}
@@ -249,7 +278,7 @@ void TaskRunTransmit(void *parameter)
 				// send the name for display
 				xTaskNotify(TaskRunRadioHandle, (uint32_t)pte.name, eSetValueWithOverwrite);
 				// start the task
-				xTaskCreate(pte.task, pte.name, 2000, NULL, 6, pte.pTaskHandle);
+				xTaskCreate(pte.task, pte.name, 6000, NULL, 6, pte.pTaskHandle);
 				// wait for it to complete or be cancelled
 				while (*pte.pTaskHandle)
 				{
@@ -919,6 +948,30 @@ void TaskMenu(void *params)
 	}
 }
 
+// Called when a metadata event occurs (i.e. an ID3 tag, an ICY block, etc.
+void MDCallback(void *cbData, const char *type, bool isUnicode, const char *string)
+{
+	(void)cbData;
+	Serial.printf("ID3 callback for: %s = '", type);
+
+	if (isUnicode)
+	{
+		string += 2;
+	}
+
+	while (*string)
+	{
+		char a = *(string++);
+		if (isUnicode)
+		{
+			string++;
+		}
+		Serial.printf("%c", a);
+	}
+	Serial.printf("'\n");
+	Serial.flush();
+}
+
 void setup()
 {
 	Serial.begin(115200);
@@ -926,6 +979,9 @@ void setup()
 	{
 		delay(10);
 	}
+	// configure LCD PWM functionality
+	pinMode(TFT_ENABLE, OUTPUT);
+	digitalWrite(TFT_ENABLE, 1);
 	//******
 	// esp_chip_info_t data;
 	// esp_chip_info(&data);
@@ -943,20 +999,7 @@ void setup()
 	TextLines.resize(nMenuLineCount);
 	// start the tone generator, freq=0 gives error on Serial port during boot, so just set to 1000
 	ledcAttach(AUDIO_OUT_PORT, 1000, 8);
-	//ledcAttachChannel(digitalPinToGPIONumber(AUDIO_OUT_PORT), 1000, 8, toneChannel);
 
-
-	//ledcAttachChannel(digitalPinToGPIONumber(TFT_BL), pwmFreq, pwmResolution, pwmLedChannelTFT);
-	//ledcWrite(digitalPinToGPIONumber(TFT_BL), 100);
-
-	////ledcSetup(pwmLedChannelTFT, pwmFreq, pwmResolution);
-	////ledcAttachPin(TFT_BL, pwmLedChannelTFT);
-	////ledcWrite(pwmLedChannelTFT, 100);
-
-
-	// the next two lines don't seem to make any difference, but leave them here just in case in the future
-	//ledcWrite(toneChannel, 127);
-	//ledcWriteTone(toneChannel, 0);
 	// start the DTMF detector
 	dtmf.begin(AUDIO_IN_PORT, 2000);
 
@@ -964,13 +1007,9 @@ void setup()
 	// Serial.print("setup() is running on core ");
 	// Serial.println(xPortGetCoreID());
 
-	// configure LCD PWM functionality
-	pinMode(TFT_ENABLE, OUTPUT);
-	digitalWrite(TFT_ENABLE, 1);
-
 	// attach the channel to the GPIO to be controlled
 	ledcAttach(TFT_ENABLE, 1000, 8);
-	//ledcAttachChannel(digitalPinToGPIONumber(TFT_ENABLE), freq, resolution, ledChannel);
+	// ledcAttachChannel(digitalPinToGPIONumber(TFT_ENABLE), freq, resolution, ledChannel);
 
 	CRotaryDialButton::begin((gpio_num_t)DIAL_A, (gpio_num_t)DIAL_B, (gpio_num_t)DIAL_BTN, (gpio_num_t)0, (gpio_num_t)35, (gpio_num_t)-1, (gpio_num_t)-1, &SystemInfo.DialSettings);
 	// we know that this is a toggle switch type
@@ -1098,7 +1137,6 @@ void setup()
 	xTaskCreate(TaskMenu, "MENU", 3000, NULL, 4, &TaskMenuHandle);
 	xTaskCreate(TaskXmitDisplay, "XMITDISPLAY", 2000, NULL, 0, NULL);
 	ResetDimTimer();
-	// WavPlayer(SystemInfo.cAudioFile); // for testing I2S
 	//  start the radio serial port, wait until here to make sure the radio is powered up completely
 	RadioSerial.begin(9600, SERIAL_8N1, RADIO_SERIAL_RX, RADIO_SERIAL_TX, false);
 	// init the radio
@@ -1326,7 +1364,6 @@ void ShowMenu(struct MenuItem *menu)
 		case eList:
 			bMenuValid[menix] = true;
 			val = *(int *)menu->value;
-			Serial.println(String("val:") + val);
 			sprintf(line, menu->text, menu->nameList[val]);
 			// next line
 			++y;
@@ -2367,7 +2404,7 @@ String GetSettingsFilename()
 {
 	int index = 0;
 	std::vector<String> namelist;
-	GetFileNamesFromSD(namelist, "RFS");
+	GetFileNamesFromSD(namelist, false, "RFS");
 	if (namelist.size() == 0)
 	{
 		WriteMessage("No saved settings");
@@ -2387,7 +2424,7 @@ String GetSettingsFilename()
 		namelist[ix] = namelist[ix].substring(0, namelist[ix].length() - 4);
 		list[ix] = namelist[ix].c_str();
 	}
-	MenuItem mi = {eList, "File: %s", GetSelectChoice, &index, 0, namelist.size() - 1, 0, NULL, NULL, NULL, list};
+	MenuItem mi = {eList, "File: %s", GetSelectChoice, &index, 0, (long)namelist.size() - 1, 0, NULL, NULL, NULL, list};
 	bool bChosen = GetSelectChoiceListHelper(&mi);
 	free(list);
 	return bChosen ? namelist[index] : "";
@@ -2447,7 +2484,7 @@ void SaveSettingsInFile(MenuItem *)
 	binFile = SD.open("/" + fname + ".RFS", FILE_WRITE, true);
 	if (binFile)
 	{
-		binFile.write((uint8_t*)&SystemInfo, sizeof(SystemInfo));
+		binFile.write((uint8_t *)&SystemInfo, sizeof(SystemInfo));
 		binFile.close();
 		WriteMessage(fname + "\nsaved");
 	}
@@ -3512,11 +3549,17 @@ void GetText(MenuItem *menu)
 // get an audio file from the SD card
 void GetAudioFile(MenuItem *menu)
 {
+	std::vector<String> extensions = {"TXT", "WAV", "MP3"};
 	char *str = (char *)menu->value;
 	// keep the files here
 	std::vector<String> FileNames;
 	// read all the filenames
-	GetFileNamesFromSD(FileNames, "TXT");
+	bool bAdd = false;
+	for (String ext : extensions)
+	{
+		GetFileNamesFromSD(FileNames, bAdd, ext);
+		bAdd = true;
+	}
 	if (str)
 	{
 		// holds the current selection
@@ -3558,7 +3601,7 @@ void GetAudioFile(MenuItem *menu)
 				bool hilite;
 				for (int ix = 0; ix < FileNames.size() && ix < nMenuLineCount - 1; ++ix)
 				{
-					// high light the current selection
+					// highlight the current selection
 					hilite = (nNameIndex - nStartIndex) == ix;
 					line = FileNames[ix + nStartIndex];
 					if (SystemInfo.bMenuStar)
@@ -3634,7 +3677,7 @@ void ToggleWebServer(MenuItem *menu)
 }
 
 // read the files from the card
-void GetFileNamesFromSD(std::vector<String> &FileNames, String ext, String dir)
+void GetFileNamesFromSD(std::vector<String> &FileNames, bool bAppend, String ext, String dir)
 {
 	setupSDcard();
 	ext.toUpperCase();
@@ -3642,8 +3685,11 @@ void GetFileNamesFromSD(std::vector<String> &FileNames, String ext, String dir)
 	bool worked = true;
 	// Serial.print("reading files: " + dir + "*" + ext);
 	//  start over
-	//  first empty the current file names
-	FileNames.clear();
+	//  first empty the current file names if not appending
+	if (!bAppend)
+	{
+		FileNames.clear();
+	}
 	String startfile;
 	if (dir.length() > 1)
 		dir = dir.substring(0, dir.length() - 1);
@@ -3653,8 +3699,6 @@ void GetFileNamesFromSD(std::vector<String> &FileNames, String ext, String dir)
 	if (!root)
 	{
 		// Serial.println("Failed to open directory: " + dir + "\n");
-		// Serial.println("error: " + String(root.getError()));
-		// SD_FOX.errorPrint("fail");
 		worked = false;
 	}
 	if (!root.isDirectory())
