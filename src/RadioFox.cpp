@@ -1648,7 +1648,6 @@ void GetIntegerValue(MenuItem *menu)
 			}
 			if (stepSize > (menu->max / 2))
 			{
-				Serial.println("setting stepsize=-1");
 				stepSize = -1;
 			}
 			break;
