@@ -25,6 +25,30 @@ AudioFileSourceID3 *id3;
 
 PhoneDTMF dtmf = PhoneDTMF();
 
+// Called when a metadata event occurs (i.e. an ID3 tag, an ICY block, etc.
+void MDCallback(void *cbData, const char *type, bool isUnicode, const char *string)
+{
+	(void)cbData;
+	Serial.printf("ID3 callback for: %s = '", type);
+
+	if (isUnicode)
+	{
+		string += 2;
+	}
+
+	while (*string)
+	{
+		char a = *(string++);
+		if (isUnicode)
+		{
+			string++;
+		}
+		Serial.printf("%c", a);
+	}
+	Serial.printf("'\n");
+	Serial.flush();
+}
+
 // timer called every second
 void periodic_Second_timer_callback(void *arg)
 {
@@ -171,9 +195,9 @@ void TaskSendMusic(void *parameter)
 		audioFile = SD.open(sFullName);
 		String ext = sFullName.substring(sFullName.length() - 3);
 		ext.toUpperCase();
-		if (audioFile)
+		if (ext == "TXT")
 		{
-			if (ext == "TXT")
+			if (audioFile)
 			{
 				// put some defaults in just in case they are missing in the music file
 				int noteLength = 90;
@@ -225,15 +249,53 @@ void TaskSendMusic(void *parameter)
 						vTaskDelay(pdMS_TO_TICKS((float)duration * ((100 - noteLength) / 100.0)));
 					}
 				}
+				audioFile.close();
 			}
-			else if (ext == "WAV") {
-				Serial.println("play WAV");
-			}
-			else if (ext == "MP3") {
-				Serial.println("play MP3");
-			}
-			audioFile.close();
 		}
+		else if (ext == "WAV")
+		{
+			Serial.println("play WAV");
+		}
+		else if (ext == "MP3")
+		{
+			Serial.println("play MP3");
+			source = new AudioFileSourceSD(sFullName.c_str());
+			source->RegisterMetadataCB(MDCallback, (void *)"ID3TAG");
+			out = new AudioOutputI2SNoDAC(32);
+			mp3 = new AudioGeneratorMP3();
+			mp3->begin(source, out);
+			// play until done
+			static bool bDone = false;
+			while (!bDone)
+			{
+				if (mp3->isRunning())
+				{
+					if (!mp3->loop())
+					{
+						Serial.printf("MP3 stopped\n");
+						mp3->stop();
+						bDone = true;
+					}
+				}
+				else
+				{
+					if (!bDone)
+					{
+						bDone = true;
+						source->close();
+						Serial.printf("MP3 done\n");
+					}
+				}
+				vTaskDelay(pdMS_TO_TICKS(5));
+			}
+		}
+	}
+	if (mp3)
+	{
+		Serial.println("leaving audio task");
+		mp3->stop();
+		delete mp3;
+		mp3 = nullptr;
 	}
 	// terminate this task
 	TaskSendMusicHandle = NULL;
@@ -292,6 +354,13 @@ void TaskRunTransmit(void *parameter)
 						break;
 					}
 					vTaskDelay(pdMS_TO_TICKS(100));
+				}
+				if (mp3)
+				{
+					Serial.println("force stopped mp3");
+					mp3->stop();
+					delete mp3;
+					mp3 = nullptr;
 				}
 				if (bDone || !IsTransmitEnabled)
 					break;
@@ -948,30 +1017,6 @@ void TaskMenu(void *params)
 	}
 }
 
-// Called when a metadata event occurs (i.e. an ID3 tag, an ICY block, etc.
-void MDCallback(void *cbData, const char *type, bool isUnicode, const char *string)
-{
-	(void)cbData;
-	Serial.printf("ID3 callback for: %s = '", type);
-
-	if (isUnicode)
-	{
-		string += 2;
-	}
-
-	while (*string)
-	{
-		char a = *(string++);
-		if (isUnicode)
-		{
-			string++;
-		}
-		Serial.printf("%c", a);
-	}
-	Serial.printf("'\n");
-	Serial.flush();
-}
-
 void setup()
 {
 	Serial.begin(115200);
@@ -1001,6 +1046,7 @@ void setup()
 	ledcAttach(AUDIO_OUT_PORT, 1000, 8);
 
 	// start the DTMF detector
+	pinMode(AUDIO_IN_PORT, INPUT);
 	dtmf.begin(AUDIO_IN_PORT, 2000);
 
 	// Serial.println("flash:" + String(ESP.getFlashChipSize()));
