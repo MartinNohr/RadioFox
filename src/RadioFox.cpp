@@ -133,6 +133,7 @@ void TaskScrollSideways(void *params)
 // send the latitude and longitude
 void TaskSendGPS(void *parameter)
 {
+	ledcAttach(AUDIO_OUT_PORT, SystemInfo.nBuzzerFrequency, 8);
 	// format the latitude and longitude
 	String sendThese[2];
 	// format the values of Lat and Long
@@ -152,6 +153,7 @@ void TaskSendGPS(void *parameter)
 			break;
 		}
 	}
+	ledcDetach(AUDIO_OUT_PORT);
 	// terminate this task
 	TaskSendGpsHandle = NULL;
 	vTaskDelete(NULL);
@@ -164,6 +166,7 @@ void TaskSendRadio(void *parameter)
 	String sendThese[2];
 	sendThese[0] = SystemInfo.cRadioString;
 	sendThese[1] = SystemInfo.cRadioCallSign;
+	ledcAttach(AUDIO_OUT_PORT, SystemInfo.nBuzzerFrequency, 8);
 	for (String str : sendThese)
 	{
 		for (char ch : str)
@@ -175,6 +178,7 @@ void TaskSendRadio(void *parameter)
 			break;
 		}
 	}
+	ledcDetach(AUDIO_OUT_PORT);
 	// terminate this task
 	TaskSendRadioHandle = NULL;
 	vTaskDelete(NULL);
@@ -199,6 +203,7 @@ void TaskSendMusic(void *parameter)
 		{
 			if (audioFile)
 			{
+				ledcAttach(AUDIO_OUT_PORT, SystemInfo.nBuzzerFrequency, 8);
 				// put some defaults in just in case they are missing in the music file
 				int noteLength = 90;
 				int tempo = 145;
@@ -249,6 +254,7 @@ void TaskSendMusic(void *parameter)
 						vTaskDelay(pdMS_TO_TICKS((float)duration * ((100 - noteLength) / 100.0)));
 					}
 				}
+				ledcDetach(AUDIO_OUT_PORT);
 				audioFile.close();
 			}
 		}
@@ -258,45 +264,38 @@ void TaskSendMusic(void *parameter)
 		}
 		else if (ext == "MP3")
 		{
-			Serial.println("play MP3");
+			// Serial.println("play MP3");
 			audioSource = new AudioFileSourceSD(sFullName.c_str());
 			audioSource->RegisterMetadataCB(MDCallback, (void *)"ID3TAG");
 			audioOut = new AudioOutputI2SNoDAC(32);
 			audioMP3 = new AudioGeneratorMP3();
 			audioMP3->begin(audioSource, audioOut);
 			// play until done
-			static bool bDone = false;
+			bool bDone = false;
 			while (!bDone)
 			{
 				if (audioMP3->isRunning())
 				{
 					if (!audioMP3->loop())
 					{
-						Serial.printf("MP3 stopped\n");
+						// Serial.printf("MP3 stopped\n");
 						audioMP3->stop();
 						bDone = true;
 					}
 				}
-				else
-				{
-					if (!bDone)
-					{
-						bDone = true;
-						audioSource->close();
-						Serial.printf("MP3 done\n");
-					}
-				}
 				vTaskDelay(pdMS_TO_TICKS(5));
 			}
+			if (audioSource)
+				audioSource->close();
+			// clean up just in case
+			delete audioMP3;
+			audioMP3 = nullptr;
+			delete audioSource;
+			audioSource = nullptr;
+			delete audioOut;
+			audioOut = nullptr;
 		}
 	}
-	// clean up just in case
-	delete audioMP3;
-	audioMP3 = nullptr;
-	delete audioSource;
-	audioSource = nullptr;
-	delete audioOut;
-	audioOut = nullptr;
 	// terminate this task
 	TaskSendMusicHandle = NULL;
 	vTaskDelete(NULL);
@@ -1035,8 +1034,6 @@ void setup()
 	tft.setTextPadding(tft.width());
 	nMenuLineCount = (tft.height() + 1) / tft.fontHeight();
 	TextLines.resize(nMenuLineCount);
-	// start the tone generator, freq=0 gives error on Serial port during boot, so just set to 1000
-	ledcAttach(AUDIO_OUT_PORT, 1000, 8);
 
 	// start the DTMF detector
 	pinMode(AUDIO_IN_PORT, INPUT);
