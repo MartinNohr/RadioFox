@@ -1,6 +1,6 @@
 #pragma once
 
-const char *FOX_Version = "1.14.3";
+const char *FOX_Version = "1.14.4";
 
 const char *StartFileName = "START.FOX";
 // some config things
@@ -32,7 +32,6 @@ String wifiMacs = "FOX-" + WiFi.macAddress();
 const char *ssid = wifiMacs.c_str();
 const char *password = "12345678"; // not critical stuff, therefore simple password is enough
 
-// we need to change the file handling for exFat, the name function is different than standard SD lib
 WebServer server(80);
 
 String webpage = "";
