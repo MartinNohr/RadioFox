@@ -17,7 +17,7 @@
 #include "AudioOutputI2SNoDAC.h"
 
 AudioGeneratorMP3 *audioMP3 = nullptr;
-AudioGeneratorWAV *wav = nullptr;
+AudioGeneratorWAV *audioWav = nullptr;
 AudioFileSourceSPIFFS *file = nullptr;
 AudioFileSourceSD *audioSource = nullptr;
 AudioOutputI2SNoDAC *audioOut = nullptr;
@@ -260,13 +260,39 @@ void TaskSendMusic(void *parameter)
 		}
 		else if (ext == "WAV")
 		{
-			Serial.println("play WAV");
+			audioSource = new AudioFileSourceSD(sFullName.c_str());
+			audioOut = new AudioOutputI2SNoDAC(32);
+			audioWav = new AudioGeneratorWAV();
+			audioWav->begin(audioSource, audioOut);
+			// play until done
+			bool bDone = false;
+			while (!bDone)
+			{
+				if (audioWav->isRunning())
+				{
+					if (!audioWav->loop())
+					{
+						// Serial.printf("WAV stopped\n");
+						audioWav->stop();
+						bDone = true;
+					}
+				}
+				vTaskDelay(pdMS_TO_TICKS(5));
+			}
+			if (audioSource)
+				audioSource->close();
+			// clean up just in case
+			delete audioWav;
+			audioWav = nullptr;
+			delete audioSource;
+			audioSource = nullptr;
+			delete audioOut;
+			audioOut = nullptr;
 		}
 		else if (ext == "MP3")
 		{
-			// Serial.println("play MP3");
 			audioSource = new AudioFileSourceSD(sFullName.c_str());
-			audioSource->RegisterMetadataCB(MDCallback, (void *)"ID3TAG");
+			// audioSource->RegisterMetadataCB(MDCallback, (void *)"ID3TAG");
 			audioOut = new AudioOutputI2SNoDAC(32);
 			audioMP3 = new AudioGeneratorMP3();
 			audioMP3->begin(audioSource, audioOut);
