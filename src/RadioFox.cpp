@@ -3353,14 +3353,12 @@ void CheckUpdateBin(MenuItem *menu)
 			DisplayLine(2, "loading...");
 			File binFile;
 			binFile = SD.open(binFileName);
-			if (binFileName)
+			if (binFile)
 			{
 				size_t binSize = binFile.size();
-				// Serial.println("size: " + String(binSize));
-				Update.begin(binSize);
+				Update.begin(binSize, U_FLASH);
 				Update.onProgress(ShowUpdateProgress);
 				size_t bytesWritten = Update.writeStream(binFile);
-				// Serial.println("written: " + String(bytesWritten));
 				Update.end();
 				binFile.close();
 				ClearScreen();
